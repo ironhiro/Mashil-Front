@@ -53,8 +53,9 @@ function SocialLoginButtons({ onError }: { onError: (msg: string | null) => void
         onError(null);
         setBusy(p);
         try {
-            await auth.loginWithProvider(p);
-            navigate("/", { replace: true });
+            const r = await auth.loginWithProvider(p);
+            // 첫 로그인(또는 약관이 바뀜)이면 약관 동의부터
+            navigate(r.consentRequired ? "/consent" : "/", { replace: true });
         } catch (err) {
             if (!(err instanceof NativeSignInCancelled)) onError(friendlyError(err, t("login.socialFailed")));
         } finally {

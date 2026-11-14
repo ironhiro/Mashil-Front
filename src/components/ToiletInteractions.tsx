@@ -18,6 +18,7 @@ import { useAuth } from "../auth/AuthContext";
 import { useTranslation } from "react-i18next";
 import { formatRelativeOrDate } from "../i18n";
 import { friendlyError } from "../lib/friendlyError";
+import { useAppStatus } from "../lib/appStatus";
 
 interface Props {
     toiletId: number;
@@ -34,6 +35,7 @@ export function ToiletInteractions({ toiletId, averageRating }: Props) {
     const auth = useAuth();
     const { t } = useTranslation();
     const qc = useQueryClient();
+    const readOnly = useAppStatus().data?.readOnly ?? false;
 
     const [pendingScore, setPendingScore] = useState<number | null>(null);
     const [comment, setComment] = useState("");
@@ -80,7 +82,9 @@ export function ToiletInteractions({ toiletId, averageRating }: Props) {
                     )}
                 </Stack>
 
-                {!auth.user ? (
+                {readOnly ? (
+                    <Alert severity="info">{t("maintenance.readOnly")}</Alert>
+                ) : !auth.user ? (
                     <Alert severity="info">{t("interactions.loginRequired")}</Alert>
                 ) : (
                     <>

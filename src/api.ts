@@ -4,6 +4,18 @@ import { readAuthToken } from "./auth/AuthContext";
 import type { ChangeRequestKind, ChangeRequestStatus } from "./lib/enums";
 import { USE_MOCK } from "./mock/flag";
 
+/** 서버가 KST·요일·공휴일·자정 넘김을 반영해 판정한 영업 상태 (docs/API.md). */
+export interface ServerOpenStatus {
+    kind: "AlwaysOpen" | "Open" | "Closed" | "Unknown";
+    closesAt: string | null;
+    nextOpen: { daysFromToday: number; day: Weekday; at: string } | null;
+    /** 한국어 문구 — 화면에는 번역 키로 다시 만든다 */
+    label: string;
+}
+
+export type Weekday = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";
+export type ScheduleDay = Weekday | "Holiday";
+
 export interface ToiletNear {
     id: number;
     name: string;
@@ -32,6 +44,12 @@ export interface ToiletNear {
     averageRating: number | null;
     /** Hidden 제외 댓글 수. */
     commentCount: number;
+
+    /** Public / Open / Temporary / Mobile / Other (목업에는 없음) */
+    kindCode?: string;
+    scheduleStatus?: string;
+    /** 서버 판정 (목업에는 없음 → 원문 정규식 판정으로 대체) */
+    openStatus?: ServerOpenStatus;
 }
 
 const BASE = ""; // dev: vite proxy가 /api → :5099 로 프록시
@@ -81,6 +99,33 @@ export interface ToiletDetail {
     openHours: string | null;
     openHoursDetail: string | null;
     phone: string | null;
+
+    kindCode?: string;
+    status?: "Active" | "Missing" | "Removed";
+    scheduleStatus?: string;
+    openStatus?: ServerOpenStatus;
+    /** 요일별 개방 시간. 같은 요일에 여러 칸 가능 (점심 분할) */
+    schedules?: { day: ScheduleDay; open: string | null; close: string | null; closed: boolean }[];
+    facilities?: {
+        maleStall: number;
+        maleUrinal: number;
+        maleAccessibleStall: number;
+        maleAccessibleUrinal: number;
+        maleChildStall: number;
+        maleChildUrinal: number;
+        femaleStall: number;
+        femaleAccessibleStall: number;
+        femaleChildStall: number;
+        emergencyBell: boolean | null;
+        entranceCctv: boolean | null;
+        diaperChanger: boolean | null;
+    };
+    source?: {
+        provider: string;
+        dataReferenceDate: string | null;
+        coordinateSource: string | null;
+        editedByPeople: boolean;
+    };
 }
 
 export function fetchToilet(id: number): Promise<ToiletDetail> {
@@ -212,4 +257,47 @@ export async function submitChangeRequest(payload: SubmitChangeRequestPayload): 
         body: payload,
         auth: true,
     });
+}
+
+// ── 점검 모드 (GET /api/app/status) ─────────────────────────────────────
+
+export interface AppStatus {
+    maintenance: boolean;
+    readOnly: boolean;
+    message: string | null;
+    until: string | null;
+}
+
+/** 서버에 점검 상태 API 가 없거나(404) 실패하면 null — 정상 운영으로 본다. */
+export async function fetchAppStatus(): Promise<AppStatus | null> {
+    if (USE_MOCK) return null;
+    try {
+        const res = await fetch(`${BASE}/api/app/status`, { cache: "no-store" });
+        return res.ok ? ((await res.json()) as AppStatus) : null;
+    } catch {
+        return null;
+    }
+}
+
+// ── 약관 동의 (docs/API.md Auth) ────────────────────────────────────────
+
+export type ConsentDocType = "Terms" | "Privacy" | "LocationTerms";
+
+export interface ConsentStatus {
+    required: boolean;
+    documents: { docType: ConsentDocType; version: string; agreed: boolean }[];
+}
+
+export function fetchConsents(): Promise<ConsentStatus> {
+    return apiFetch<ConsentStatus>("/api/auth/consents", { auth: true });
+}
+
+/** 현재 버전에만 동의할 수 있다. 다른 버전이면 409 consent_version_mismatch. */
+export function postConsents(items: { docType: ConsentDocType; version: string }[]): Promise<void> {
+    return apiFetch<void>("/api/auth/consents", { method: "POST", body: { items }, auth: true });
+}
+
+/** 표시 이름 변경 (최대 20자). */
+export function updateDisplayName(displayName: string): Promise<void> {
+    return apiFetch<void>("/api/auth/me", { method: "PATCH", body: { displayName }, auth: true });
 }

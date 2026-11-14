@@ -61,7 +61,9 @@ export function currentLanguage(): LanguageCode {
  */
 export function formatDistance(meters: number, compact = false): string {
     const sep = compact ? "" : " ";
-    return meters < 1000 ? `${Math.round(meters)}${sep}m` : `${(meters / 1000).toFixed(1)}${sep}km`;
+    if (meters < 1000) return `${Math.round(meters)}${sep}m`;
+    const km = meters / 1000;
+    return `${Number.isInteger(km) ? km : km.toFixed(1)}${sep}km`;
 }
 
 /** 24시간 이내·1주 이내는 "3분 전" 같은 상대 시간, 그보다 오래면 날짜·시각. */

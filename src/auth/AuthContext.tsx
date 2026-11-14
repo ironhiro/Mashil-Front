@@ -33,6 +33,8 @@ interface AuthState {
     register: (email: string, password: string, displayName?: string) => Promise<void>;
     /** 앱 브리지로 네이티브 소셜 로그인 → 서버 교환. 취소하면 NativeSignInCancelled. */
     loginWithProvider: (provider: SocialProvider) => Promise<SocialLoginResult>;
+    /** 표시 이름이 바뀌었을 때 (약관 동의 화면 등) 화면 상태만 갱신 */
+    setDisplayName: (name: string) => void;
     logout: () => void;
 }
 
@@ -164,9 +166,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
     }, [user]);
 
+    const setDisplayName = useCallback((name: string) => {
+        setUser((u) => (u ? { ...u, displayName: name } : u));
+    }, []);
+
     const value = useMemo<AuthState>(
-        () => ({ user, token, login, register, loginWithProvider, logout }),
-        [user, token, login, register, loginWithProvider, logout],
+        () => ({ user, token, login, register, loginWithProvider, setDisplayName, logout }),
+        [user, token, login, register, loginWithProvider, setDisplayName, logout],
     );
 
     return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;

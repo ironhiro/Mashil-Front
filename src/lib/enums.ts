@@ -52,14 +52,11 @@ export const FacilityFilter = {
     Women: "women",
     Accessible: "accessible",
     Child: "child",
-    /** 지금 열려 있는 곳만 (24시간 포함) */
-    Open: "open",
 } as const;
 export type FacilityFilter = (typeof FacilityFilter)[keyof typeof FacilityFilter];
 
 /** UI 토글 순서. 라벨은 번역 키 `facility.filter.<값>`. */
 export const FACILITY_FILTER_OPTIONS: FacilityFilter[] = [
-    FacilityFilter.Open,
     FacilityFilter.Men,
     FacilityFilter.Women,
     FacilityFilter.Accessible,

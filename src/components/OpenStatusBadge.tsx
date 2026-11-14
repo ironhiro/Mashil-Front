@@ -2,14 +2,21 @@ import { Box, Tooltip } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { tileStateOf, tileSx } from "../design/statusTile";
-import { parseOpenStatus } from "../lib/openStatus";
+import { statusOf } from "../lib/openStatus";
 import type { OpenStatus } from "../lib/openStatus";
 
 interface Props {
-    openHours: string | null;
-    openHoursDetail: string | null;
+    toilet: Parameters<typeof statusOf>[0];
     /** short: 타일·마커용 짧은 표기 ("24시간", "20:30까지", "종료", "정보없음") */
     variant?: "full" | "short";
+}
+
+/** 닫혀 있을 때 "내일 09:00 열림" 같은 다음 개방 안내. */
+function closedLabel(t: TFunction, status: Extract<OpenStatus, { kind: "closed" }>): string {
+    if (!status.opensAt) return t("openStatus.closedNoNext");
+    if (status.opensInDays === undefined || status.opensInDays === 0) return t("openStatus.opensToday", { time: status.opensAt });
+    if (status.opensInDays === 1) return t("openStatus.opensTomorrow", { time: status.opensAt });
+    return t("openStatus.opensOn", { day: t(`days.${status.opensDay ?? "Mon"}`), time: status.opensAt });
 }
 
 /** 영업 상태 문구. full = 카드용, short = 타일·마커용. */
@@ -26,16 +33,16 @@ export function openStatusLabel(t: TFunction, status: OpenStatus, variant: "full
             ? t("openStatus.closingSoon", { time: status.closesAt })
             : t("openStatus.openUntil", { time: status.closesAt });
     }
-    if (status.kind === "closed") return t("openStatus.closedUntil", { time: status.opensAt });
+    if (status.kind === "closed") return closedLabel(t, status);
     return t("openStatus.unknown");
 }
 
 /**
  * 상세 카드의 큰 상태 타일 — 거리 타일 옆에 나란히. 위: 짧은 상태(크게), 아래: 자세한 문구.
  */
-export function StatusTile({ openHours, openHoursDetail }: Omit<Props, "variant">) {
+export function StatusTile({ toilet }: Omit<Props, "variant">) {
     const { t } = useTranslation();
-    const status = parseOpenStatus(openHours, openHoursDetail);
+    const status = statusOf(toilet);
     const detail =
         status.kind === "unknown"
             ? status.raw
@@ -71,9 +78,9 @@ export function StatusTile({ openHours, openHoursDetail }: Omit<Props, "variant"
  * 영업 상태 칩 — 타일 4단계(열림 채움 / 곧 닫힘 연한 채움 / 종료 점선 / 정보없음 회색).
  * 툴팁은 공공데이터 원문(번역하지 않음) 또는 "가기 전에 확인" 안내.
  */
-export function OpenStatusBadge({ openHours, openHoursDetail, variant = "full" }: Props) {
+export function OpenStatusBadge({ toilet, variant = "full" }: Props) {
     const { t } = useTranslation();
-    const status = parseOpenStatus(openHours, openHoursDetail);
+    const status = statusOf(toilet);
     const state = tileStateOf(status);
     const tooltip =
         status.kind === "unknown"

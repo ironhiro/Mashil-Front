@@ -25,6 +25,8 @@ declare namespace kakao.maps {
         getLevel(): number;
         setLevel(level: number): void;
         relayout(): void;
+        setDraggable(draggable: boolean): void;
+        setZoomable(zoomable: boolean): void;
         addListener(event: string, handler: () => void): void;
     }
 

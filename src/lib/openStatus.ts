@@ -10,11 +10,70 @@
  * - `unknown` — 패턴 불일치 / 빈 값 (검정 뱃지) — 사용자에게 "직접 방문 확인" 안내
  */
 
+import type { ServerOpenStatus, Weekday } from "../api";
+
 export type OpenStatus =
     | { kind: "24h"; raw: string }
     | { kind: "open"; closesAt: string; raw: string; /** 닫기까지 30분 이내 */ closingSoon: boolean }
-    | { kind: "closed"; opensAt: string; raw: string }
+    | {
+          kind: "closed";
+          /** 다음에 여는 시각. 모르면 "" */
+          opensAt: string;
+          raw: string;
+          /** 다음에 여는 날 (서버 판정일 때만): 0 = 오늘, 1 = 내일 … */
+          opensInDays?: number;
+          opensDay?: Weekday;
+      }
     | { kind: "unknown"; raw: string };
+
+/**
+ * 화장실의 영업 상태. 서버 판정(openStatus)이 있으면 그것을 쓰고 (KST·요일·공휴일 반영),
+ * 없으면(목업 등) 원문을 정규식으로 판정한다.
+ */
+export function statusOf(
+    toilet: { openStatus?: ServerOpenStatus | null; openHours: string | null; openHoursDetail: string | null },
+    now: Date = new Date(),
+): OpenStatus {
+    const raw = [toilet.openHours, toilet.openHoursDetail].filter((s) => s && s.trim()).join(" ").trim();
+    const s = toilet.openStatus;
+    if (!s) return parseOpenStatus(toilet.openHours, toilet.openHoursDetail, now);
+    switch (s.kind) {
+        case "AlwaysOpen":
+            return { kind: "24h", raw };
+        case "Open": {
+            const closesAt = s.closesAt ?? "";
+            const left = closesAt ? minutesUntilKst(closesAt, now) : Infinity;
+            return { kind: "open", closesAt, raw, closingSoon: left <= CLOSING_SOON_MIN };
+        }
+        case "Closed":
+            return {
+                kind: "closed",
+                opensAt: s.nextOpen?.at ?? "",
+                raw,
+                opensInDays: s.nextOpen?.daysFromToday,
+                opensDay: s.nextOpen?.day,
+            };
+        default:
+            return { kind: "unknown", raw };
+    }
+}
+
+/** 지금(한국 시간)부터 HH:MM 까지 남은 분. 자정을 넘기면 다음 날로 본다. */
+function minutesUntilKst(hhmm: string, now: Date): number {
+    const [h, m] = hhmm.split(":").map(Number);
+    const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+        .formatToParts(now);
+    const nh = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
+    const nm = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
+    const target = (h === 24 ? 24 * 60 : h * 60) + m;
+    return (target - (nh * 60 + nm) + 24 * 60) % (24 * 60) || 24 * 60;
+}
+
+/** 오늘 요일 (한국 시간) */
+export function todayKst(now: Date = new Date()): Weekday {
+    const d = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", weekday: "short" }).format(now);
+    return d as Weekday;
+}
 
 const ALWAYS_OPEN_RE = /상시|24\s*시간|00\s*:?\s*00\s*[~∼〜\-–—]\s*24\s*:?\s*00|0\s*:\s*00\s*[~∼〜\-–—]\s*24\s*:\s*00/;
 const RANGE_RE = /(\d{1,2})\s*:\s*(\d{2})\s*[~∼〜\-–—]\s*(\d{1,2})\s*:\s*(\d{2})/;

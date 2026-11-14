@@ -35,14 +35,25 @@ import { AdminChangeRequestsPage } from "./pages/AdminChangeRequestsPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { NewChangeRequestPage } from "./pages/NewChangeRequestPage";
+import { ConsentPage } from "./pages/ConsentPage";
+import { TermsPage } from "./pages/TermsPage";
+import { ToiletDetailPage } from "./pages/ToiletDetailPage";
+import { MaintenanceScreen, ReadOnlyBanner } from "./components/Maintenance";
+import { useAppStatus } from "./lib/appStatus";
 
 export function App() {
     const auth = useAuth();
     const navigate = useNavigate();
     const { t, i18n } = useTranslation();
     const [navOpen, setNavOpen] = useState(false);
+    const appStatus = useAppStatus();
 
     const closeNav = () => setNavOpen(false);
+
+    // 전체 점검이면 다른 화면 대신 점검 화면 (OPS-05)
+    if (appStatus.data?.maintenance) {
+        return <MaintenanceScreen status={appStatus.data} onRetry={() => void appStatus.refetch()} retrying={appStatus.isFetching} />;
+    }
 
     return (
         <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
@@ -88,6 +99,7 @@ export function App() {
                     )}
                 </Toolbar>
             </AppBar>
+            {appStatus.data?.readOnly && <ReadOnlyBanner status={appStatus.data} />}
 
             <Drawer anchor="left" open={navOpen} onClose={closeNav}>
                 <Box sx={{ width: 260, pt: 1 }} role="navigation">
@@ -189,6 +201,9 @@ export function App() {
                 <Routes>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/login" element={<LoginPage />} />
+                    <Route path="/consent" element={<ConsentPage />} />
+                    <Route path="/terms/:docType" element={<TermsPage />} />
+                    <Route path="/toilets/:id" element={<ToiletDetailPage />} />
                     <Route path="/change-requests/new" element={<NewChangeRequestPage />} />
                     <Route
                         path="/admin/change-requests"

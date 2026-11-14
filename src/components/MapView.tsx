@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { tileCss, tileStateOf } from "../design/statusTile";
 import { darkTokens, fonts, lightTokens, tileGrid } from "../design/tokens";
 import { loadKakaoMaps } from "../lib/kakaoMap";
-import { parseOpenStatus } from "../lib/openStatus";
+import { statusOf } from "../lib/openStatus";
 import type { LatLng as Coord, ToiletNear } from "../api";
 import { openStatusLabel } from "./OpenStatusBadge";
 
@@ -144,7 +144,7 @@ export function MapView({
         const next: Pin[] = [];
         for (const toilet of toilets) {
             if (toilet.latitude == null || toilet.longitude == null) continue;
-            const status = parseOpenStatus(toilet.openHours, toilet.openHoursDetail);
+            const status = statusOf(toilet);
             const label = openStatusLabel(t, status, "short");
             const el = createPinElement(label, tileCss(tileStateOf(status)), toilet.averageRating);
             el.setAttribute("aria-label", `${toilet.name}, ${openStatusLabel(t, status, "full")}`);

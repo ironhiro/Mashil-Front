@@ -5,7 +5,7 @@ import { tileStateOf, tileSx } from "../design/statusTile";
 import { fonts } from "../design/tokens";
 import { formatDistance } from "../i18n";
 import { facilityChipLabels } from "../lib/facilityChips";
-import { parseOpenStatus } from "../lib/openStatus";
+import { statusOf } from "../lib/openStatus";
 import { openStatusLabel } from "./OpenStatusBadge";
 
 interface Props {
@@ -63,7 +63,7 @@ export function ToiletList({ toilets, totalBeforeFilter, selectedId, onSelect }:
                     }}
                 >
                     {toilets.map((toilet) => {
-                        const status = parseOpenStatus(toilet.openHours, toilet.openHoursDetail);
+                        const status = statusOf(toilet);
                         const state = tileStateOf(status);
                         const selected = toilet.id === selectedId;
                         return (

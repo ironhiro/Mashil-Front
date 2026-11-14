@@ -10,9 +10,7 @@ import {
     CardActions,
     CardContent,
     Chip,
-    MenuItem,
     Stack,
-    TextField,
     ToggleButton,
     ToggleButtonGroup,
     Typography,
@@ -25,20 +23,15 @@ import { StatusTile } from "../components/OpenStatusBadge";
 import { fonts } from "../design/tokens";
 import { ToiletInteractions } from "../components/ToiletInteractions";
 import { ToiletList } from "../components/ToiletList";
-import {
-    ChangeRequestKind,
-    DEFAULT_SEARCH_RADIUS,
-    FACILITY_FILTER_OPTIONS,
-    FacilityFilter,
-    SEARCH_RADIUS_OPTIONS,
-    SearchRadius,
-    ViewMode,
-} from "../lib/enums";
+import { ChangeRequestKind, DEFAULT_SEARCH_RADIUS, SearchRadius, ViewMode } from "../lib/enums";
+import { FilterSheet } from "../components/FilterSheet";
+import { EMPTY_FILTER, activeFilterCount, applyFilter } from "../lib/toiletFilter";
+import type { ToiletFilter } from "../lib/toiletFilter";
+import TuneIcon from "@mui/icons-material/Tune";
 
 import { MOCK_USER_LOCATION, USE_MOCK } from "../mock/flag";
 import { getCurrentPosition, isApp, LocationError, openDirectionsInApp } from "../lib/nativeBridge";
 import { friendlyError } from "../lib/friendlyError";
-import { parseOpenStatus } from "../lib/openStatus";
 import { formatDistance } from "../i18n";
 import { facilityChipLabels, toiletKindLabel } from "../lib/facilityChips";
 import type { LocationFailure } from "../lib/nativeBridge";
@@ -58,7 +51,8 @@ export function HomePage() {
     const [geoFailure, setGeoFailure] = useState<LocationFailure | null>(null);
 
     const [radiusM, setRadiusM] = useState<SearchRadius>(DEFAULT_SEARCH_RADIUS);
-    const [facilityFilters, setFacilityFilters] = useState<FacilityFilter[]>([]);
+    const [filter, setFilter] = useState<ToiletFilter>(EMPTY_FILTER);
+    const [sheetOpen, setSheetOpen] = useState(false);
     const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.Map);
 
     useEffect(() => {
@@ -98,14 +92,15 @@ export function HomePage() {
     }, [pickedToilet, query.data]);
 
     const filteredToilets = useMemo(() => {
-        const list = query.data ?? [];
-        return list.filter((t) => {
-            for (const f of facilityFilters) {
-                if (!facilityMatch(t, f)) return false;
-            }
-            return true;
-        });
-    }, [query.data, facilityFilters]);
+        return applyFilter(query.data ?? [], filter);
+    }, [query.data, filter]);
+
+    /** 상세 화면으로 — 거리 계산 기준점과 그 기준이 "내 위치"인지 함께 넘긴다 */
+    const openDetail = (toilet: ToiletNear) => {
+        const fromMe = !!userLocation && !!center && userLocation.lat === center.lat && userLocation.lng === center.lng;
+        navigate(`/toilets/${toilet.id}`, { state: { origin: center, fromMe } });
+    };
+    const activeFilters = activeFilterCount(filter);
 
     const route = useMemo(() => {
         if (!routing || !userLocation || !selectedToilet) return null;
@@ -128,52 +123,22 @@ export function HomePage() {
                 </Alert>
             )}
 
-            {/* === 필터 패널 === */}
-            <Stack
-                direction={{ xs: "column", sm: "row" }}
-                spacing={1.5}
-                alignItems={{ xs: "stretch", sm: "center" }}
-                sx={{ flexWrap: "wrap" }}
-                useFlexGap
-            >
-                <TextField
-                    select
-                    size="small"
-                    label={t("home.radius")}
-                    value={radiusM}
-                    onChange={(e) => setRadiusM(Number(e.target.value) as SearchRadius)}
-                    sx={{ minWidth: 130 }}
+            {/* === 필터 버튼 + 지도/목록 전환 === */}
+            <Stack direction="row" spacing={1} alignItems="center">
+                <Button
+                    variant={activeFilters > 0 ? "contained" : "outlined"}
+                    color="secondary"
+                    onClick={() => setSheetOpen(true)}
+                    startIcon={<TuneIcon />}
+                    sx={{ minHeight: 40 }}
                 >
-                    {SEARCH_RADIUS_OPTIONS.map((o) => (
-                        <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
-                    ))}
-                </TextField>
-
-                <ToggleButtonGroup
-                    size="small"
-                    value={facilityFilters}
-                    onChange={(_, v: FacilityFilter[]) => setFacilityFilters(v)}
-                    aria-label={t("home.facilityFilter")}
-                    // 시안처럼 칸마다 떨어진 타일 (붙은 버튼 그룹 대신)
-                    sx={{
-                        flexWrap: "wrap",
-                        gap: 0.75,
-                        "& .MuiToggleButtonGroup-grouped": {
-                            border: "1px solid",
-                            borderColor: "mashil.line",
-                            borderRadius: "6px !important",
-                            ml: "0 !important",
-                            px: 1.5,
-                        },
-                    }}
-                >
-                    {FACILITY_FILTER_OPTIONS.map((f) => (
-                        <ToggleButton key={f} value={f}>{t(`facility.filter.${f}`)}</ToggleButton>
-                    ))}
-                </ToggleButtonGroup>
-
+                    {t("filter.button")}
+                    {activeFilters > 0 && ` ${activeFilters}`}
+                    <Box component="span" sx={{ ml: 1, fontFamily: fonts.mono, fontSize: 13, opacity: 0.8 }}>
+                        {formatDistance(radiusM, true)}
+                    </Box>
+                </Button>
                 <Box sx={{ flexGrow: 1 }} />
-
                 <ToggleButtonGroup
                     size="small"
                     exclusive
@@ -185,6 +150,17 @@ export function HomePage() {
                     <ToggleButton value={ViewMode.List}>{t("home.viewList")}</ToggleButton>
                 </ToggleButtonGroup>
             </Stack>
+            <FilterSheet
+                open={sheetOpen}
+                onClose={() => setSheetOpen(false)}
+                center={center}
+                filter={filter}
+                radiusM={radiusM}
+                onApply={(f, r) => {
+                    setFilter(f);
+                    setRadiusM(r);
+                }}
+            />
 
             {/* === 지도 또는 목록 === */}
             {center && viewMode === ViewMode.Map && (
@@ -214,7 +190,7 @@ export function HomePage() {
                     toilets={filteredToilets}
                     totalBeforeFilter={query.data?.length}
                     selectedId={selectedToilet?.id ?? null}
-                    onSelect={(t) => setSelectedToilet(t)}
+                    onSelect={openDetail}
                 />
             )}
 
@@ -248,7 +224,7 @@ export function HomePage() {
                                     )}
                                 </Box>
                             </Box>
-                            <StatusTile openHours={selectedToilet.openHours} openHoursDetail={selectedToilet.openHoursDetail} />
+                            <StatusTile toilet={selectedToilet} />
                         </Box>
                         <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.35 }}>
                             {selectedToilet.name}
@@ -323,6 +299,9 @@ export function HomePage() {
                                 {t("home.distanceNeedsLocation")}
                             </Typography>
                         )}
+                        <Button size="small" color="secondary" variant="outlined" onClick={() => openDetail(selectedToilet)}>
+                            {t("detail.more")}
+                        </Button>
                         {selectedToilet.latitude != null && selectedToilet.longitude != null && (
                             <Button
                                 size="small"
@@ -399,32 +378,12 @@ export function HomePage() {
                 <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "monospace" }}>
                     center=({center?.lat.toFixed(5)}, {center?.lng.toFixed(5)}) · status={query.status}
                     {" · "}{filteredToilets.length}/{query.data?.length ?? 0} 곳
-                    {facilityFilters.length > 0 && ` · 필터: ${facilityFilters.join(",")}`}
+                    {activeFilters > 0 && ` · filter=${JSON.stringify(filter)}`}
                     {query.isFetching && " · 갱신 중…"}
                 </Typography>
             )}
         </Stack>
     );
-}
-
-function facilityMatch(t: ToiletNear, key: FacilityFilter): boolean {
-    switch (key) {
-        case FacilityFilter.Men:
-            return t.maleStallCount + t.maleUrinalCount > 0;
-        case FacilityFilter.Women:
-            return t.femaleStallCount > 0;
-        case FacilityFilter.Accessible:
-            return (
-                t.maleAccessibleStallCount + t.maleAccessibleUrinalCount + t.femaleAccessibleStallCount
-                > 0
-            );
-        case FacilityFilter.Child:
-            return t.maleChildStallCount + t.maleChildUrinalCount + t.femaleChildStallCount > 0;
-        case FacilityFilter.Open: {
-            const kind = parseOpenStatus(t.openHours, t.openHoursDetail).kind;
-            return kind === "open" || kind === "24h";
-        }
-    }
 }
 
 function buildKakaoMapRouteUrl(
