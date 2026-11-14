@@ -1,4 +1,6 @@
 import { StrictMode } from "react";
+import "./i18n";
+import "./i18n/syncAppLanguage";
 import { createRoot } from "react-dom/client";
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";

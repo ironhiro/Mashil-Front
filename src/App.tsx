@@ -10,7 +10,10 @@ import {
     List,
     ListItemButton,
     ListItemText,
+    ListSubheader,
     Stack,
+    ToggleButton,
+    ToggleButtonGroup,
     Toolbar,
     Typography,
 } from "@mui/material";
@@ -21,8 +24,11 @@ import {
     Routes,
     useNavigate,
 } from "react-router-dom";
-import { useAuth } from "./auth/AuthContext";
+import { useTranslation } from "react-i18next";
+import { useAuth, userLabel } from "./auth/AuthContext";
 import { RequireAdmin } from "./components/RequireAdmin";
+import { SUPPORTED_LANGUAGES, currentLanguage } from "./i18n";
+import type { LanguageCode } from "./i18n";
 import { UserRole } from "./lib/enums";
 import { AdminChangeRequestsPage } from "./pages/AdminChangeRequestsPage";
 import { HomePage } from "./pages/HomePage";
@@ -32,6 +38,7 @@ import { NewChangeRequestPage } from "./pages/NewChangeRequestPage";
 export function App() {
     const auth = useAuth();
     const navigate = useNavigate();
+    const { t, i18n } = useTranslation();
     const [navOpen, setNavOpen] = useState(false);
 
     const closeNav = () => setNavOpen(false);
@@ -43,7 +50,7 @@ export function App() {
                     <IconButton
                         edge="start"
                         color="inherit"
-                        aria-label="메뉴 열기"
+                        aria-label={t("app.openMenu")}
                         onClick={() => setNavOpen(true)}
                         sx={{ mr: 1 }}
                     >
@@ -58,21 +65,21 @@ export function App() {
                         sx={{ color: "inherit", textDecoration: "none", flexGrow: 1 }}
                     >
                         <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                            마실
+                            {t("app.name")}
                         </Typography>
                         <Typography variant="caption" sx={{ opacity: 0.85, display: { xs: "none", sm: "inline" } }}>
-                            잠깐, 다녀와
+                            {t("app.tagline")}
                         </Typography>
                     </Stack>
 
                     {auth.user ? (
                         <Typography variant="body2" sx={{ opacity: 0.9, display: { xs: "none", sm: "inline" } }}>
-                            {auth.user.email}
-                            {auth.user.role === UserRole.Admin && " · 관리자"}
+                            {userLabel(auth.user)}
+                            {auth.user.role === UserRole.Admin && ` · ${t("app.roleAdmin")}`}
                         </Typography>
                     ) : (
                         <Button color="inherit" component={RouterLink} to="/login">
-                            로그인
+                            {t("nav.login")}
                         </Button>
                     )}
                 </Toolbar>
@@ -83,10 +90,10 @@ export function App() {
                     {auth.user && (
                         <Box sx={{ px: 2, py: 1.5 }}>
                             <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                                {auth.user.email}
+                                {userLabel(auth.user)}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                                {auth.user.role === UserRole.Admin ? "관리자" : "사용자"}
+                                {auth.user.role === UserRole.Admin ? t("app.roleAdmin") : t("app.roleUser")}
                             </Typography>
                         </Box>
                     )}
@@ -98,7 +105,7 @@ export function App() {
                                 navigate("/");
                             }}
                         >
-                            <ListItemText primary="홈" secondary="내 주변 화장실 지도/목록" />
+                            <ListItemText primary={t("nav.home")} secondary={t("nav.homeHint")} />
                         </ListItemButton>
                         {auth.user && (
                             <ListItemButton
@@ -107,7 +114,7 @@ export function App() {
                                     navigate("/change-requests/new");
                                 }}
                             >
-                                <ListItemText primary="변경요청 작성" secondary="추가/수정/삭제 제안" />
+                                <ListItemText primary={t("nav.report")} secondary={t("nav.reportHint")} />
                             </ListItemButton>
                         )}
                         {auth.user?.role === UserRole.Admin && (
@@ -117,7 +124,7 @@ export function App() {
                                     navigate("/admin/change-requests");
                                 }}
                             >
-                                <ListItemText primary="변경요청 큐" secondary="사용자 제출 요청 검토" />
+                                <ListItemText primary={t("nav.review")} secondary={t("nav.reviewHint")} />
                             </ListItemButton>
                         )}
                     </List>
@@ -131,7 +138,7 @@ export function App() {
                                     navigate("/");
                                 }}
                             >
-                                <ListItemText primary="로그아웃" />
+                                <ListItemText primary={t("nav.logout")} />
                             </ListItemButton>
                         ) : (
                             <ListItemButton
@@ -140,9 +147,36 @@ export function App() {
                                     navigate("/login");
                                 }}
                             >
-                                <ListItemText primary="로그인 / 회원가입" />
+                                <ListItemText primary={t("nav.loginOrRegister")} />
                             </ListItemButton>
                         )}
+                    </List>
+                    <Divider />
+                    <List
+                        subheader={
+                            // 언어 이름은 번역하지 않고 각 언어로 표기 (내가 못 읽는 언어로 바뀌어도 돌아올 수 있게)
+                            <ListSubheader disableSticky sx={{ bgcolor: "transparent" }}>
+                                {t("nav.language")}
+                                {currentLanguage() !== "en" && " · Language"}
+                            </ListSubheader>
+                        }
+                    >
+                        <Box sx={{ px: 2, pb: 2 }}>
+                            <ToggleButtonGroup
+                                exclusive
+                                fullWidth
+                                size="small"
+                                value={currentLanguage()}
+                                onChange={(_, v: LanguageCode | null) => v && void i18n.changeLanguage(v)}
+                                aria-label={t("nav.language")}
+                            >
+                                {SUPPORTED_LANGUAGES.map((l) => (
+                                    <ToggleButton key={l.code} value={l.code} lang={l.code}>
+                                        {l.label}
+                                    </ToggleButton>
+                                ))}
+                            </ToggleButtonGroup>
+                        </Box>
                     </List>
                 </Box>
             </Drawer>

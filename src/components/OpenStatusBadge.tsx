@@ -1,4 +1,5 @@
 import { Chip, Tooltip } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import { parseOpenStatus } from "../lib/openStatus";
 
 interface Props {
@@ -13,42 +14,44 @@ interface Props {
  * - 24시간(상시) → 초록 "24시간 영업"
  * - 영업중 → 초록 "영업중 ~HH:MM"
  * - 영업종료 → 빨강 "영업종료 (HH:MM~)"
- * - 미상 → 검정 + 툴팁 "직접 방문 확인 필요"
+ * - 미상 → 검정 + 툴팁 "가기 전에 확인"
+ * 툴팁의 원문(status.raw)은 공공데이터 그대로라 번역하지 않는다.
  */
 export function OpenStatusBadge({ openHours, openHoursDetail, size = "small" }: Props) {
+    const { t } = useTranslation();
     const status = parseOpenStatus(openHours, openHoursDetail);
 
     if (status.kind === "24h") {
         return (
             <Tooltip title={status.raw}>
-                <Chip color="success" size={size} label="24시간 영업" />
+                <Chip color="success" size={size} label={t("openStatus.always")} />
             </Tooltip>
         );
     }
     if (status.kind === "open") {
         return (
             <Tooltip title={status.raw}>
-                <Chip color="success" size={size} label={`영업중 ~${status.closesAt}`} />
+                <Chip color="success" size={size} label={t("openStatus.openUntil", { time: status.closesAt })} />
             </Tooltip>
         );
     }
     if (status.kind === "closed") {
         return (
             <Tooltip title={status.raw}>
-                <Chip color="error" size={size} label={`영업종료 (${status.opensAt}~)`} />
+                <Chip color="error" size={size} label={t("openStatus.closedUntil", { time: status.opensAt })} />
             </Tooltip>
         );
     }
 
     // unknown
     const tooltipText = status.raw
-        ? `영업시간 정보를 해석할 수 없어요 ("${status.raw}"). 직접 방문하여 확인해 주세요.`
-        : "영업시간 정보가 없어요. 직접 방문하여 확인해 주세요.";
+        ? t("openStatus.unknownWithRaw", { raw: status.raw })
+        : t("openStatus.unknownEmpty");
     return (
         <Tooltip title={tooltipText}>
             <Chip
                 size={size}
-                label="영업시간 미상"
+                label={t("openStatus.unknown")}
                 sx={{
                     bgcolor: "grey.900",
                     color: "common.white",
