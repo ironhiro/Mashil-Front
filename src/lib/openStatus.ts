@@ -18,6 +18,8 @@ export type OpenStatus =
 
 const ALWAYS_OPEN_RE = /상시|24\s*시간|00\s*:?\s*00\s*[~∼〜\-–—]\s*24\s*:?\s*00|0\s*:\s*00\s*[~∼〜\-–—]\s*24\s*:\s*00/;
 const RANGE_RE = /(\d{1,2})\s*:\s*(\d{2})\s*[~∼〜\-–—]\s*(\d{1,2})\s*:\s*(\d{2})/;
+/** 분 없이 시만 적은 범위 — 공공데이터에 `05~24`, `09 ~ 18` 형태가 꽤 있음. HH:MM 패턴이 없을 때만 시도. */
+const HOUR_RANGE_RE = /(?<!\d)(\d{1,2})\s*[~∼〜]\s*(\d{1,2})(?![\d:])/;
 
 export function parseOpenStatus(
     openHours: string | null,
@@ -31,15 +33,17 @@ export function parseOpenStatus(
         return { kind: "24h", raw };
     }
 
-    const m = RANGE_RE.exec(raw);
-    if (m) {
-        const sh = Number(m[1]);
-        const sm = Number(m[2]);
-        const eh = Number(m[3]);
-        const em = Number(m[4]);
+    const range = parseRange(raw);
+    if (range) {
+        const { sh, sm, eh, em } = range;
         const startMin = sh * 60 + sm;
         const endMin = eh * 60 + em;
         const nowMin = now.getHours() * 60 + now.getMinutes();
+
+        // `00~24` 처럼 하루 전체를 덮는 범위는 24시간 영업
+        if (startMin === 0 && endMin === 24 * 60) {
+            return { kind: "24h", raw };
+        }
 
         const opensAt = fmt(sh, sm);
         const closesAt = fmt(eh, em);
@@ -56,6 +60,19 @@ export function parseOpenStatus(
     }
 
     return { kind: "unknown", raw };
+}
+
+function parseRange(raw: string): { sh: number; sm: number; eh: number; em: number } | null {
+    const m = RANGE_RE.exec(raw);
+    if (m) return { sh: Number(m[1]), sm: Number(m[2]), eh: Number(m[3]), em: Number(m[4]) };
+
+    const h = HOUR_RANGE_RE.exec(raw);
+    if (h) {
+        const sh = Number(h[1]);
+        const eh = Number(h[2]);
+        if (sh <= 24 && eh <= 24) return { sh, sm: 0, eh, em: 0 };
+    }
+    return null;
 }
 
 function fmt(h: number, m: number): string {
