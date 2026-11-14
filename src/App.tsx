@@ -29,6 +29,7 @@ import { useAuth, userLabel } from "./auth/AuthContext";
 import { RequireAdmin } from "./components/RequireAdmin";
 import { SUPPORTED_LANGUAGES, currentLanguage } from "./i18n";
 import type { LanguageCode } from "./i18n";
+import { fonts } from "./design/tokens";
 import { UserRole } from "./lib/enums";
 import { AdminChangeRequestsPage } from "./pages/AdminChangeRequestsPage";
 import { HomePage } from "./pages/HomePage";
@@ -64,10 +65,13 @@ export function App() {
                         to="/"
                         sx={{ color: "inherit", textDecoration: "none", flexGrow: 1 }}
                     >
-                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                        <Typography
+                            component="span"
+                            sx={{ fontFamily: fonts.logo, fontSize: 24, lineHeight: 1, color: "mashil.accent" }}
+                        >
                             {t("app.name")}
                         </Typography>
-                        <Typography variant="caption" sx={{ opacity: 0.85, display: { xs: "none", sm: "inline" } }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: { xs: "none", sm: "inline" } }}>
                             {t("app.tagline")}
                         </Typography>
                     </Stack>
@@ -78,7 +82,7 @@ export function App() {
                             {auth.user.role === UserRole.Admin && ` · ${t("app.roleAdmin")}`}
                         </Typography>
                     ) : (
-                        <Button color="inherit" component={RouterLink} to="/login">
+                        <Button color="secondary" component={RouterLink} to="/login">
                             {t("nav.login")}
                         </Button>
                     )}
