@@ -12,7 +12,7 @@
 
 export type OpenStatus =
     | { kind: "24h"; raw: string }
-    | { kind: "open"; closesAt: string; raw: string }
+    | { kind: "open"; closesAt: string; raw: string; /** 닫기까지 30분 이내 */ closingSoon: boolean }
     | { kind: "closed"; opensAt: string; raw: string }
     | { kind: "unknown"; raw: string };
 
@@ -20,6 +20,9 @@ const ALWAYS_OPEN_RE = /상시|24\s*시간|00\s*:?\s*00\s*[~∼〜\-–—]\s*24
 const RANGE_RE = /(\d{1,2})\s*:\s*(\d{2})\s*[~∼〜\-–—]\s*(\d{1,2})\s*:\s*(\d{2})/;
 /** 분 없이 시만 적은 범위 — 공공데이터에 `05~24`, `09 ~ 18` 형태가 꽤 있음. HH:MM 패턴이 없을 때만 시도. */
 const HOUR_RANGE_RE = /(?<!\d)(\d{1,2})\s*[~∼〜]\s*(\d{1,2})(?![\d:])/;
+
+/** "곧 닫힘" 기준 (분) — docs/07-ui-design.md §3 */
+export const CLOSING_SOON_MIN = 30;
 
 export function parseOpenStatus(
     openHours: string | null,
@@ -54,9 +57,9 @@ export function parseOpenStatus(
             ? nowMin >= startMin || nowMin < endMin
             : nowMin >= startMin && nowMin < endMin;
 
-        return isOpen
-            ? { kind: "open", closesAt, raw }
-            : { kind: "closed", opensAt, raw };
+        if (!isOpen) return { kind: "closed", opensAt, raw };
+        const minutesLeft = (endMin - nowMin + 24 * 60) % (24 * 60);
+        return { kind: "open", closesAt, raw, closingSoon: minutesLeft <= CLOSING_SOON_MIN };
     }
 
     return { kind: "unknown", raw };

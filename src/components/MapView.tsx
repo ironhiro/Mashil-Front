@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Box, Button, CircularProgress, Stack } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, Stack, useMediaQuery } from "@mui/material";
 import { useTranslation } from "react-i18next";
+import { tileCss, tileStateOf } from "../design/statusTile";
+import { darkTokens, fonts, lightTokens, tileGrid } from "../design/tokens";
 import { loadKakaoMaps } from "../lib/kakaoMap";
+import { parseOpenStatus } from "../lib/openStatus";
 import type { LatLng as Coord, ToiletNear } from "../api";
+import { openStatusLabel } from "./OpenStatusBadge";
 
 interface Props {
     center: Coord;
@@ -11,13 +15,24 @@ interface Props {
     selectedId: number | null;
     onSearchAtCenter: (center: Coord) => void;
     onSelectToilet: (t: ToiletNear) => void;
-    /** 길찾기 polyline 의 출발점. null 이면 polyline 안 그림. */
+    /** 내 위치 (있으면 점으로 표시) */
+    userLocation?: Coord | null;
+    /** 거리 표시선의 출발점. null 이면 선을 그리지 않음. */
     routeFrom: Coord | null;
-    /** 길찾기 polyline 의 도착점 (보통 선택된 화장실 좌표). null 이면 polyline 안 그림. */
+    /** 거리 표시선의 도착점 (보통 선택된 화장실 좌표). null 이면 선을 그리지 않음. */
     routeTo: Coord | null;
 }
 
-/** Kakao 지도 + 검색 반경 원 + 커스텀 화장실 마커 + 길찾기 polyline. */
+interface Pin {
+    overlay: kakao.maps.CustomOverlay;
+    el: HTMLButtonElement;
+    toiletId: number;
+}
+
+/**
+ * Kakao 지도 + 검색 반경 원 + 상태 타일 마커 (docs/07-ui-design.md "C. 타일").
+ * 마커는 핀 이미지 대신 상태를 적은 작은 타일("24시간", "20:30까지", "종료")이고, 배경이 상태 4단계를 따른다.
+ */
 export function MapView({
     center,
     radiusM,
@@ -25,21 +40,21 @@ export function MapView({
     selectedId,
     onSearchAtCenter,
     onSelectToilet,
+    userLocation,
     routeFrom,
     routeTo,
 }: Props) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const mapRef = useRef<kakao.maps.Map | null>(null);
-    const markersRef = useRef<{
-        marker: kakao.maps.Marker;
-        overlay: kakao.maps.CustomOverlay | null;
-        toiletId: number;
-    }[]>([]);
-    const markerImagesRef = useRef<{ normal: kakao.maps.MarkerImage; selected: kakao.maps.MarkerImage } | null>(null);
+    const pinsRef = useRef<Pin[]>([]);
     const radiusCircleRef = useRef<kakao.maps.Circle | null>(null);
     const routeLineRef = useRef<kakao.maps.Polyline | null>(null);
+    const meRef = useRef<kakao.maps.CustomOverlay | null>(null);
 
     const { t } = useTranslation();
+    // Kakao 의 원·선은 SVG 속성이라 CSS 변수를 못 받는다 → 현재 모드의 실제 색값을 넘긴다.
+    const dark = useMediaQuery("(prefers-color-scheme: dark)");
+    const tokens = dark ? darkTokens : lightTokens;
     const [error, setError] = useState<string | null>(null);
     const [ready, setReady] = useState(false);
 
@@ -55,33 +70,17 @@ export function MapView({
                     level: levelForRadius(radiusM),
                 });
                 mapRef.current = map;
-
-                // 커스텀 마커 이미지 — 일반(forest sage) / 선택(amber, 살짝 큼)
-                markerImagesRef.current = {
-                    normal: new maps.MarkerImage(
-                        "/marker-toilet.svg",
-                        new maps.Size(36, 46),
-                        { offset: new maps.Point(18, 46) },
-                    ),
-                    selected: new maps.MarkerImage(
-                        "/marker-toilet-selected.svg",
-                        new maps.Size(44, 56),
-                        { offset: new maps.Point(22, 56) },
-                    ),
-                };
-
                 radiusCircleRef.current = new maps.Circle({
                     center: initialLatLng,
                     radius: radiusM,
                     strokeWeight: 2,
-                    strokeColor: "#2D6A4F",
+                    strokeColor: tokens.accent,
                     strokeOpacity: 0.9,
                     strokeStyle: "shortdash",
-                    fillColor: "#52B788",
-                    fillOpacity: 0.08,
+                    fillColor: tokens.accent,
+                    fillOpacity: 0.06,
                 });
                 radiusCircleRef.current.setMap(map);
-
                 setReady(true);
             })
             .catch((e: Error) => !cancelled && setError(e.message));
@@ -91,6 +90,11 @@ export function MapView({
         // 초기 center / radiusM 만 사용 — 이후 변경은 별도 effect 들에서.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // 1b) 라이트·다크 전환 시 원 색 갱신
+    useEffect(() => {
+        radiusCircleRef.current?.setOptions({ strokeColor: tokens.accent, fillColor: tokens.accent });
+    }, [ready, tokens.accent]);
 
     // 2) center prop 변경 시 지도 중심 + 반경 원 위치 이동
     useEffect(() => {
@@ -107,84 +111,86 @@ export function MapView({
         mapRef.current?.setLevel(levelForRadius(radiusM));
     }, [ready, radiusM]);
 
-    // 3) toilets 변경 시 마커 + 평점 뱃지 overlay 다시 그리기.
+    // 2c) 내 위치 점
     useEffect(() => {
-        if (!ready || !mapRef.current || !markerImagesRef.current) return;
+        if (!ready || !mapRef.current) return;
+        meRef.current?.setMap(null);
+        meRef.current = null;
+        if (!userLocation) return;
+        const maps = window.kakao.maps;
+        const dot = document.createElement("div");
+        dot.setAttribute("aria-hidden", "true");
+        dot.style.cssText =
+            "width:18px;height:18px;border-radius:50%;box-sizing:border-box;" +
+            "background:var(--mui-palette-mashil-surface);border:4px solid var(--mui-palette-mashil-accent);";
+        const me = new maps.CustomOverlay({
+            position: new maps.LatLng(userLocation.lat, userLocation.lng),
+            content: dot,
+            xAnchor: 0.5,
+            yAnchor: 0.5,
+            zIndex: 5,
+        });
+        me.setMap(mapRef.current);
+        meRef.current = me;
+    }, [ready, userLocation?.lat, userLocation?.lng]);
+
+    // 3) toilets 변경 시 상태 타일 마커 다시 그리기
+    useEffect(() => {
+        if (!ready || !mapRef.current) return;
         const map = mapRef.current;
         const maps = window.kakao.maps;
-        const images = markerImagesRef.current;
 
-        // 기존 마커 + overlay 정리
-        markersRef.current.forEach((m) => {
-            m.marker.setMap(null);
-            m.overlay?.setMap(null);
-        });
-        markersRef.current = [];
-
-        const next: typeof markersRef.current = [];
-        for (const t of toilets) {
-            if (t.latitude == null || t.longitude == null) continue;
-            const latlng = new maps.LatLng(t.latitude, t.longitude);
-            const marker = new maps.Marker({
-                position: latlng,
-                map,
-                title: t.name,
-                image: images.normal,
+        pinsRef.current.forEach((p) => p.overlay.setMap(null));
+        const next: Pin[] = [];
+        for (const toilet of toilets) {
+            if (toilet.latitude == null || toilet.longitude == null) continue;
+            const status = parseOpenStatus(toilet.openHours, toilet.openHoursDetail);
+            const label = openStatusLabel(t, status, "short");
+            const el = createPinElement(label, tileCss(tileStateOf(status)), toilet.averageRating);
+            el.setAttribute("aria-label", `${toilet.name}, ${openStatusLabel(t, status, "full")}`);
+            el.addEventListener("click", () => onSelectToilet(toilet));
+            const overlay = new maps.CustomOverlay({
+                position: new maps.LatLng(toilet.latitude, toilet.longitude),
+                content: el,
+                xAnchor: 0.5,
+                yAnchor: 1,
+                zIndex: 10,
+                clickable: true,
             });
-            maps.event.addListener(marker, "click", () => onSelectToilet(t));
-
-            // 평점이 있을 때만 뱃지 overlay 표시. 댓글 수 0 이면 괄호 생략.
-            let overlay: kakao.maps.CustomOverlay | null = null;
-            if (t.averageRating !== null && t.averageRating !== undefined) {
-                overlay = new maps.CustomOverlay({
-                    position: latlng,
-                    content: createRatingBadge(t.averageRating, t.commentCount),
-                    xAnchor: 0.5,
-                    yAnchor: 1,
-                    zIndex: 50,
-                    clickable: false,
-                });
-                overlay.setMap(map);
-            }
-
-            next.push({ marker, overlay, toiletId: t.id });
+            overlay.setMap(map);
+            next.push({ overlay, el, toiletId: toilet.id });
         }
-        markersRef.current = next;
-    }, [ready, toilets, onSelectToilet]);
+        pinsRef.current = next;
+    }, [ready, toilets, onSelectToilet, t]);
 
-    // 3b) selectedId 변경 시 해당 마커만 selected 이미지로 swap (selected 마커는 zIndex 높여 위에 표시)
+    // 3b) 선택된 마커: 먹색 외곽선 + 위로 (선택은 색이 아니라 외곽선으로 표시)
     useEffect(() => {
-        if (!ready || !markerImagesRef.current) return;
-        const images = markerImagesRef.current;
-        for (const { marker, toiletId } of markersRef.current) {
-            const isSelected = toiletId === selectedId;
-            marker.setImage(isSelected ? images.selected : images.normal);
-            marker.setZIndex(isSelected ? 100 : 1);
+        if (!ready) return;
+        for (const { overlay, el, toiletId } of pinsRef.current) {
+            const selected = toiletId === selectedId;
+            el.style.outline = selected ? "3px solid var(--mui-palette-mashil-selected)" : "none";
+            el.setAttribute("aria-pressed", String(selected));
+            overlay.setZIndex(selected ? 100 : 10);
         }
     }, [ready, selectedId, toilets]);
 
-    // 4) 길찾기 polyline — routeFrom + routeTo 둘 다 있을 때만 그림
+    // 4) 거리 표시선 — routeFrom + routeTo 둘 다 있을 때만
     useEffect(() => {
         if (!ready) return;
         const maps = window.kakao.maps;
-        // 기존 라인 제거
         routeLineRef.current?.setMap(null);
         routeLineRef.current = null;
-
         if (!routeFrom || !routeTo || !mapRef.current) return;
         const line = new maps.Polyline({
-            path: [
-                new maps.LatLng(routeFrom.lat, routeFrom.lng),
-                new maps.LatLng(routeTo.lat, routeTo.lng),
-            ],
-            strokeWeight: 4,
-            strokeColor: "#FB8500", // secondary.dark — 핀과 톤 맞춤
+            path: [new maps.LatLng(routeFrom.lat, routeFrom.lng), new maps.LatLng(routeTo.lat, routeTo.lng)],
+            strokeWeight: 3,
+            strokeColor: tokens.selected,
             strokeOpacity: 0.9,
-            strokeStyle: "solid",
+            strokeStyle: "shortdash",
         });
         line.setMap(mapRef.current);
         routeLineRef.current = line;
-    }, [ready, routeFrom?.lat, routeFrom?.lng, routeTo?.lat, routeTo?.lng]);
+    }, [ready, routeFrom?.lat, routeFrom?.lng, routeTo?.lat, routeTo?.lng, tokens.selected]);
 
     return (
         <Stack spacing={1}>
@@ -193,9 +199,13 @@ export function MapView({
                 sx={{
                     width: "100%",
                     height: { xs: 360, sm: 480 },
-                    borderRadius: 2,
+                    borderRadius: 1,
                     overflow: "hidden",
-                    bgcolor: "grey.100",
+                    border: "1px solid",
+                    borderColor: "mashil.line",
+                    // 지도가 뜨기 전에는 줄눈 격자 바탕
+                    bgcolor: "mashil.surfaceSunken",
+                    backgroundImage: tileGrid(tokens.line),
                 }}
             />
             {error && <Alert severity="error">{error}</Alert>}
@@ -208,6 +218,7 @@ export function MapView({
             {ready && (
                 <Button
                     variant="outlined"
+                    color="secondary"
                     onClick={() => {
                         const c = mapRef.current!.getCenter();
                         onSearchAtCenter({ lat: c.getLat(), lng: c.getLng() });
@@ -220,44 +231,33 @@ export function MapView({
     );
 }
 
+/** 상태 타일 마커 — 평점이 있으면 오른쪽에 작게 붙인다. */
+function createPinElement(label: string, stateCss: string, rating: number | null): HTMLButtonElement {
+    const el = document.createElement("button");
+    el.type = "button";
+    el.style.cssText =
+        stateCss +
+        "height:32px;padding:0 10px;border-radius:6px;box-sizing:border-box;cursor:pointer;" +
+        `font:700 13px ${fonts.body};white-space:nowrap;display:inline-flex;align-items:center;gap:6px;` +
+        "outline-offset:2px;transform:translateY(-4px);";
+    el.textContent = label;
+    if (rating !== null && rating !== undefined) {
+        const r = document.createElement("span");
+        r.textContent = `★${rating.toFixed(1)}`;
+        r.style.cssText = `font:500 11px ${fonts.mono};opacity:0.85;`;
+        el.appendChild(r);
+    }
+    return el;
+}
+
 /**
  * 반경(미터) → Kakao 지도 줌 레벨. 작을수록 확대.
- * 직경 = 2*R 이 viewport 안에 살짝 여유를 두고 들어가는 레벨로 매핑.
  * Kakao 레벨별 대략 가시 폭: L5 ~1km · L6 ~2km · L7 ~5km · L8 ~10km · L9 ~20km.
  */
 function levelForRadius(radiusM: number): number {
     if (radiusM <= 500) return 5;
     if (radiusM <= 1000) return 6;
-    if (radiusM <= 2000) return 7;
     if (radiusM <= 3000) return 7;
     if (radiusM <= 5000) return 8;
     return 9; // 10km+
-}
-
-/**
- * 평점 뱃지 div 생성 — 마커 위에 떠 있는 작은 chip.
- * 형식: "★ 4.8" + (commentCount>0 일 때) " (N)".
- * yAnchor=1 + transform translateY(-50px) 로 마커 핀(46px) 위에 띄움.
- */
-function createRatingBadge(avgRating: number, commentCount: number): HTMLDivElement {
-    const div = document.createElement("div");
-    const rating = avgRating.toFixed(1);
-    const counts = commentCount > 0 ? ` (${commentCount})` : "";
-    div.textContent = `★ ${rating}${counts}`;
-    div.style.cssText = `
-        background: #FFFFFF;
-        border: 1.5px solid #2D6A4F;
-        color: #2D6A4F;
-        border-radius: 12px;
-        padding: 2px 8px;
-        font-size: 11px;
-        font-weight: 700;
-        line-height: 1.2;
-        white-space: nowrap;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
-        transform: translateY(-50px);
-        pointer-events: none;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Pretendard, sans-serif;
-    `;
-    return div;
 }

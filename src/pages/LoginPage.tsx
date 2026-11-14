@@ -10,11 +10,12 @@ import {
     TextField,
     Typography,
 } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { getAppProviders, NativeSignInCancelled } from "../lib/nativeBridge";
 import { friendlyError } from "../lib/friendlyError";
+import { fonts, tileGrid } from "../design/tokens";
 import type { SocialProvider } from "../lib/nativeBridge";
 
 type Mode = "login" | "register";
@@ -67,9 +68,11 @@ function SocialLoginButtons({ onError }: { onError: (msg: string | null) => void
                 <Button
                     key={p}
                     size="large"
+                    fullWidth
                     disabled={busy !== null}
                     onClick={() => void signIn(p)}
-                    sx={{ ...PROVIDER_BUTTON[p].sx, fontWeight: 600, py: 1.25 }}
+                    // 세 버튼은 같은 높이(52px)·같은 폭 (Apple 심사 4.8)
+                    sx={{ ...PROVIDER_BUTTON[p].sx, height: 52, fontSize: 15, fontWeight: 600 }}
                 >
                     {busy === p ? t("login.signingIn") : t(`login.continueWith.${p}`)}
                 </Button>
@@ -117,12 +120,30 @@ export function LoginPage() {
 
     return (
         <Box sx={{ maxWidth: 420, mx: "auto" }}>
-            <Typography variant="h5" sx={{ mb: 1 }}>
-                {mode === "login" ? t("login.title") : t("login.registerTitle")}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                {t("login.intro")}
-            </Typography>
+            {/* 아이콘 · 로고 · 슬로건 · 로그인으로 할 수 있는 일 (줄눈 격자 바탕) */}
+            <Stack
+                alignItems="center"
+                spacing={1.25}
+                sx={{
+                    py: 4,
+                    px: 2,
+                    mb: 2,
+                    borderRadius: 1,
+                    textAlign: "center",
+                    backgroundImage: tileGrid("var(--mui-palette-mashil-surfaceSunken)"),
+                }}
+            >
+                <Box component="img" src="/icon-door.svg" alt="" sx={{ width: 88, height: 88 }} />
+                <Typography component="h1" sx={{ fontFamily: fonts.logo, fontSize: 38, lineHeight: 1 }}>
+                    {t("app.name")}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                    {t("app.tagline")}
+                </Typography>
+                <Typography variant="body2" sx={{ pt: 1, maxWidth: 300, bgcolor: "mashil.bg", px: 0.5 }}>
+                    {t("login.intro")}
+                </Typography>
+            </Stack>
 
             {socialError && (
                 <Alert severity="error" sx={{ mb: 2 }}>
@@ -130,6 +151,16 @@ export function LoginPage() {
                 </Alert>
             )}
             <SocialLoginButtons onError={setSocialError} />
+
+            <Stack alignItems="center" spacing={0.5} sx={{ mb: 3 }}>
+                <Button component={RouterLink} to="/" color="secondary" sx={{ textDecoration: "underline", textUnderlineOffset: 3 }}>
+                    {t("login.browseWithout")}
+                </Button>
+                <Typography variant="caption" color="text.secondary" sx={{ textAlign: "center" }}>
+                    {t("login.consentNote")}
+                </Typography>
+            </Stack>
+
 
             <Tabs
                 value={mode}

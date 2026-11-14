@@ -21,7 +21,8 @@ import { useQuery } from "@tanstack/react-query";
 import { computeStraightRoute, fetchNearbyToilets } from "../api";
 import type { LatLng, ToiletNear } from "../api";
 import { MapView } from "../components/MapView";
-import { OpenStatusBadge } from "../components/OpenStatusBadge";
+import { StatusTile } from "../components/OpenStatusBadge";
+import { fonts } from "../design/tokens";
 import { ToiletInteractions } from "../components/ToiletInteractions";
 import { ToiletList } from "../components/ToiletList";
 import {
@@ -37,6 +38,7 @@ import {
 import { MOCK_USER_LOCATION, USE_MOCK } from "../mock/flag";
 import { getCurrentPosition, isApp, LocationError, openDirectionsInApp } from "../lib/nativeBridge";
 import { friendlyError } from "../lib/friendlyError";
+import { parseOpenStatus } from "../lib/openStatus";
 import { formatDistance } from "../i18n";
 import { facilityChipLabels, toiletKindLabel } from "../lib/facilityChips";
 import type { LocationFailure } from "../lib/nativeBridge";
@@ -152,6 +154,18 @@ export function HomePage() {
                     value={facilityFilters}
                     onChange={(_, v: FacilityFilter[]) => setFacilityFilters(v)}
                     aria-label={t("home.facilityFilter")}
+                    // 시안처럼 칸마다 떨어진 타일 (붙은 버튼 그룹 대신)
+                    sx={{
+                        flexWrap: "wrap",
+                        gap: 0.75,
+                        "& .MuiToggleButtonGroup-grouped": {
+                            border: "1px solid",
+                            borderColor: "mashil.line",
+                            borderRadius: "6px !important",
+                            ml: "0 !important",
+                            px: 1.5,
+                        },
+                    }}
                 >
                     {FACILITY_FILTER_OPTIONS.map((f) => (
                         <ToggleButton key={f} value={f}>{t(`facility.filter.${f}`)}</ToggleButton>
@@ -186,6 +200,7 @@ export function HomePage() {
                         setRouting(false);
                     }}
                     onSelectToilet={(t) => setSelectedToilet(t)}
+                    userLocation={userLocation}
                     routeFrom={route ? userLocation : null}
                     routeTo={
                         route && selectedToilet?.latitude != null && selectedToilet.longitude != null
@@ -207,17 +222,39 @@ export function HomePage() {
             {selectedToilet && (
                 <Card variant="outlined">
                     <CardContent sx={{ pb: 1 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                        {/* 정보 위계: 거리 숫자 → 이름 → 상태 → 시설. 거리 타일과 상태 타일을 나란히. */}
+                        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1, mb: 1.5 }}>
+                            <Box
+                                sx={{
+                                    border: "1.5px solid",
+                                    borderColor: "mashil.line",
+                                    bgcolor: "mashil.bg",
+                                    borderRadius: 1,
+                                    p: 1.5,
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    justifyContent: "space-between",
+                                    gap: 0.5,
+                                }}
+                            >
+                                <Box component="span" sx={{ fontFamily: fonts.mono, fontSize: 30, lineHeight: 1 }}>
+                                    {formatDistance(selectedToilet.distanceM, true)}
+                                </Box>
+                                <Box component="span" sx={{ fontSize: 12, color: "text.secondary" }}>
+                                    {t(
+                                        userLocation && center && userLocation.lat === center.lat && userLocation.lng === center.lng
+                                            ? "home.distanceFromMe"
+                                            : "home.distanceFromCenter",
+                                    )}
+                                </Box>
+                            </Box>
+                            <StatusTile openHours={selectedToilet.openHours} openHoursDetail={selectedToilet.openHoursDetail} />
+                        </Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.35 }}>
                             {selectedToilet.name}
                         </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                            {toiletKindLabel(t, selectedToilet.kind)} ·{" "}
-                            {t(
-                                userLocation && center && userLocation.lat === center.lat && userLocation.lng === center.lng
-                                    ? "home.fromMe"
-                                    : "home.fromMapCenter",
-                                { distance: formatDistance(selectedToilet.distanceM) },
-                            )}
+                            {toiletKindLabel(t, selectedToilet.kind)}
                         </Typography>
                         {(selectedToilet.roadAddress || selectedToilet.lotAddress) && (
                             <Typography variant="body2" sx={{ mb: 0.5 }}>
@@ -226,12 +263,8 @@ export function HomePage() {
                         )}
 
                         <Stack direction="row" spacing={0.5} sx={{ mt: 1 }} useFlexGap flexWrap="wrap" alignItems="center">
-                            <OpenStatusBadge
-                                openHours={selectedToilet.openHours}
-                                openHoursDetail={selectedToilet.openHoursDetail}
-                            />
                             {facilityChipLabels(t, selectedToilet, "detailed").map((label) => (
-                                <Chip key={label} size="small" label={label} />
+                                <Chip key={label} size="small" label={label} variant="outlined" />
                             ))}
                         </Stack>
 
@@ -282,7 +315,7 @@ export function HomePage() {
                         }}
                     >
                         {userLocation ? (
-                            <Button size="small" onClick={() => setRouting((v) => !v)}>
+                            <Button size="small" color="secondary" onClick={() => setRouting((v) => !v)}>
                                 {routing ? t("home.hideDistance") : t("home.showDistance")}
                             </Button>
                         ) : (
@@ -314,6 +347,7 @@ export function HomePage() {
                             <>
                                 <Button
                                     size="small"
+                                    color="secondary"
                                     onClick={() => navigate("/change-requests/new", {
                                         state: {
                                             kind: ChangeRequestKind.Update,
@@ -326,7 +360,7 @@ export function HomePage() {
                                 </Button>
                                 <Button
                                     size="small"
-                                    color="error"
+                                    color="secondary"
                                     onClick={() => navigate("/change-requests/new", {
                                         state: {
                                             kind: ChangeRequestKind.Delete,
@@ -341,6 +375,7 @@ export function HomePage() {
                         )}
                         <Button
                             size="small"
+                            color="secondary"
                             onClick={() => {
                                 setSelectedToilet(null);
                                 setRouting(false);
@@ -385,6 +420,10 @@ function facilityMatch(t: ToiletNear, key: FacilityFilter): boolean {
             );
         case FacilityFilter.Child:
             return t.maleChildStallCount + t.maleChildUrinalCount + t.femaleChildStallCount > 0;
+        case FacilityFilter.Open: {
+            const kind = parseOpenStatus(t.openHours, t.openHoursDetail).kind;
+            return kind === "open" || kind === "24h";
+        }
     }
 }
 

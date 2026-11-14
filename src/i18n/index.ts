@@ -55,9 +55,13 @@ export function currentLanguage(): LanguageCode {
     return SUPPORTED_LANGUAGES.some((s) => s.code === l) ? (l as LanguageCode) : DEFAULT_LANGUAGE;
 }
 
-/** 거리 표시: 1 km 미만은 m, 이상은 km (소수 1자리). */
-export function formatDistance(meters: number): string {
-    return meters < 1000 ? `${Math.round(meters)} m` : `${(meters / 1000).toFixed(1)} km`;
+/**
+ * 거리 표시: 1 km 미만은 m, 이상은 km (소수 1자리).
+ * compact: 숫자와 단위를 붙임 ("120m") — DM Mono 처럼 공백이 넓은 고정폭 서체에 쓴다.
+ */
+export function formatDistance(meters: number, compact = false): string {
+    const sep = compact ? "" : " ";
+    return meters < 1000 ? `${Math.round(meters)}${sep}m` : `${(meters / 1000).toFixed(1)}${sep}km`;
 }
 
 /** 24시간 이내·1주 이내는 "3분 전" 같은 상대 시간, 그보다 오래면 날짜·시각. */

@@ -82,6 +82,7 @@ declare namespace kakao.maps {
         setMap(map: Map | null): void;
         setPosition(latlng: LatLng): void;
         setRadius(radius: number): void;
+        setOptions(options: { strokeColor?: string; fillColor?: string; strokeOpacity?: number; fillOpacity?: number }): void;
     }
 
     namespace event {
