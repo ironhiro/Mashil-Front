@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
     Alert,
     Box,
@@ -12,9 +12,13 @@ import {
     Typography,
 } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
+import { Trans, useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../auth/AuthContext";
 import { fetchToilet, submitChangeRequest } from "../api";
+import { getCurrentPosition, LocationError } from "../lib/nativeBridge";
+import { friendlyError } from "../lib/friendlyError";
+import { toiletKindLabel } from "../lib/facilityChips";
 import {
     CHANGE_REQUEST_KIND_OPTIONS,
     ChangeRequestKind,
@@ -55,6 +59,7 @@ const EMPTY_FIELDS: ToiletFormFields = {
 export function NewChangeRequestPage() {
     const auth = useAuth();
     const navigate = useNavigate();
+    const { t } = useTranslation();
     const location = useLocation();
     const prefill = (location.state ?? {}) as PrefillState;
 
@@ -97,16 +102,12 @@ export function NewChangeRequestPage() {
         setOriginalFields(populated);
     }, [kind, detailQuery.data]);
 
-    const kindMeta = useMemo(
-        () => CHANGE_REQUEST_KIND_OPTIONS.find((o) => o.value === kind)!,
-        [kind],
-    );
 
     if (!auth.user) {
         return (
             <Alert severity="info">
-                요청 작성은 로그인 후 가능해요.{" "}
-                <Button size="small" onClick={() => navigate("/login")}>로그인</Button>
+                {t("report.loginRequired")}{" "}
+                <Button size="small" onClick={() => navigate("/login")}>{t("nav.login")}</Button>
             </Alert>
         );
     }
@@ -115,7 +116,7 @@ export function NewChangeRequestPage() {
         return (
             <Stack spacing={2}>
                 <Alert severity="success">
-                    요청이 접수됐어요 (id <b>#{doneId}</b>). 관리자가 검토 후 반영합니다.
+                    <Trans i18nKey="report.done" values={{ id: doneId }} components={{ b: <b /> }} />
                 </Alert>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                     <Button
@@ -130,9 +131,9 @@ export function NewChangeRequestPage() {
                             setError(null);
                         }}
                     >
-                        하나 더 작성
+                        {t("report.another")}
                     </Button>
-                    <Button onClick={() => navigate("/")}>홈으로</Button>
+                    <Button onClick={() => navigate("/")}>{t("common.backHome")}</Button>
                 </Stack>
             </Stack>
         );
@@ -147,21 +148,21 @@ export function NewChangeRequestPage() {
         setError(null);
 
         if (requiresTargetId && !targetIdValid) {
-            setError("대상 화장실 ID 가 필요합니다 (숫자).");
+            setError(t("report.errorNoTarget"));
             return;
         }
         if (kind === ChangeRequestKind.Add && !fields.name.trim()) {
-            setError("이름은 필수입니다.");
+            setError(t("report.errorNoName"));
             return;
         }
         if (kind === ChangeRequestKind.Delete && !reason.trim()) {
-            setError("삭제 사유는 필수입니다.");
+            setError(t("report.errorNoReason"));
             return;
         }
 
         const payload = buildPayload(kind, fields, originalFields, note, reason);
         if (!payload) {
-            setError("변경하거나 입력한 내용이 없어요. 최소 한 항목은 채워주세요.");
+            setError(t("report.errorNoChange"));
             return;
         }
 
@@ -174,7 +175,7 @@ export function NewChangeRequestPage() {
             });
             setDoneId(result.id);
         } catch (err) {
-            setError((err as Error).message || "요청 실패");
+            setError(friendlyError(err, t("report.errorSubmit")));
         } finally {
             setSubmitting(false);
         }
@@ -182,38 +183,38 @@ export function NewChangeRequestPage() {
 
     return (
         <Box sx={{ maxWidth: 720, mx: "auto" }}>
-            <Typography variant="h4" sx={{ mb: 1 }}>변경 요청 작성</Typography>
+            <Typography variant="h4" sx={{ mb: 1 }}>{t("report.title")}</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                잘못된 정보 / 새 화장실 / 사라진 화장실을 알려주세요. 관리자 검토 후 DB 에 반영됩니다 (즉시 반영 안 됨).
+                {t("report.intro")}
             </Typography>
 
             <form onSubmit={onSubmit}>
                 <Stack spacing={2}>
                     <TextField
                         select
-                        label="요청 종류"
+                        label={t("report.kindLabel")}
                         value={kind}
                         onChange={(e) => setKind(e.target.value as ChangeRequestKind)}
-                        helperText={kindMeta.description}
+                        helperText={t(`report.kind.${kind}.description`)}
                         fullWidth
                     >
-                        {CHANGE_REQUEST_KIND_OPTIONS.map((o) => (
-                            <MenuItem key={o.value} value={o.value}>
-                                {o.label} ({o.value})
+                        {CHANGE_REQUEST_KIND_OPTIONS.map((k) => (
+                            <MenuItem key={k} value={k}>
+                                {t(`report.kind.${k}.label`)}
                             </MenuItem>
                         ))}
                     </TextField>
 
                     {requiresTargetId && (
                         <TextField
-                            label="대상 화장실 ID"
+                            label={t("report.targetId")}
                             type="number"
                             value={targetId}
                             onChange={(e) => setTargetId(e.target.value)}
                             helperText={
                                 prefill.targetName
-                                    ? `대상: ${prefill.targetName}`
-                                    : "홈 화면에서 핀을 선택한 뒤 단축 버튼으로 들어오면 자동 채움."
+                                    ? t("report.targetSelected", { name: prefill.targetName })
+                                    : t("report.targetHint")
                             }
                             required
                             fullWidth
@@ -224,14 +225,13 @@ export function NewChangeRequestPage() {
                         <>
                             {kind === ChangeRequestKind.Update && (
                                 <Alert severity="info">
-                                    현재 정보를 채워뒀어요. 바꿀 항목만 수정하고 나머지는 그대로 두세요.
-                                    제출 시 <b>변경된 항목만</b> 요청에 포함됩니다.
+                                    <Trans i18nKey="report.updateInfo" components={{ b: <b /> }} />
                                 </Alert>
                             )}
 
-                            <Divider textAlign="left">기본 정보</Divider>
+                            <Divider textAlign="left">{t("report.sectionBasic")}</Divider>
                             <TextField
-                                label={kind === ChangeRequestKind.Add ? "이름 *" : "이름"}
+                                label={kind === ChangeRequestKind.Add ? t("report.nameRequired") : t("report.name")}
                                 value={fields.name}
                                 onChange={(e) => patch("name", e.target.value)}
                                 placeholder={detailQuery.data?.name ?? ""}
@@ -240,31 +240,31 @@ export function NewChangeRequestPage() {
                             />
                             <TextField
                                 select
-                                label="종류"
+                                label={t("report.toiletKind")}
                                 value={fields.kind}
                                 onChange={(e) => patch("kind", e.target.value)}
                                 helperText={
                                     detailQuery.data
-                                        ? `현재: ${detailQuery.data.kind}`
+                                        ? t("report.currentKind", { kind: toiletKindLabel(t, detailQuery.data.kind) })
                                         : undefined
                                 }
                                 fullWidth
                             >
                                 {TOILET_KIND_OPTIONS.map((k) => (
-                                    <MenuItem key={k} value={k}>{k}</MenuItem>
+                                    <MenuItem key={k} value={k}>{toiletKindLabel(t, k)}</MenuItem>
                                 ))}
                             </TextField>
 
-                            <Divider textAlign="left">위치</Divider>
+                            <Divider textAlign="left">{t("report.sectionLocation")}</Divider>
                             <TextField
-                                label="도로명 주소"
+                                label={t("report.roadAddress")}
                                 value={fields.roadAddress}
                                 onChange={(e) => patch("roadAddress", e.target.value)}
                                 placeholder={detailQuery.data?.roadAddress ?? ""}
                                 fullWidth
                             />
                             <TextField
-                                label="지번 주소"
+                                label={t("report.lotAddress")}
                                 value={fields.lotAddress}
                                 onChange={(e) => patch("lotAddress", e.target.value)}
                                 placeholder={detailQuery.data?.lotAddress ?? ""}
@@ -287,55 +287,56 @@ export function NewChangeRequestPage() {
                             ) : (
                                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
                                     <TextField
-                                        label="위도"
+                                        label={t("report.latitude")}
+                                        helperText={t("report.coordHint")}
                                         type="number"
                                         value={fields.latitude}
                                         onChange={(e) => patch("latitude", e.target.value)}
-                                        placeholder={detailQuery.data?.latitude?.toString() ?? "예: 37.5666"}
+                                        placeholder={detailQuery.data?.latitude?.toString() ?? t("report.latitudeExample")}
                                         fullWidth
                                         slotProps={{ htmlInput: { step: "any" } }}
                                     />
                                     <TextField
-                                        label="경도"
+                                        label={t("report.longitude")}
                                         type="number"
                                         value={fields.longitude}
                                         onChange={(e) => patch("longitude", e.target.value)}
-                                        placeholder={detailQuery.data?.longitude?.toString() ?? "예: 126.9784"}
+                                        placeholder={detailQuery.data?.longitude?.toString() ?? t("report.longitudeExample")}
                                         fullWidth
                                         slotProps={{ htmlInput: { step: "any" } }}
                                     />
                                 </Stack>
                             )}
 
-                            <Divider textAlign="left">운영</Divider>
+                            <Divider textAlign="left">{t("report.sectionHours")}</Divider>
                             <TextField
-                                label="영업시간"
+                                label={t("report.openHours")}
                                 value={fields.openHours}
                                 onChange={(e) => patch("openHours", e.target.value)}
-                                placeholder={detailQuery.data?.openHours ?? "예: 상시, 정시"}
+                                placeholder={detailQuery.data?.openHours ?? t("report.openHoursExample")}
                                 fullWidth
                             />
                             <TextField
-                                label="영업시간 상세"
+                                label={t("report.openHoursDetail")}
                                 value={fields.openHoursDetail}
                                 onChange={(e) => patch("openHoursDetail", e.target.value)}
-                                placeholder={detailQuery.data?.openHoursDetail ?? "예: 07:00~22:00"}
+                                placeholder={detailQuery.data?.openHoursDetail ?? t("report.openHoursDetailExample")}
                                 fullWidth
                             />
                             <TextField
-                                label="전화번호"
+                                label={t("report.phone")}
                                 value={fields.phone}
                                 onChange={(e) => patch("phone", e.target.value)}
                                 placeholder={detailQuery.data?.phone ?? ""}
                                 fullWidth
                             />
 
-                            <Divider textAlign="left">메모 (선택)</Divider>
+                            <Divider textAlign="left">{t("report.sectionNote")}</Divider>
                             <TextField
-                                label="추가 설명"
+                                label={t("report.note")}
                                 value={note}
                                 onChange={(e) => setNote(e.target.value)}
-                                placeholder="검토자에게 전달할 사항이 있으면 적어주세요. (예: 시설 위치 안내, 변경 사유 등)"
+                                placeholder={t("report.notePlaceholder")}
                                 multiline
                                 minRows={2}
                                 fullWidth
@@ -346,13 +347,13 @@ export function NewChangeRequestPage() {
                     {kind === ChangeRequestKind.Delete && (
                         <>
                             <Alert severity="warning">
-                                삭제 요청은 이 화장실 레코드를 DB 에서 제거하자는 제안입니다 (예: 사라짐 / 잘못 등록 / 중복).
+                                {t("report.deleteInfo")}
                             </Alert>
                             <TextField
-                                label="삭제 사유 *"
+                                label={t("report.deleteReason")}
                                 value={reason}
                                 onChange={(e) => setReason(e.target.value)}
-                                placeholder="예: 건물 철거로 사라짐 / 잘못 등록된 위치 / 다른 화장실(#1234)과 중복"
+                                placeholder={t("report.deleteReasonPlaceholder")}
                                 multiline
                                 minRows={4}
                                 required
@@ -364,7 +365,7 @@ export function NewChangeRequestPage() {
                     {detailQuery.isFetching && kind === ChangeRequestKind.Update && (
                         <Stack direction="row" spacing={1} alignItems="center">
                             <CircularProgress size={16} />
-                            <Typography variant="caption" color="text.secondary">현재 정보 불러오는 중…</Typography>
+                            <Typography variant="caption" color="text.secondary">{t("report.loadingCurrent")}</Typography>
                         </Stack>
                     )}
 
@@ -372,10 +373,10 @@ export function NewChangeRequestPage() {
 
                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                         <Button type="submit" variant="contained" disabled={submitting}>
-                            {submitting ? "전송 중…" : "요청 제출"}
+                            {submitting ? t("common.sending") : t("report.submit")}
                         </Button>
                         <Button onClick={() => navigate(-1)} disabled={submitting}>
-                            취소
+                            {t("common.cancel")}
                         </Button>
                     </Stack>
                 </Stack>
@@ -401,26 +402,21 @@ function CoordinateCapture({
     onClear: () => void;
     onError: (msg: string) => void;
 }) {
+    const { t } = useTranslation();
     const [capturing, setCapturing] = useState(false);
     const captured = latitude !== "" && longitude !== "";
 
     async function capture() {
-        if (!navigator.geolocation) {
-            onError("이 브라우저는 위치 권한을 지원하지 않습니다.");
-            return;
-        }
         setCapturing(true);
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                onSet(String(pos.coords.latitude), String(pos.coords.longitude));
-                setCapturing(false);
-            },
-            (err) => {
-                onError(`위치 캡처 실패: ${err.message}`);
-                setCapturing(false);
-            },
-            { enableHighAccuracy: true, timeout: 8_000 },
-        );
+        try {
+            // 앱이면 브리지로 네이티브 GPS, 브라우저면 navigator.geolocation
+            const { lat, lng } = await getCurrentPosition({ enableHighAccuracy: true, timeout: 8_000 });
+            onSet(String(lat), String(lng));
+        } catch (err) {
+            onError(err instanceof LocationError ? err.message : t("location.failed"));
+        } finally {
+            setCapturing(false);
+        }
     }
 
     return (
@@ -429,11 +425,11 @@ function CoordinateCapture({
                 <>
                     <Chip
                         color="success"
-                        label={`📍 ${Number(latitude).toFixed(5)}, ${Number(longitude).toFixed(5)}`}
+                        label={t("report.locationSet")}
                     />
-                    <Button size="small" onClick={onClear}>지우기</Button>
+                    <Button size="small" onClick={onClear}>{t("common.clear")}</Button>
                     <Button size="small" onClick={capture} disabled={capturing}>
-                        {capturing ? "캡처 중…" : "다시 캡처"}
+                        {capturing ? t("report.locating") : t("report.relocate")}
                     </Button>
                 </>
             ) : (
@@ -445,10 +441,10 @@ function CoordinateCapture({
                         disabled={capturing}
                         startIcon={capturing ? <CircularProgress size={14} /> : null}
                     >
-                        {capturing ? "캡처 중…" : "📍 현재 위치를 좌표로 사용"}
+                        {capturing ? t("report.locating") : t("report.useMyLocation")}
                     </Button>
                     <Typography variant="caption" color="text.secondary">
-                        화장실 앞이면 한 번 누르세요. 비워두면 서버가 주소로 자동 보정합니다.
+                        {t("report.locationHint")}
                     </Typography>
                 </>
             )}

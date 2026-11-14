@@ -35,14 +35,15 @@ export const ChangeRequestKind = {
 } as const;
 export type ChangeRequestKind = (typeof ChangeRequestKind)[keyof typeof ChangeRequestKind];
 
-export const CHANGE_REQUEST_KIND_OPTIONS: { value: ChangeRequestKind; label: string; description: string }[] = [
-    { value: ChangeRequestKind.Add, label: "추가", description: "DB 에 없는 화장실을 새로 등록 요청" },
-    { value: ChangeRequestKind.Update, label: "수정", description: "기존 화장실의 정보(이름·주소·좌표·영업시간 등)가 잘못됐거나 바뀐 경우" },
-    { value: ChangeRequestKind.Delete, label: "삭제", description: "사라졌거나 잘못 등록된 화장실 제거 요청" },
+/** 제보 종류 순서. 라벨·설명은 번역 키 `report.kind.<값>.label|description`. */
+export const CHANGE_REQUEST_KIND_OPTIONS: ChangeRequestKind[] = [
+    ChangeRequestKind.Add,
+    ChangeRequestKind.Update,
+    ChangeRequestKind.Delete,
 ];
 
-/** 화장실 종류 옵션 — 추가/수정 폼의 Select 에서 사용. */
-export const TOILET_KIND_OPTIONS = ["공중화장실", "개방화장실", "기타"];
+/** 화장실 종류 — 서버에 그대로 저장되는 값(한국어). 화면 표시는 번역 키 `toiletKind.<값>`. */
+export const TOILET_KIND_OPTIONS = ["공중화장실", "개방화장실", "기타"] as const;
 
 // --- Frontend 전용 (UI state) ---
 
@@ -54,12 +55,12 @@ export const FacilityFilter = {
 } as const;
 export type FacilityFilter = (typeof FacilityFilter)[keyof typeof FacilityFilter];
 
-/** UI 토글 순서 + 라벨. 추가 시 여기만 손보면 됨. */
-export const FACILITY_FILTER_OPTIONS: { value: FacilityFilter; label: string }[] = [
-    { value: FacilityFilter.Men, label: "남자" },
-    { value: FacilityFilter.Women, label: "여자" },
-    { value: FacilityFilter.Accessible, label: "장애인" },
-    { value: FacilityFilter.Child, label: "어린이" },
+/** UI 토글 순서. 라벨은 번역 키 `facility.filter.<값>`. */
+export const FACILITY_FILTER_OPTIONS: FacilityFilter[] = [
+    FacilityFilter.Men,
+    FacilityFilter.Women,
+    FacilityFilter.Accessible,
+    FacilityFilter.Child,
 ];
 
 export const ViewMode = {

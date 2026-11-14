@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Trans, useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import {
     Alert,
@@ -33,39 +34,54 @@ import {
     ViewMode,
 } from "../lib/enums";
 
+import { MOCK_USER_LOCATION, USE_MOCK } from "../mock/flag";
+import { getCurrentPosition, isApp, LocationError, openDirectionsInApp } from "../lib/nativeBridge";
+import { friendlyError } from "../lib/friendlyError";
+import { formatDistance } from "../i18n";
+import { facilityChipLabels, toiletKindLabel } from "../lib/facilityChips";
+import type { LocationFailure } from "../lib/nativeBridge";
+
 const SEOUL_CITY_HALL: LatLng = { lat: 37.5666, lng: 126.9784 };
 
 export function HomePage() {
     const auth = useAuth();
     const navigate = useNavigate();
+    const { t } = useTranslation();
     const [center, setCenter] = useState<LatLng | null>(null);
     const [userLocation, setUserLocation] = useState<LatLng | null>(null);
-    const [selectedToilet, setSelectedToilet] = useState<ToiletNear | null>(null);
+    // 클릭 시점의 스냅샷 — 표시용 값은 아래에서 최신 /near 응답으로 다시 풀어 씀 (평점 등록 후 평균 갱신).
+    const [pickedToilet, setSelectedToilet] = useState<ToiletNear | null>(null);
     const [routing, setRouting] = useState(false);
-    const [geoNote, setGeoNote] = useState<string | null>(null);
+    // 위치를 못 받았을 때 이유 — 문장은 렌더 시 번역 (언어를 바꿔도 따라감)
+    const [geoFailure, setGeoFailure] = useState<LocationFailure | null>(null);
 
     const [radiusM, setRadiusM] = useState<SearchRadius>(DEFAULT_SEARCH_RADIUS);
     const [facilityFilters, setFacilityFilters] = useState<FacilityFilter[]>([]);
     const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.Map);
 
     useEffect(() => {
-        if (!navigator.geolocation) {
-            setCenter(SEOUL_CITY_HALL);
-            setGeoNote("이 브라우저는 위치 권한을 지원하지 않아 서울시청을 기준으로 표시합니다. 길찾기는 비활성화됩니다.");
+        if (USE_MOCK) {
+            setCenter(MOCK_USER_LOCATION);
+            setUserLocation(MOCK_USER_LOCATION);
             return;
         }
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                const here = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        // 앱이면 브리지로 네이티브 GPS (권한 요청 포함), 브라우저면 navigator.geolocation
+        let cancelled = false;
+        getCurrentPosition({ enableHighAccuracy: false, timeout: 5_000, maximumAge: 60_000 })
+            .then(({ lat, lng }) => {
+                if (cancelled) return;
+                const here = { lat, lng };
                 setCenter(here);
                 setUserLocation(here);
-            },
-            () => {
+            })
+            .catch((err: unknown) => {
+                if (cancelled) return;
                 setCenter(SEOUL_CITY_HALL);
-                setGeoNote("위치 권한이 없어 서울시청을 기준으로 표시합니다. 길찾기는 비활성화됩니다.");
-            },
-            { enableHighAccuracy: false, timeout: 5_000, maximumAge: 60_000 },
-        );
+                setGeoFailure(err instanceof LocationError ? err.reason : "failed");
+            });
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     const query = useQuery({
@@ -73,6 +89,11 @@ export function HomePage() {
         queryKey: ["toilets", "near", center?.lat, center?.lng, radiusM],
         queryFn: () => fetchNearbyToilets(center!.lat, center!.lng, radiusM),
     });
+
+    const selectedToilet = useMemo<ToiletNear | null>(() => {
+        if (!pickedToilet) return null;
+        return query.data?.find((t) => t.id === pickedToilet.id) ?? pickedToilet;
+    }, [pickedToilet, query.data]);
 
     const filteredToilets = useMemo(() => {
         const list = query.data ?? [];
@@ -95,10 +116,14 @@ export function HomePage() {
 
     return (
         <Stack spacing={2}>
-            <Typography variant="h4">내 주변 화장실</Typography>
-            {geoNote && <Alert severity="info">{geoNote}</Alert>}
+            <Typography variant="h4">{t("home.title")}</Typography>
+            {geoFailure && (
+                <Alert severity="info">{t("home.geoFallback", { reason: t(`location.${geoFailure}`) })}</Alert>
+            )}
             {query.isError && (
-                <Alert severity="error">백엔드 호출 실패: {(query.error as Error).message}</Alert>
+                <Alert severity="error">
+                    {friendlyError(query.error, t("home.loadFailed"))}
+                </Alert>
             )}
 
             {/* === 필터 패널 === */}
@@ -112,7 +137,7 @@ export function HomePage() {
                 <TextField
                     select
                     size="small"
-                    label="검색 반경"
+                    label={t("home.radius")}
                     value={radiusM}
                     onChange={(e) => setRadiusM(Number(e.target.value) as SearchRadius)}
                     sx={{ minWidth: 130 }}
@@ -126,10 +151,10 @@ export function HomePage() {
                     size="small"
                     value={facilityFilters}
                     onChange={(_, v: FacilityFilter[]) => setFacilityFilters(v)}
-                    aria-label="시설 필터"
+                    aria-label={t("home.facilityFilter")}
                 >
-                    {FACILITY_FILTER_OPTIONS.map((o) => (
-                        <ToggleButton key={o.value} value={o.value}>{o.label}</ToggleButton>
+                    {FACILITY_FILTER_OPTIONS.map((f) => (
+                        <ToggleButton key={f} value={f}>{t(`facility.filter.${f}`)}</ToggleButton>
                     ))}
                 </ToggleButtonGroup>
 
@@ -140,10 +165,10 @@ export function HomePage() {
                     exclusive
                     value={viewMode}
                     onChange={(_, v: ViewMode | null) => v && setViewMode(v)}
-                    aria-label="뷰 전환"
+                    aria-label={t("home.viewToggle")}
                 >
-                    <ToggleButton value={ViewMode.Map}>지도</ToggleButton>
-                    <ToggleButton value={ViewMode.List}>목록</ToggleButton>
+                    <ToggleButton value={ViewMode.Map}>{t("home.viewMap")}</ToggleButton>
+                    <ToggleButton value={ViewMode.List}>{t("home.viewList")}</ToggleButton>
                 </ToggleButtonGroup>
             </Stack>
 
@@ -186,7 +211,13 @@ export function HomePage() {
                             {selectedToilet.name}
                         </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                            {selectedToilet.kind} · 검색 중심에서 {Math.round(selectedToilet.distanceM)} m
+                            {toiletKindLabel(t, selectedToilet.kind)} ·{" "}
+                            {t(
+                                userLocation && center && userLocation.lat === center.lat && userLocation.lng === center.lng
+                                    ? "home.fromMe"
+                                    : "home.fromMapCenter",
+                                { distance: formatDistance(selectedToilet.distanceM) },
+                            )}
                         </Typography>
                         {(selectedToilet.roadAddress || selectedToilet.lotAddress) && (
                             <Typography variant="body2" sx={{ mb: 0.5 }}>
@@ -199,21 +230,23 @@ export function HomePage() {
                                 openHours={selectedToilet.openHours}
                                 openHoursDetail={selectedToilet.openHoursDetail}
                             />
-                            {facilityChipsFor(selectedToilet).map((c) => (
-                                <Chip key={c.label} size="small" label={c.label} />
+                            {facilityChipLabels(t, selectedToilet, "detailed").map((label) => (
+                                <Chip key={label} size="small" label={label} />
                             ))}
                         </Stack>
 
                         {(selectedToilet.openHours || selectedToilet.openHoursDetail) && (
                             <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
-                                원본 표기: {selectedToilet.openHours ?? ""}
-                                {selectedToilet.openHours && selectedToilet.openHoursDetail && " · "}
-                                {selectedToilet.openHoursDetail ?? ""}
+                                {t("home.listedHours", {
+                                    hours: [selectedToilet.openHours, selectedToilet.openHoursDetail]
+                                        .filter(Boolean)
+                                        .join(" · "),
+                                })}
                             </Typography>
                         )}
                         {selectedToilet.phone && (
                             <Typography variant="body2">
-                                <b>전화</b> <a href={`tel:${selectedToilet.phone}`}>{selectedToilet.phone}</a>
+                                <b>{t("home.phone")}</b> <a href={`tel:${selectedToilet.phone}`}>{selectedToilet.phone}</a>
                             </Typography>
                         )}
 
@@ -221,10 +254,14 @@ export function HomePage() {
                             <Alert severity="success" sx={{ mt: 1.5 }} icon={false}>
                                 <Stack spacing={0.5}>
                                     <Typography variant="body2">
-                                        직선 거리 <b>{Math.round(route.distanceM)} m</b> · 도보 약 <b>{route.walkingMinutes} 분</b>
+                                        <Trans
+                                            i18nKey="home.routeSummary"
+                                            values={{ distance: formatDistance(route.distanceM), minutes: route.walkingMinutes }}
+                                            components={{ b: <b /> }}
+                                        />
                                     </Typography>
                                     <Typography variant="caption" color="text.secondary">
-                                        실제 보행 경로는 다를 수 있어요 (현재는 직선 안내).
+                                        {t("home.routeNote")}
                                     </Typography>
                                 </Stack>
                             </Alert>
@@ -246,11 +283,11 @@ export function HomePage() {
                     >
                         {userLocation ? (
                             <Button size="small" onClick={() => setRouting((v) => !v)}>
-                                {routing ? "직선 끄기" : "직선 보기"}
+                                {routing ? t("home.hideDistance") : t("home.showDistance")}
                             </Button>
                         ) : (
                             <Typography variant="caption" color="text.secondary" sx={{ pl: 1 }}>
-                                직선 안내는 위치 권한 필요
+                                {t("home.distanceNeedsLocation")}
                             </Typography>
                         )}
                         {selectedToilet.latitude != null && selectedToilet.longitude != null && (
@@ -259,11 +296,18 @@ export function HomePage() {
                                 variant="contained"
                                 color="primary"
                                 component="a"
-                                href={buildKakaoMapRouteUrl(selectedToilet, userLocation)}
+                                href={buildKakaoMapRouteUrl(selectedToilet, userLocation, t("home.myLocation"))}
                                 target="_blank"
                                 rel="noopener noreferrer"
+                                onClick={(e: React.MouseEvent) => {
+                                    // 앱 웹뷰는 target=_blank 를 열지 못함 → 브리지로 카카오맵 앱(없으면 웹) 길찾기
+                                    const t = selectedToilet;
+                                    if (!isApp() || t.latitude == null || t.longitude == null) return;
+                                    e.preventDefault();
+                                    void openDirectionsInApp(t.latitude, t.longitude, t.name);
+                                }}
                             >
-                                카카오맵에서 길찾기 ↗
+                                {t("home.kakaoDirections")}
                             </Button>
                         )}
                         {auth.user && (
@@ -278,7 +322,7 @@ export function HomePage() {
                                         },
                                     })}
                                 >
-                                    수정 요청
+                                    {t("home.fixInfo")}
                                 </Button>
                                 <Button
                                     size="small"
@@ -291,7 +335,7 @@ export function HomePage() {
                                         },
                                     })}
                                 >
-                                    삭제 요청
+                                    {t("home.reportGone")}
                                 </Button>
                             </>
                         )}
@@ -302,7 +346,7 @@ export function HomePage() {
                                 setRouting(false);
                             }}
                         >
-                            선택 해제
+                            {t("common.close")}
                         </Button>
                     </CardActions>
                 </Card>
@@ -315,8 +359,8 @@ export function HomePage() {
                 />
             )}
 
-            {/* === 상태 표시 (dev 전용 디버그 줄) === */}
-            {import.meta.env.DEV && (
+            {/* === 상태 표시 (dev 전용 디버그 줄, 주소에 ?debug 를 붙였을 때만) === */}
+            {import.meta.env.DEV && !USE_MOCK && new URLSearchParams(window.location.search).has("debug") && (
                 <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "monospace" }}>
                     center=({center?.lat.toFixed(5)}, {center?.lng.toFixed(5)}) · status={query.status}
                     {" · "}{filteredToilets.length}/{query.data?.length ?? 0} 곳
@@ -344,32 +388,17 @@ function facilityMatch(t: ToiletNear, key: FacilityFilter): boolean {
     }
 }
 
-interface FacilityChipInfo {
-    label: string;
-}
-
-function facilityChipsFor(t: ToiletNear): FacilityChipInfo[] {
-    const out: FacilityChipInfo[] = [];
-    const men = t.maleStallCount + t.maleUrinalCount;
-    if (men > 0) out.push({ label: `남 ${men} (대 ${t.maleStallCount}/소 ${t.maleUrinalCount})` });
-    if (t.femaleStallCount > 0) out.push({ label: `여 ${t.femaleStallCount}` });
-    const acc = t.maleAccessibleStallCount + t.maleAccessibleUrinalCount + t.femaleAccessibleStallCount;
-    if (acc > 0) out.push({ label: `장애인 ${acc}` });
-    const child = t.maleChildStallCount + t.maleChildUrinalCount + t.femaleChildStallCount;
-    if (child > 0) out.push({ label: `어린이 ${child}` });
-    return out;
-}
-
 function buildKakaoMapRouteUrl(
     toilet: { name: string; latitude: number | null; longitude: number | null },
     user: LatLng | null,
+    myLocationLabel: string,
 ): string {
     if (toilet.latitude == null || toilet.longitude == null) return "https://map.kakao.com/";
     const eName = encodeURIComponent(toilet.name);
     const eLat = toilet.latitude;
     const eLng = toilet.longitude;
     if (user) {
-        const sName = encodeURIComponent("내 위치");
+        const sName = encodeURIComponent(myLocationLabel);
         return `https://map.kakao.com/link/from/${sName},${user.lat},${user.lng}/to/${eName},${eLat},${eLng}`;
     }
     return `https://map.kakao.com/link/to/${eName},${eLat},${eLng}`;

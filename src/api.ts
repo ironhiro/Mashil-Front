@@ -2,6 +2,7 @@
 
 import { readAuthToken } from "./auth/AuthContext";
 import type { ChangeRequestKind, ChangeRequestStatus } from "./lib/enums";
+import { USE_MOCK } from "./mock/flag";
 
 export interface ToiletNear {
     id: number;
@@ -44,6 +45,10 @@ interface FetchOptions {
 /** 공통 fetch — auth=true 면 localStorage 의 JWT 를 Authorization 헤더로 자동 붙임. */
 async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T> {
     const { method = "GET", body, auth = false } = options;
+    if (USE_MOCK) {
+        const { mockFetch } = await import("./mock/mockApi");
+        return mockFetch<T>(path, method, body);
+    }
     const headers: Record<string, string> = {};
     if (body !== undefined) headers["Content-Type"] = "application/json";
     if (auth) {

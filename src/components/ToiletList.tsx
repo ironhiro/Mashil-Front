@@ -7,7 +7,10 @@ import {
     Stack,
     Typography,
 } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import type { ToiletNear } from "../api";
+import { formatDistance } from "../i18n";
+import { facilityChipLabels, toiletKindLabel } from "../lib/facilityChips";
 import { OpenStatusBadge } from "./OpenStatusBadge";
 
 interface Props {
@@ -20,6 +23,7 @@ interface Props {
 
 /** 거리순 화장실 리스트 — 맵 뷰의 대안. 클릭 시 카드와 동일하게 selectedToilet 업데이트. */
 export function ToiletList({ toilets, totalBeforeFilter, selectedId, onSelect }: Props) {
+    const { t } = useTranslation();
     const filtered = totalBeforeFilter !== undefined && totalBeforeFilter !== toilets.length;
 
     return (
@@ -44,33 +48,31 @@ export function ToiletList({ toilets, totalBeforeFilter, selectedId, onSelect }:
                 }}
             >
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    총 {toilets.length.toLocaleString()}곳
+                    {t("list.total", { count: toilets.length })}
                 </Typography>
                 {filtered && (
                     <Typography variant="caption" color="text.secondary">
-                        필터 적용 — 전체 {totalBeforeFilter!.toLocaleString()}곳 중
+                        {t("list.filtered", { total: totalBeforeFilter!.toLocaleString() })}
                     </Typography>
                 )}
             </Box>
 
             {toilets.length === 0 ? (
                 <Box sx={{ py: 4, textAlign: "center" }}>
-                    <Typography color="text.secondary">조건에 맞는 화장실이 없어요.</Typography>
+                    <Typography color="text.secondary">{t("list.empty")}</Typography>
                 </Box>
             ) : (
                 <Box sx={{ maxHeight: { xs: 400, sm: 520 }, overflowY: "auto" }}>
                     <List disablePadding>
-                {toilets.map((t) => {
-                    const facilityChips = collectFacilityChips(t);
-                    const addr = t.roadAddress ?? t.lotAddress ?? "";
-                    const distLabel = t.distanceM < 1000
-                        ? `${Math.round(t.distanceM)} m`
-                        : `${(t.distanceM / 1000).toFixed(1)} km`;
+                {toilets.map((toilet) => {
+                    const facilityChips = facilityChipLabels(t, toilet, "compact");
+                    const addr = toilet.roadAddress ?? toilet.lotAddress ?? "";
+                    const distLabel = formatDistance(toilet.distanceM);
                     return (
                         <ListItemButton
-                            key={t.id}
-                            selected={t.id === selectedId}
-                            onClick={() => onSelect(t)}
+                            key={toilet.id}
+                            selected={toilet.id === selectedId}
+                            onClick={() => onSelect(toilet)}
                             sx={{ alignItems: "flex-start", py: 1.25 }}
                         >
                             <ListItemText
@@ -83,9 +85,9 @@ export function ToiletList({ toilets, totalBeforeFilter, selectedId, onSelect }:
                                 primary={
                                     <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
                                         <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                                            {t.name}
+                                            {toilet.name}
                                         </Typography>
-                                        <Chip size="small" label={t.kind} variant="outlined" />
+                                        <Chip size="small" label={toiletKindLabel(t, toilet.kind)} variant="outlined" />
                                         <Typography variant="caption" color="text.secondary">
                                             {distLabel}
                                         </Typography>
@@ -100,14 +102,14 @@ export function ToiletList({ toilets, totalBeforeFilter, selectedId, onSelect }:
                                         )}
                                         <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" alignItems="center">
                                             <OpenStatusBadge
-                                                openHours={t.openHours}
-                                                openHoursDetail={t.openHoursDetail}
+                                                openHours={toilet.openHours}
+                                                openHoursDetail={toilet.openHoursDetail}
                                             />
-                                            {facilityChips.map((c) => (
+                                            {facilityChips.map((label) => (
                                                 <Chip
-                                                    key={c.label}
+                                                    key={label}
                                                     size="small"
-                                                    label={c.label}
+                                                    label={label}
                                                     sx={{ height: 22, fontSize: 11 }}
                                                 />
                                             ))}
@@ -123,22 +125,4 @@ export function ToiletList({ toilets, totalBeforeFilter, selectedId, onSelect }:
             )}
         </Box>
     );
-}
-
-interface FacilityChip {
-    label: string;
-}
-
-function collectFacilityChips(t: ToiletNear): FacilityChip[] {
-    const chips: FacilityChip[] = [];
-    const men = t.maleStallCount + t.maleUrinalCount;
-    if (men > 0) chips.push({ label: `남 ${men}` });
-    if (t.femaleStallCount > 0) chips.push({ label: `여 ${t.femaleStallCount}` });
-    const accessible =
-        t.maleAccessibleStallCount + t.maleAccessibleUrinalCount + t.femaleAccessibleStallCount;
-    if (accessible > 0) chips.push({ label: `장애인 ${accessible}` });
-    const child =
-        t.maleChildStallCount + t.maleChildUrinalCount + t.femaleChildStallCount;
-    if (child > 0) chips.push({ label: `어린이 ${child}` });
-    return chips;
 }

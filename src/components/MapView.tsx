@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Box, Button, CircularProgress, Stack } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import { loadKakaoMaps } from "../lib/kakaoMap";
 import type { LatLng as Coord, ToiletNear } from "../api";
 
@@ -38,6 +39,7 @@ export function MapView({
     const radiusCircleRef = useRef<kakao.maps.Circle | null>(null);
     const routeLineRef = useRef<kakao.maps.Polyline | null>(null);
 
+    const { t } = useTranslation();
     const [error, setError] = useState<string | null>(null);
     const [ready, setReady] = useState(false);
 
@@ -200,7 +202,7 @@ export function MapView({
             {!ready && !error && (
                 <Stack direction="row" spacing={1} alignItems="center">
                     <CircularProgress size={18} />
-                    <span>지도 로딩 중…</span>
+                    <span>{t("map.loading")}</span>
                 </Stack>
             )}
             {ready && (
@@ -211,7 +213,7 @@ export function MapView({
                         onSearchAtCenter({ lat: c.getLat(), lng: c.getLng() });
                     }}
                 >
-                    이 지역에서 다시 검색
+                    {t("map.searchHere")}
                 </Button>
             )}
         </Stack>
