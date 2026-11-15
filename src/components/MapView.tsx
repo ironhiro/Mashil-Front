@@ -33,8 +33,9 @@ interface Pin {
     toiletId: number;
 }
 
-/** 지도 아래에 남겨 둘 여백 (px). 화면 아래 가장자리와 지도 테두리 사이 */
-const MAP_BOTTOM_GAP = 16;
+/** 지도 아래에 남겨 둘 여백 (px). 하단 탭(없으면 화면 아래)과 지도 테두리 사이.
+ *  App 의 Container 아래 여백(py: 3 = 24px, --space-lg)과 같아야 페이지가 화면보다 길어지지 않는다 */
+const MAP_BOTTOM_GAP = 24;
 /** 이보다 작게는 줄이지 않는다 (가로 화면, 아주 작은 창) */
 const MAP_MIN_HEIGHT = 320;
 

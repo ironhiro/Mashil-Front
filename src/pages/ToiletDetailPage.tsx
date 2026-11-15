@@ -179,7 +179,11 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                     bgcolor: "var(--color-paper)",
                     borderTop: "var(--rule-bar) solid var(--color-ink)",
                     px: 2,
-                    py: 1.25,
+                    pt: 1.25,
+                    // 제스처 막대 위로 (앱은 웹뷰를 화면 맨 아래까지 그린다)
+                    pb: "calc(10px + env(safe-area-inset-bottom))",
+                    // 페이지 끝에서도 화면 맨 아래에 붙도록, App 의 아래 여백(24px + 제스처 막대)만큼 내려 앉힌다
+                    mb: "calc(-24px - env(safe-area-inset-bottom))",
                     display: "flex",
                     gap: 1,
                 }}

@@ -116,7 +116,9 @@ button:disabled, [aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
 
 /* ── 하단 탭: 찾기 / 제보 / 내 정보 ───────────────────────────────
    선택 묶음과 같은 규칙: 2px 테두리를 공유하는 칸, 고른 칸은 잉크 채움 (파랑은 선택에 쓰지 않는다) */
-.has-bottom-nav { --bottom-nav-h: 64px; padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom)); }
+/* 앱은 웹뷰를 시스템 제스처 막대 밑까지 그린다 (Flutter SafeArea bottom: false). 그 높이는 웹이 env() 로 비운다 */
+.app-root { padding-bottom: env(safe-area-inset-bottom); }
+.app-root.has-bottom-nav { --bottom-nav-h: 64px; padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom)); }
 .bottom-nav {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-sticky-nav);
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -25,7 +25,7 @@ export function App() {
 
     // 위쪽 앱 바와 왼쪽 서랍 대신 하단 탭 세 칸 (찾기 / 제보 / 내 정보)
     return (
-        <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }} className={withNav ? "has-bottom-nav" : undefined}>
+        <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }} className={withNav ? "app-root has-bottom-nav" : "app-root"}>
             {appStatus.data?.readOnly && <ReadOnlyBanner status={appStatus.data} />}
 
             <Container maxWidth="md" sx={{ py: 3, flex: 1 }}>
