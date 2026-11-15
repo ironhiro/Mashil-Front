@@ -1,5 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { UserRole } from "../lib/enums";
 import { USE_MOCK } from "../mock/flag";
 import i18n from "../i18n";
@@ -41,6 +42,9 @@ interface AuthState {
 const TOKEN_KEY = "mashil_token";
 const REFRESH_KEY = "mashil_refresh";
 const USER_KEY = "mashil_user";
+
+/** 사용자마다 내용이 다른 쿼리 키의 첫 칸 (토큰을 붙여 받는 것들) */
+const USER_SCOPED_QUERY_KEYS = ["me", "admin", "consents", "toilet-comments"];
 
 const AuthCtx = createContext<AuthState | null>(null);
 
@@ -110,6 +114,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
         else localStorage.removeItem(USER_KEY);
     }, [user]);
+
+    // 로그인한 사람이 바뀌면(로그아웃·다른 계정) 앞 사람의 개인 데이터 캐시를 비운다.
+    // 비우지 않으면 staleTime(30초) 안에는 앞 사람의 내 제보·내 댓글·isMine 이 그대로 보인다.
+    // reset 은 쓰는 중인 쿼리는 다시 받고, 아닌 것은 데이터를 지운다 (remove 와 달리 구독 중인 화면이 끊기지 않음)
+    const qc = useQueryClient();
+    const userId = user?.id ?? null;
+    const prevUserId = useRef(userId);
+    useEffect(() => {
+        if (prevUserId.current === userId) return;
+        prevUserId.current = userId;
+        for (const key of USER_SCOPED_QUERY_KEYS) void qc.resetQueries({ queryKey: [key] });
+    }, [userId, qc]);
 
     // apiFetch 가 토큰을 갱신했거나 세션이 끝났으면 화면 상태도 따라간다
     useEffect(() => {
