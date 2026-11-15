@@ -6,7 +6,7 @@
  */
 
 import rawToilets from "./toilets.json";
-import type { ChangeRequestRow, CommentRow, MyChangeRequest, MyComment, ToiletDetail, ToiletNear } from "../api";
+import type { ChangeRequestRow, CommentRow, MyChangeRequest, MyComment, RecommendedToilet, ToiletDetail, ToiletNear, VoteResult } from "../api";
 import type { ChangeRequestKind, ChangeRequestStatus, UserRole } from "../lib/enums";
 
 type ToiletSeed = Omit<ToiletNear, "distanceM" | "averageRating" | "commentCount"> & { managementNo: string };
@@ -48,6 +48,12 @@ const COMMENT_SAMPLES = [
 const ratings = new Map<number, Map<string, number>>(); // toiletId → (userId → score)
 const comments: CommentRow[] = [];
 let commentSeq = 1;
+/** commentId → (userId → 1 | -1) */
+const votes = new Map<number, Map<string, number>>();
+const tally = (id: number) => {
+    const v = [...(votes.get(id)?.values() ?? [])];
+    return { upCount: v.filter((x) => x > 0).length, downCount: v.filter((x) => x < 0).length };
+};
 
 const daysAgo = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString();
 
@@ -121,6 +127,21 @@ for (const [toiletIdx, text, hidden, ago] of [
     const t = toilets[toiletIdx];
     if (t) comments.push({ id: commentSeq++, userId: ME.id, toiletId: t.id, text, hidden, createdAt: daysAgo(ago), updatedAt: daysAgo(ago) });
 }
+// 다른 사용자 댓글과 그 표: 댓글 평가와 추천을 목업에서도 볼 수 있게
+for (const [toiletIdx, author, text, ups, downs] of [
+    [0, 0, "지하 1층이라 엘리베이터로 가면 바로예요.", 4, 0],
+    [1, 1, "밤 11시까지 열려 있어요. 비누 있음.", 3, 1],
+    [3, 2, "공사 중이라 닫혀 있었어요.", 0, 3],
+] as const) {
+    const t = toilets[toiletIdx];
+    if (!t) continue;
+    const id = commentSeq++;
+    comments.push({ id, userId: DEMO_USERS[author], toiletId: t.id, text, hidden: false, createdAt: daysAgo(1 + toiletIdx), updatedAt: daysAgo(1 + toiletIdx) });
+    const m = new Map<string, number>();
+    DEMO_USERS.slice(0, ups).forEach((u) => m.set(u, 1));
+    DEMO_USERS.slice(ups, ups + downs).forEach((u) => m.set(u, -1));
+    votes.set(id, m);
+}
 let changeSeq = changeRequests.length + 1;
 
 // --- 헬퍼 ---
@@ -174,6 +195,46 @@ export async function mockFetch<T>(path: string, method: string, body: unknown):
             .map((x) => summarize(x.t, x.d)) as T;
     }
 
+    // 추천: 서버 ToiletRecommender 와 같은 식 (품질 50% · 믿음 30% · 가까움 20%, 근거 없으면 제외)
+    if (method === "GET" && p === "/api/toilets/recommended") {
+        const lat = Number(q.get("lat")), lng = Number(q.get("lng"));
+        const radius = Number(q.get("radiusM") ?? 1000), limit = Number(q.get("limit") ?? 5);
+        return toilets
+            .map((t) => ({ t, d: haversineM(lat, lng, t.latitude!, t.longitude!) }))
+            .filter((x) => x.d <= radius)
+            .map(({ t, d }): RecommendedToilet | null => {
+                const n = ratings.get(t.id)?.size ?? 0;
+                const near = summarize(t, d);
+                let up = 0, down = 0;
+                for (const c of comments.filter((c) => c.toiletId === t.id && !c.hidden)) {
+                    const tl = tally(c.id);
+                    up += tl.upCount;
+                    down += tl.downCount;
+                }
+                if (n === 0 && up + down === 0) return null;
+                const avg = near.averageRating ?? 3;
+                const quality = ((2 * 3 + avg * n) / (2 + n) - 1) / 4;
+                const trust = (up + 1) / (up + down + 2);
+                const score = 0.5 * quality + 0.3 * trust + 0.2 * (1 - Math.min(d / radius, 1));
+                return { toilet: near, score, ratingCount: n, helpfulUp: up, helpfulDown: down };
+            })
+            .filter((x): x is RecommendedToilet => x !== null)
+            .sort((a, b2) => b2.score - a.score)
+            .slice(0, limit) as T;
+    }
+
+    if (method === "PUT" && (m = p.match(/^\/api\/comments\/(\d+)\/vote$/))) {
+        const id = Number(m[1]);
+        const c = comments.find((x) => x.id === id && !x.hidden);
+        if (!c) throw notFound();
+        if (c.userId === ME.id) throw new MockHttpError("cannot vote on your own comment");
+        const value = Number(b.value);
+        if (!votes.has(id)) votes.set(id, new Map());
+        if (value === 0) votes.get(id)!.delete(ME.id);
+        else votes.get(id)!.set(ME.id, value);
+        return { ...tally(id), myVote: value } satisfies VoteResult as T;
+    }
+
     if (method === "GET" && p === "/api/toilets/search") {
         const kw = (q.get("q") ?? "").trim();
         return toilets
@@ -205,7 +266,14 @@ export async function mockFetch<T>(path: string, method: string, body: unknown):
         if (method === "GET") {
             return comments
                 .filter((c) => c.toiletId === id && !c.hidden)
-                .sort((a, b2) => b2.createdAt.localeCompare(a.createdAt)) as T;
+                .sort((a, b2) => b2.createdAt.localeCompare(a.createdAt))
+                .map((c) => ({
+                    ...c,
+                    authorName: c.userId === ME.id ? "데모" : "마실러",
+                    isMine: c.userId === ME.id,
+                    ...tally(c.id),
+                    myVote: votes.get(c.id)?.get(ME.id) ?? 0,
+                })) as T;
         }
         if (method === "POST") {
             const now = new Date().toISOString();

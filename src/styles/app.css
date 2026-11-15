@@ -166,3 +166,36 @@ a.activity-row:hover, a.activity-row:active { background: var(--color-paper-2); 
 .activity-more:hover, .activity-more:active { background: var(--color-paper-2); }
 .activity-more:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -4px; }
 @media (prefers-reduced-motion: reduce) { .activity-row, .activity-more { transition: none; } }
+
+/* ── 추천 안내판: 같은 행 + 왜 추천했는지 한 줄 ─────────────────── */
+.rec-intro { margin: 0; padding: var(--space-sm) var(--space-md); font: 400 var(--text-sm)/1.45 var(--font-body); color: var(--color-muted); border-bottom: var(--rule-hair) solid var(--color-rule); }
+.board li:has(.rec-why) .board-row { border-bottom: 0; padding-bottom: var(--space-2xs); }
+.rec-why {
+  display: flex; flex-wrap: wrap; column-gap: var(--space-sm); row-gap: var(--space-3xs); margin: 0;
+  padding: 0 var(--space-md) var(--space-sm) calc(var(--space-md) + 7.5rem + var(--space-md));
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+  font: 500 var(--text-sm)/1.3 var(--font-body); color: var(--color-ink-2);
+}
+.rec-rank { font-weight: 800; color: var(--color-ink); }
+
+/* ── 댓글: 작성자·시각, 본문, 도움돼요/아니에요 ───────────────────── */
+.comment { border-top: var(--rule-hair) solid var(--color-rule); padding: var(--space-sm) 0; }
+.comment-meta { display: flex; flex-wrap: wrap; column-gap: var(--space-sm); font: 400 var(--text-sm)/1.3 var(--font-body); color: var(--color-muted); }
+.comment-meta b { color: var(--color-ink); font-weight: 700; }
+.comment-text { margin: var(--space-2xs) 0 0; font: 400 var(--text-md)/1.5 var(--font-body); white-space: pre-wrap; overflow-wrap: anywhere; }
+.votes { display: flex; gap: var(--space-xs); margin-top: var(--space-xs); }
+.vote {
+  display: inline-flex; align-items: center; gap: var(--space-2xs); min-height: 36px; padding: 0 var(--space-sm);
+  border: var(--rule-bar) solid var(--color-ink); background: var(--color-paper-3); color: var(--color-ink);
+  font: 500 var(--text-sm)/1 var(--font-body); cursor: pointer;
+  transition: background-color var(--dur-micro) steps(1), color var(--dur-micro) steps(1);
+}
+.vote svg { font-size: 1.1rem; }
+.vote:hover { background: var(--color-paper-2); }
+.vote:active { background: var(--color-paper-2); }
+.vote:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.vote[aria-pressed="true"] { background: var(--color-ink); color: var(--color-paper); }
+.vote:disabled { cursor: default; border-color: var(--color-rule); color: var(--color-muted); background: transparent; }
+.vote-tally { display: inline-flex; align-items: center; gap: var(--space-2xs); min-height: 36px; font: 500 var(--text-sm)/1 var(--font-body); color: var(--color-muted); }
+@media (prefers-reduced-motion: reduce) { .vote { transition: none; } }
+@media (max-width: 420px) { .rec-why { padding-left: var(--space-md); } }

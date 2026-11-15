@@ -13,7 +13,10 @@ import {
     Typography,
 } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchComments, postComment, postRating } from "../api";
+import ThumbDownOutlinedIcon from "@mui/icons-material/ThumbDownOutlined";
+import ThumbUpOutlinedIcon from "@mui/icons-material/ThumbUpOutlined";
+import { fetchComments, postComment, postRating, voteComment } from "../api";
+import type { CommentRow } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { useTranslation } from "react-i18next";
 import { formatRelativeOrDate } from "../i18n";
@@ -55,6 +58,20 @@ export function ToiletInteractions({ toiletId, averageRating }: Props) {
         },
         onError: (e: Error) => setError(friendlyError(e, t("interactions.ratingFailed"))),
     });
+
+    // 도움돼요 / 아니에요: 같은 버튼을 다시 누르면 취소. 응답의 집계로 그 댓글만 바꾼다
+    const voteMut = useMutation({
+        mutationFn: (args: { id: number; value: 1 | -1 | 0 }) => voteComment(args.id, args.value),
+        onSuccess: (r, args) => {
+            setError(null);
+            qc.setQueryData<CommentRow[]>(["toilet-comments", toiletId], (rows) =>
+                rows?.map((c) => (c.id === args.id ? { ...c, upCount: r.upCount, downCount: r.downCount, myVote: r.myVote } : c)),
+            );
+            qc.invalidateQueries({ queryKey: ["toilets", "recommended"] }); // 추천의 근거가 바뀜
+        },
+        onError: (e: Error) => setError(friendlyError(e, t("interactions.voteFailed"))),
+    });
+    const canVote = !!auth.user && !readOnly;
 
     const commentMut = useMutation({
         mutationFn: (text: string) => postComment(toiletId, text),
@@ -157,16 +174,63 @@ export function ToiletInteractions({ toiletId, averageRating }: Props) {
                         {t("interactions.noComments")}
                     </Typography>
                 )}
-                {commentsQuery.data?.map((c) => (
-                    <Box key={c.id} sx={{ borderTop: 1, borderColor: "divider", py: 1 }}>
-                        <Typography variant="caption" color="text.secondary">
-                            {formatRelativeOrDate(c.createdAt)}
-                        </Typography>
-                        <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 0.5 }}>
-                            {c.text}
-                        </Typography>
-                    </Box>
-                ))}
+                {commentsQuery.data?.map((c) => {
+                    const up = c.upCount ?? 0;
+                    const down = c.downCount ?? 0;
+                    const mine = c.myVote ?? 0;
+                    const busy = voteMut.isPending && voteMut.variables?.id === c.id;
+                    return (
+                        <article key={c.id} className="comment">
+                            <div className="comment-meta">
+                                {c.authorName && <b>{c.isMine ? t("interactions.me") : c.authorName}</b>}
+                                <span>{formatRelativeOrDate(c.createdAt)}</span>
+                            </div>
+                            <p className="comment-text">{c.text}</p>
+                            {c.isMine ? (
+                                // 내 댓글: 표는 못 누르고 받은 수만
+                                <div className="votes">
+                                    <span className="vote-tally">
+                                        <ThumbUpOutlinedIcon fontSize="inherit" aria-hidden /> {t("interactions.helpfulCount", { count: up })}
+                                    </span>
+                                    <span className="vote-tally">
+                                        <ThumbDownOutlinedIcon fontSize="inherit" aria-hidden /> {t("interactions.notHelpfulCount", { count: down })}
+                                    </span>
+                                </div>
+                            ) : (
+                                <div className="votes" role="group" aria-label={t("interactions.voteGroup")}>
+                                    <button
+                                        type="button"
+                                        className="vote"
+                                        aria-pressed={mine === 1}
+                                        disabled={busy || readOnly}
+                                        onClick={() =>
+                                            canVote
+                                                ? voteMut.mutate({ id: c.id, value: mine === 1 ? 0 : 1 })
+                                                : setError(t("interactions.voteLoginRequired"))
+                                        }
+                                    >
+                                        <ThumbUpOutlinedIcon fontSize="inherit" aria-hidden />
+                                        {t("interactions.helpful")} {up}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="vote"
+                                        aria-pressed={mine === -1}
+                                        disabled={busy || readOnly}
+                                        onClick={() =>
+                                            canVote
+                                                ? voteMut.mutate({ id: c.id, value: mine === -1 ? 0 : -1 })
+                                                : setError(t("interactions.voteLoginRequired"))
+                                        }
+                                    >
+                                        <ThumbDownOutlinedIcon fontSize="inherit" aria-hidden />
+                                        {t("interactions.notHelpful")} {down}
+                                    </button>
+                                </div>
+                            )}
+                        </article>
+                    );
+                })}
             </CardContent>
         </Card>
     );

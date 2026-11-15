@@ -16,13 +16,14 @@ import {
     Typography,
 } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
-import { computeStraightRoute, fetchNearbyToilets } from "../api";
+import { computeStraightRoute, fetchNearbyToilets, fetchRecommendedToilets } from "../api";
 import type { LatLng, ToiletNear } from "../api";
 import { MapView } from "../components/MapView";
 import { BoardRowContent } from "../components/BoardRow";
 import CloseIcon from "@mui/icons-material/Close";
 import { ToiletInteractions } from "../components/ToiletInteractions";
 import { ToiletList } from "../components/ToiletList";
+import { RecommendedList } from "../components/RecommendedList";
 import { ChangeRequestKind, DEFAULT_SEARCH_RADIUS, SearchRadius, ViewMode } from "../lib/enums";
 import { FilterSheet } from "../components/FilterSheet";
 import { EMPTY_FILTER, activeFilterCount, applyFilter } from "../lib/toiletFilter";
@@ -133,6 +134,18 @@ export function HomePage() {
         return applyFilter(query.data ?? [], filter);
     }, [query.data, filter]);
 
+    // 추천: 추천 보기를 열었을 때만 받는다. 조건(필터)은 근처 목록과 같게 적용
+    const recQuery = useQuery({
+        enabled: center !== null && viewMode === ViewMode.Recommended,
+        queryKey: ["toilets", "recommended", center?.lat, center?.lng, radiusM],
+        queryFn: () => fetchRecommendedToilets(center!.lat, center!.lng, radiusM),
+    });
+    const recommended = useMemo(() => {
+        if (!recQuery.data) return undefined;
+        const allowed = new Set(applyFilter(recQuery.data.map((r) => r.toilet), filter).map((t) => t.id));
+        return recQuery.data.filter((r) => allowed.has(r.toilet.id));
+    }, [recQuery.data, filter]);
+
     /** 상세 화면으로 — 거리 계산 기준점과 그 기준이 "내 위치"인지 함께 넘긴다 */
     const openDetail = (toilet: ToiletNear) => {
         const fromMe = !!userLocation && !!center && userLocation.lat === center.lat && userLocation.lng === center.lng;
@@ -194,6 +207,7 @@ export function HomePage() {
                 >
                     <ToggleButton value={ViewMode.Map}>{t("home.viewMap")}</ToggleButton>
                     <ToggleButton value={ViewMode.List}>{t("home.viewList")}</ToggleButton>
+                    <ToggleButton value={ViewMode.Recommended}>{t("home.viewRecommended")}</ToggleButton>
                 </ToggleButtonGroup>
             </Stack>
             <FilterSheet
@@ -241,6 +255,16 @@ export function HomePage() {
                     totalBeforeFilter={query.data?.length}
                     selectedId={selectedToilet?.id ?? null}
                     onSelect={openDetail}
+                />
+            )}
+
+            {viewMode === ViewMode.Recommended && (
+                <RecommendedList
+                    items={recommended}
+                    loading={recQuery.isLoading}
+                    failed={recQuery.isError}
+                    onSelect={openDetail}
+                    onShowList={() => setViewMode(ViewMode.List)}
                 />
             )}
 

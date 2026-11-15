@@ -66,6 +66,7 @@ export const FACILITY_FILTER_OPTIONS: FacilityFilter[] = [
 export const ViewMode = {
     Map: "map",
     List: "list",
+    Recommended: "recommended",
 } as const;
 export type ViewMode = (typeof ViewMode)[keyof typeof ViewMode];
 

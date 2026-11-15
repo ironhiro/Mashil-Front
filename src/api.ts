@@ -164,14 +164,52 @@ export interface CommentRow {
     id: number;
     userId: string;
     toiletId: number;
+    /** 표시 이름. 탈퇴한 작성자는 서버가 "탈퇴한 사용자"로 준다 (목업에는 없음) */
+    authorName?: string;
+    authorDeleted?: boolean;
     text: string;
     hidden: boolean;
     createdAt: string;
     updatedAt: string;
+    /** 토큰을 보냈을 때만 의미 있음 */
+    isMine?: boolean;
+    /** 도움돼요 / 아니에요 수 */
+    upCount?: number;
+    downCount?: number;
+    /** 내 표: 1 도움돼요, -1 아니에요, 0 없음 */
+    myVote?: number;
 }
 
 export function fetchComments(toiletId: number): Promise<CommentRow[]> {
-    return apiFetch<CommentRow[]>(`/api/toilets/${toiletId}/comments`);
+    // 토큰을 보내면 내 댓글 표시(isMine)와 내 표(myVote)가 온다. 없으면 공개 목록
+    return apiFetch<CommentRow[]>(`/api/toilets/${toiletId}/comments`, { auth: true });
+}
+
+export interface VoteResult {
+    upCount: number;
+    downCount: number;
+    myVote: number;
+}
+
+/** 댓글 도움돼요(1) / 아니에요(-1) / 취소(0). 자기 댓글은 400 */
+export function voteComment(commentId: number, value: 1 | -1 | 0): Promise<VoteResult> {
+    return apiFetch<VoteResult>(`/api/comments/${commentId}/vote`, { method: "PUT", body: { value }, auth: true });
+}
+
+/** 추천 한 건: 근처 목록과 같은 화장실 + 점수와 근거 */
+export interface RecommendedToilet {
+    toilet: ToiletNear;
+    score: number;
+    ratingCount: number;
+    helpfulUp: number;
+    helpfulDown: number;
+}
+
+/** 지금 여기서 가기 좋은 곳 (닫힌 곳 제외, 평점이나 댓글 평가가 있는 곳만, 점수순) */
+export function fetchRecommendedToilets(lat: number, lng: number, radiusM: number, limit = 5): Promise<RecommendedToilet[]> {
+    return apiFetch<RecommendedToilet[]>(
+        `/api/toilets/recommended?lat=${lat}&lng=${lng}&radiusM=${radiusM}&limit=${limit}`,
+    );
 }
 
 export function postComment(toiletId: number, text: string): Promise<CommentRow> {
