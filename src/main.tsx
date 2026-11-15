@@ -1,4 +1,5 @@
 import { StrictMode } from "react";
+import "./styles/app.css";
 import "./i18n";
 import "./i18n/syncAppLanguage";
 import { createRoot } from "react-dom/client";

@@ -29,7 +29,6 @@ import { useAuth, userLabel } from "./auth/AuthContext";
 import { RequireAdmin } from "./components/RequireAdmin";
 import { SUPPORTED_LANGUAGES, currentLanguage } from "./i18n";
 import type { LanguageCode } from "./i18n";
-import { fonts } from "./design/tokens";
 import { UserRole } from "./lib/enums";
 import { AdminChangeRequestsPage } from "./pages/AdminChangeRequestsPage";
 import { HomePage } from "./pages/HomePage";
@@ -78,7 +77,7 @@ export function App() {
                     >
                         <Typography
                             component="span"
-                            sx={{ fontFamily: fonts.logo, fontSize: 24, lineHeight: 1, color: "mashil.accent" }}
+                            sx={{ fontWeight: 800, fontSize: "var(--text-xl)", letterSpacing: "var(--tracking-display)", lineHeight: 1 }}
                         >
                             {t("app.name")}
                         </Typography>
@@ -90,7 +89,7 @@ export function App() {
                     {auth.user ? (
                         <Typography variant="body2" sx={{ opacity: 0.9, display: { xs: "none", sm: "inline" } }}>
                             {userLabel(auth.user)}
-                            {auth.user.role === UserRole.Admin && ` · ${t("app.roleAdmin")}`}
+                            {auth.user.role === UserRole.Admin && <Box component="span" sx={{ ml: 1, fontWeight: 500 }}>{t("app.roleAdmin")}</Box>}
                         </Typography>
                     ) : (
                         <Button color="secondary" component={RouterLink} to="/login">
@@ -173,7 +172,7 @@ export function App() {
                             // 언어 이름은 번역하지 않고 각 언어로 표기 (내가 못 읽는 언어로 바뀌어도 돌아올 수 있게)
                             <ListSubheader disableSticky sx={{ bgcolor: "transparent" }}>
                                 {t("nav.language")}
-                                {currentLanguage() !== "en" && " · Language"}
+                                {currentLanguage() !== "en" && " / Language"}
                             </ListSubheader>
                         }
                     >

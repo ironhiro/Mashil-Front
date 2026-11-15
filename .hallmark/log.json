@@ -1,0 +1,27 @@
+[
+ {
+  "mode": "redesign",
+  "depth": "full",
+  "scope": "app",
+  "shape": "app screen",
+  "theme": "wayfind",
+  "axes": "light/mono/cool",
+  "hero": "none (app scope)",
+  "nav": "kept shell, top bar with wordmark and menu",
+  "footer": "none (app)",
+  "imagery": "product: Kakao map, no photographs",
+  "photos": [],
+  "entry": "home: map and nearby board",
+  "fingerprint": "wayfind-app-board",
+  "sections": [
+   "top bar",
+   "filter row",
+   "map or board",
+   "selected card"
+  ],
+  "signature": "the nearby board: departure rows, distance in amber on ink, status at the right",
+  "waived": [],
+  "prompt": "a phone app for finding the nearest public restroom on a map in Seoul",
+  "date": "2026-11-15"
+ }
+]

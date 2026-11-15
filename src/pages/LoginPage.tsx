@@ -15,7 +15,6 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { getAppProviders, NativeSignInCancelled } from "../lib/nativeBridge";
 import { friendlyError } from "../lib/friendlyError";
-import { fonts, tileGrid } from "../design/tokens";
 import type { SocialProvider } from "../lib/nativeBridge";
 
 type Mode = "login" | "register";
@@ -25,13 +24,13 @@ const PROVIDER_ORDER: SocialProvider[] = ["kakao", "google", "apple"];
 /** 제공자별 버튼 색 (각 사 브랜드 가이드). 문구는 번역 키 `login.continueWith.<제공자>`. */
 const PROVIDER_BUTTON: Record<SocialProvider, { sx: object }> = {
     kakao: {
-        sx: { bgcolor: "#FEE500", color: "rgba(0,0,0,0.85)", "&:hover": { bgcolor: "#F5DC00" } },
+        sx: { bgcolor: "var(--color-kakao)", color: "var(--color-kakao-ink)", border: "var(--rule-bar) solid var(--color-kakao)", "&:hover": { bgcolor: "color-mix(in oklab, var(--color-kakao) 92%, var(--color-ink))" } },
     },
     google: {
-        sx: { bgcolor: "#fff", color: "#1f1f1f", border: "1px solid #747775", "&:hover": { bgcolor: "#f5f5f5" } },
+        sx: { bgcolor: "var(--color-google)", color: "var(--color-google-ink)", border: "var(--rule-bar) solid var(--color-google-rule)", "&:hover": { bgcolor: "color-mix(in oklab, var(--color-google) 94%, var(--color-ink))" } },
     },
     apple: {
-        sx: { bgcolor: "#000", color: "#fff", "&:hover": { bgcolor: "#222" } },
+        sx: { bgcolor: "var(--color-apple)", color: "var(--color-apple-ink)", border: "var(--rule-bar) solid var(--color-apple)", "&:hover": { bgcolor: "color-mix(in oklab, var(--color-apple) 85%, var(--color-apple-ink))" } },
     },
 };
 
@@ -131,17 +130,18 @@ export function LoginPage() {
                     mb: 2,
                     borderRadius: 1,
                     textAlign: "center",
-                    backgroundImage: tileGrid("var(--mui-palette-mashil-surfaceSunken)"),
+                    border: "var(--rule-bar) solid var(--color-ink)",
+                    bgcolor: "var(--color-paper-3)",
                 }}
             >
                 <Box component="img" src="/icon-door.svg" alt="" sx={{ width: 88, height: 88 }} />
-                <Typography component="h1" sx={{ fontFamily: fonts.logo, fontSize: 38, lineHeight: 1 }}>
+                <Typography component="h1" variant="h4">
                     {t("app.name")}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                     {t("app.tagline")}
                 </Typography>
-                <Typography variant="body2" sx={{ pt: 1, maxWidth: 300, bgcolor: "mashil.bg", px: 0.5 }}>
+                <Typography variant="body1" sx={{ pt: 1, maxWidth: "32ch" }}>
                     {t("login.intro")}
                 </Typography>
             </Stack>

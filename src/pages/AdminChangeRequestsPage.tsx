@@ -241,7 +241,7 @@ function PayloadCell({ json }: { json: string | null }) {
             </Typography>
         );
     }
-    if (entries.length === 0) return <Typography variant="caption" color="text.secondary">—</Typography>;
+    if (entries.length === 0) return <Typography variant="caption" color="text.secondary">{t("detail.none")}</Typography>;
     return (
         <Stack spacing={0.25}>
             {entries.map(([label, value]) => (

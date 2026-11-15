@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Box, Button, CircularProgress, Stack, useMediaQuery } from "@mui/material";
 import { useTranslation } from "react-i18next";
-import { tileCss, tileStateOf } from "../design/statusTile";
-import { darkTokens, fonts, lightTokens, tileGrid } from "../design/tokens";
+import { stateClass, tileStateOf } from "../design/statusTile";
+import { darkMirror, lightMirror } from "../design/tokens";
 import { loadKakaoMaps } from "../lib/kakaoMap";
 import { statusOf } from "../lib/openStatus";
 import type { LatLng as Coord, ToiletNear } from "../api";
@@ -54,7 +54,7 @@ export function MapView({
     const { t } = useTranslation();
     // Kakao 의 원·선은 SVG 속성이라 CSS 변수를 못 받는다 → 현재 모드의 실제 색값을 넘긴다.
     const dark = useMediaQuery("(prefers-color-scheme: dark)");
-    const tokens = dark ? darkTokens : lightTokens;
+    const tokens = dark ? darkMirror : lightMirror;
     const [error, setError] = useState<string | null>(null);
     const [ready, setReady] = useState(false);
 
@@ -120,9 +120,7 @@ export function MapView({
         const maps = window.kakao.maps;
         const dot = document.createElement("div");
         dot.setAttribute("aria-hidden", "true");
-        dot.style.cssText =
-            "width:18px;height:18px;border-radius:50%;box-sizing:border-box;" +
-            "background:var(--mui-palette-mashil-surface);border:4px solid var(--mui-palette-mashil-accent);";
+        dot.className = "me-dot";
         const me = new maps.CustomOverlay({
             position: new maps.LatLng(userLocation.lat, userLocation.lng),
             content: dot,
@@ -146,7 +144,7 @@ export function MapView({
             if (toilet.latitude == null || toilet.longitude == null) continue;
             const status = statusOf(toilet);
             const label = openStatusLabel(t, status, "short");
-            const el = createPinElement(label, tileCss(tileStateOf(status)), toilet.averageRating);
+            const el = createPinElement(label, stateClass(tileStateOf(status)), toilet.averageRating);
             el.setAttribute("aria-label", `${toilet.name}, ${openStatusLabel(t, status, "full")}`);
             el.addEventListener("click", () => onSelectToilet(toilet));
             const overlay = new maps.CustomOverlay({
@@ -168,7 +166,6 @@ export function MapView({
         if (!ready) return;
         for (const { overlay, el, toiletId } of pinsRef.current) {
             const selected = toiletId === selectedId;
-            el.style.outline = selected ? "3px solid var(--mui-palette-mashil-selected)" : "none";
             el.setAttribute("aria-pressed", String(selected));
             overlay.setZIndex(selected ? 100 : 10);
         }
@@ -184,13 +181,13 @@ export function MapView({
         const line = new maps.Polyline({
             path: [new maps.LatLng(routeFrom.lat, routeFrom.lng), new maps.LatLng(routeTo.lat, routeTo.lng)],
             strokeWeight: 3,
-            strokeColor: tokens.selected,
+            strokeColor: tokens.ink,
             strokeOpacity: 0.9,
             strokeStyle: "shortdash",
         });
         line.setMap(mapRef.current);
         routeLineRef.current = line;
-    }, [ready, routeFrom?.lat, routeFrom?.lng, routeTo?.lat, routeTo?.lng, tokens.selected]);
+    }, [ready, routeFrom?.lat, routeFrom?.lng, routeTo?.lat, routeTo?.lng, tokens.ink]);
 
     return (
         <Stack spacing={1}>
@@ -198,14 +195,10 @@ export function MapView({
                 ref={containerRef}
                 sx={{
                     width: "100%",
-                    height: { xs: 360, sm: 480 },
-                    borderRadius: 1,
+                    height: { xs: "max(360px, calc(100dvh - 330px))", sm: 480 },
                     overflow: "hidden",
-                    border: "1px solid",
-                    borderColor: "mashil.line",
-                    // 지도가 뜨기 전에는 줄눈 격자 바탕
-                    bgcolor: "mashil.surfaceSunken",
-                    backgroundImage: tileGrid(tokens.line),
+                    border: "var(--rule-bar) solid var(--color-ink)",
+                    bgcolor: "var(--color-paper-2)",
                 }}
             />
             {error && <Alert severity="error">{error}</Alert>}
@@ -218,7 +211,6 @@ export function MapView({
             {ready && (
                 <Button
                     variant="outlined"
-                    color="secondary"
                     onClick={() => {
                         const c = mapRef.current!.getCenter();
                         onSearchAtCenter({ lat: c.getLat(), lng: c.getLng() });
@@ -231,20 +223,16 @@ export function MapView({
     );
 }
 
-/** 상태 타일 마커 — 평점이 있으면 오른쪽에 작게 붙인다. */
-function createPinElement(label: string, stateCss: string, rating: number | null): HTMLButtonElement {
+/** 상태 안내판 조각 마커 — 스타일은 app.css 의 .pin 과 .state--* . 평점이 있으면 오른쪽에 작게. */
+function createPinElement(label: string, stateCls: string, rating: number | null): HTMLButtonElement {
     const el = document.createElement("button");
     el.type = "button";
-    el.style.cssText =
-        stateCss +
-        "height:32px;padding:0 10px;border-radius:6px;box-sizing:border-box;cursor:pointer;" +
-        `font:700 13px ${fonts.body};white-space:nowrap;display:inline-flex;align-items:center;gap:6px;` +
-        "outline-offset:2px;transform:translateY(-4px);";
+    el.className = `pin ${stateCls}`;
     el.textContent = label;
     if (rating !== null && rating !== undefined) {
         const r = document.createElement("span");
+        r.className = "pin-rating";
         r.textContent = `★${rating.toFixed(1)}`;
-        r.style.cssText = `font:500 11px ${fonts.mono};opacity:0.85;`;
         el.appendChild(r);
     }
     return el;

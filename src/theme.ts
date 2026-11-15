@@ -1,133 +1,154 @@
 import { createTheme } from "@mui/material/styles";
-import { darkTokens, fonts, lightTokens, radius } from "./design/tokens";
-import type { MashilTokens } from "./design/tokens";
+import { darkMirror, lightMirror } from "./design/tokens";
+import type { MuiMirror } from "./design/tokens";
 
 /**
- * 마실 테마 — 디자인 토큰(src/design/tokens.ts)을 MUI 에 연결.
- * 라이트·다크는 기기 설정(prefers-color-scheme)을 따른다. 색은 CSS 변수라 sx 에서
- * "mashil.accent" 같은 팔레트 경로나 theme.vars.palette.mashil.* 로 쓴다.
+ * MUI 테마 — Hallmark · Wayfind (src/styles/app.css 의 스탬프).
+ * 정사각(모서리 0), 2px 잉크 테두리, 코발트는 지금 열림과 주 행동에만, 선택은 잉크 칸.
+ * 색은 CSS 변수(tokens.css)를 쓰고, MUI 가 계산해야 하는 자리만 hex 사본(design/tokens.ts).
  */
-declare module "@mui/material/styles" {
-    interface Palette {
-        mashil: MashilTokens;
-    }
-    interface PaletteOptions {
-        mashil?: MashilTokens;
-    }
-}
-
-function palette(t: MashilTokens) {
+function palette(m: MuiMirror) {
     return {
-        primary: { main: t.accent, contrastText: t.onAccent },
-        // 보조 강조색은 두지 않는다 — secondary 는 무채색(선택 상태와 같은 먹색)
-        secondary: { main: t.selected, contrastText: t.onSelected },
-        error: { main: t.danger, contrastText: t.onDanger },
-        background: { default: t.bg, paper: t.surface },
-        text: { primary: t.text, secondary: t.textMuted },
-        divider: t.line,
-        mashil: t,
+        primary: { main: m.accent, contrastText: m.accentInk },
+        secondary: { main: m.ink, contrastText: m.paper },
+        error: { main: m.error, contrastText: m.accentInk },
+        background: { default: m.paper, paper: m.paper3 },
+        text: { primary: m.ink, secondary: m.muted },
+        divider: m.rule,
     };
 }
+
+const bar = "var(--rule-bar) solid var(--color-ink)";
 
 export const theme = createTheme({
     cssVariables: { colorSchemeSelector: "media" },
     colorSchemes: {
-        light: { palette: palette(lightTokens) },
-        dark: { palette: palette(darkTokens) },
+        light: { palette: palette(lightMirror) },
+        dark: { palette: palette(darkMirror) },
     },
     typography: {
-        fontFamily: fonts.body,
-        h4: { fontWeight: 700, fontSize: "1.6rem", letterSpacing: "-0.01em" },
-        h5: { fontWeight: 700 },
-        h6: { fontWeight: 700 },
-        subtitle1: { fontWeight: 700 },
-        button: { textTransform: "none", fontWeight: 600 },
+        fontFamily: "var(--font-body)",
+        fontWeightBold: 800,
+        h4: { fontWeight: 800, fontSize: "var(--text-3xl)", letterSpacing: "var(--tracking-display)", lineHeight: 1.05 },
+        h5: { fontWeight: 800, fontSize: "var(--text-2xl)", letterSpacing: "var(--tracking-display)", lineHeight: 1.05 },
+        h6: { fontWeight: 800, fontSize: "var(--text-xl)", lineHeight: 1.1 },
+        subtitle1: { fontWeight: 800 },
+        subtitle2: { fontWeight: 800 },
+        button: { textTransform: "none", fontWeight: 800 },
+        body1: { fontSize: "var(--text-md)", lineHeight: 1.55 },
+        body2: { fontSize: "var(--text-sm)", lineHeight: 1.5 },
+        caption: { fontSize: "var(--text-xs)", fontWeight: 500 },
     },
-    shape: { borderRadius: radius.base },
-    shadows: Array(25).fill("none") as never, // 부드러운 큰 그림자는 쓰지 않는다
+    shape: { borderRadius: 0 },
+    shadows: Array(25).fill("none") as never, // 깊이는 테두리로
     components: {
-        MuiCssBaseline: {
-            styleOverrides: {
-                body: { fontFeatureSettings: '"tnum"' },
-            },
-        },
         MuiAppBar: {
             defaultProps: { elevation: 0, color: "inherit" },
             styleOverrides: {
-                root: ({ theme }) => ({
-                    backgroundColor: theme.vars!.palette.mashil.surface,
-                    color: theme.vars!.palette.mashil.text,
-                    borderBottom: `1px solid ${theme.vars!.palette.mashil.line}`,
-                }),
+                root: { backgroundColor: "var(--color-paper)", color: "var(--color-ink)", borderBottom: bar },
             },
         },
-        MuiPaper: {
-            defaultProps: { elevation: 0 },
-        },
+        MuiPaper: { defaultProps: { elevation: 0 }, styleOverrides: { root: { backgroundImage: "none" } } },
         MuiCard: {
             defaultProps: { variant: "outlined" },
+            styleOverrides: { root: { border: bar, backgroundColor: "var(--color-paper-3)" } },
         },
         MuiButton: {
-            defaultProps: { disableElevation: true },
+            defaultProps: { disableElevation: true, disableRipple: true },
             styleOverrides: {
-                root: { borderRadius: radius.base, minHeight: 40 },
+                root: {
+                    borderRadius: 0,
+                    minHeight: 44,
+                    fontWeight: 800,
+                    whiteSpace: "nowrap",
+                    transition: "background-color var(--dur-micro) steps(1), color var(--dur-micro) steps(1)",
+                    "&:focus-visible": { outline: "2px solid var(--color-focus)", outlineOffset: 2 },
+                    "&:active": { transform: "translateY(1px)" },
+                    "&.Mui-disabled": { opacity: 0.55, cursor: "not-allowed" },
+                },
                 sizeLarge: { minHeight: 52 },
+                contained: { border: "var(--rule-bar) solid transparent" },
+                outlined: {
+                    border: bar,
+                    color: "var(--color-ink)",
+                    "&:hover": { border: bar, backgroundColor: "var(--color-paper-2)" },
+                },
+                text: { textDecoration: "underline", textUnderlineOffset: "0.2em", "&:hover": { backgroundColor: "transparent", color: "var(--color-accent)" } },
+            },
+        },
+        MuiIconButton: {
+            defaultProps: { disableRipple: true },
+            styleOverrides: { root: { borderRadius: 0, "&:focus-visible": { outline: "2px solid var(--color-focus)", outlineOffset: 2 } } },
+        },
+        MuiButtonBase: { defaultProps: { disableRipple: true } },
+        MuiToggleButtonGroup: {
+            styleOverrides: {
+                // 칸들이 2px 테두리를 공유
+                root: { borderRadius: 0, gap: 0 },
+                grouped: { "&:not(:first-of-type)": { marginLeft: "calc(var(--rule-bar) * -1)", borderLeft: bar } },
             },
         },
         MuiToggleButton: {
             styleOverrides: {
-                root: ({ theme }) => ({
+                root: {
+                    borderRadius: 0,
+                    border: bar,
+                    minHeight: 44,
                     textTransform: "none",
-                    fontWeight: 600,
-                    minHeight: 36,
-                    color: theme.vars!.palette.mashil.text,
-                    backgroundColor: theme.vars!.palette.mashil.bg,
-                    borderColor: theme.vars!.palette.mashil.line,
-                    // 선택 상태는 무채색 — 청록은 "열림"과 주 행동에만
-                    "&.Mui-selected, &.Mui-selected:hover": {
-                        backgroundColor: theme.vars!.palette.mashil.selected,
-                        color: theme.vars!.palette.mashil.onSelected,
-                    },
-                }),
+                    fontWeight: 500,
+                    color: "var(--color-ink)",
+                    backgroundColor: "var(--color-paper-3)",
+                    "&:hover": { backgroundColor: "var(--color-paper-2)" },
+                    "&.Mui-selected, &.Mui-selected:hover": { backgroundColor: "var(--color-ink)", color: "var(--color-paper)", fontWeight: 800 },
+                    "&:focus-visible": { outline: "2px solid var(--color-focus)", outlineOffset: 2, zIndex: 1 },
+                },
             },
         },
         MuiChip: {
-            styleOverrides: {
-                root: { borderRadius: radius.base, fontWeight: 600 },
-            },
+            styleOverrides: { root: { borderRadius: 0, fontWeight: 500 }, outlined: { border: bar } },
         },
         MuiOutlinedInput: {
             styleOverrides: {
-                root: ({ theme }) => ({
-                    backgroundColor: theme.vars!.palette.mashil.surface,
-                    "& .MuiOutlinedInput-notchedOutline": { borderColor: theme.vars!.palette.mashil.line },
-                }),
+                root: {
+                    borderRadius: 0,
+                    backgroundColor: "var(--color-paper-3)",
+                    "& .MuiOutlinedInput-notchedOutline": { border: bar },
+                    "&:hover .MuiOutlinedInput-notchedOutline": { border: bar },
+                    // 포커스는 테두리 두께가 아니라 outline (39a)
+                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": { border: bar },
+                    "&.Mui-focused": { outline: "2px solid var(--color-focus)", outlineOffset: 2 },
+                },
             },
         },
+        MuiInputLabel: { styleOverrides: { root: { fontWeight: 500, color: "var(--color-ink-2)" } } },
         MuiAlert: {
             styleOverrides: {
-                root: { borderRadius: radius.base },
-                standardInfo: ({ theme }) => ({
-                    backgroundColor: theme.vars!.palette.mashil.surfaceSunken,
-                    color: theme.vars!.palette.mashil.text,
-                    "& .MuiAlert-icon": { color: theme.vars!.palette.mashil.textMuted },
-                }),
-                standardSuccess: ({ theme }) => ({
-                    backgroundColor: theme.vars!.palette.mashil.accentSoft,
-                    color: theme.vars!.palette.mashil.onAccentSoft,
-                    "& .MuiAlert-icon": { color: theme.vars!.palette.mashil.accent },
-                }),
+                root: { borderRadius: 0, border: bar, alignItems: "center" },
+                standardInfo: { backgroundColor: "var(--color-paper-2)", color: "var(--color-ink)", "& .MuiAlert-icon": { color: "var(--color-ink)" } },
+                standardSuccess: { backgroundColor: "var(--color-paper-3)", color: "var(--color-ink)", "& .MuiAlert-icon": { color: "var(--color-accent)" } },
+                standardError: { backgroundColor: "var(--color-paper-3)", color: "var(--color-error)", borderColor: "var(--color-error)", "& .MuiAlert-icon": { color: "var(--color-error)" } },
+                standardWarning: { backgroundColor: "var(--color-soon)", color: "var(--color-soon-ink)", "& .MuiAlert-icon": { color: "var(--color-soon-ink)" } },
             },
         },
         MuiDrawer: {
             styleOverrides: {
-                paper: ({ theme }) => ({ backgroundColor: theme.vars!.palette.mashil.surface }),
+                paper: { backgroundColor: "var(--color-paper)", borderRight: bar },
+                paperAnchorBottom: { borderRight: 0, borderTop: bar },
             },
         },
-        MuiRating: {
+        MuiBackdrop: { styleOverrides: { root: { backgroundColor: "var(--color-scrim)" } } },
+        MuiRating: { styleOverrides: { iconFilled: { color: "var(--color-accent)" }, iconEmpty: { color: "var(--color-muted)" } } },
+        MuiCheckbox: { styleOverrides: { root: { color: "var(--color-ink)", "&.Mui-checked": { color: "var(--color-accent)" } } } },
+        MuiLink: { styleOverrides: { root: { color: "var(--color-ink)", textUnderlineOffset: "0.2em", "&:hover": { color: "var(--color-accent)" } } } },
+        MuiTab: { styleOverrides: { root: { textTransform: "none", fontWeight: 500, "&.Mui-selected": { fontWeight: 800, color: "var(--color-ink)" } } } },
+        MuiTabs: { styleOverrides: { indicator: { height: 3, backgroundColor: "var(--color-ink)" } } },
+        MuiTableCell: {
             styleOverrides: {
-                iconFilled: ({ theme }) => ({ color: theme.vars!.palette.mashil.accent }),
+                head: { fontWeight: 500, color: "var(--color-muted)", borderBottom: bar },
+                root: { borderBottom: "var(--rule-hair) solid var(--color-rule)" },
             },
         },
+        MuiTooltip: { styleOverrides: { tooltip: { borderRadius: 0, backgroundColor: "var(--color-ink)", color: "var(--color-paper)", fontWeight: 500 } } },
+        MuiSnackbarContent: { styleOverrides: { root: { borderRadius: 0, backgroundColor: "var(--color-ink)", color: "var(--color-paper)" } } },
     },
 });

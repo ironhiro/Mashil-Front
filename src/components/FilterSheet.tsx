@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { fetchNearbyToilets } from "../api";
 import type { LatLng } from "../api";
-import { radius as radii } from "../design/tokens";
 import { SEARCH_RADIUS_OPTIONS, SearchRadius } from "../lib/enums";
 import type { FacilityFilter } from "../lib/enums";
 import { EMPTY_FILTER, FACILITY_TILE_OPTIONS, KIND_FILTER_OPTIONS, applyFilter } from "../lib/toiletFilter";
@@ -63,18 +62,14 @@ export function FilterSheet({ open, onClose, center, filter, radiusM, onApply }:
             slotProps={{
                 paper: {
                     sx: {
-                        borderTopLeftRadius: radii.sheet,
-                        borderTopRightRadius: radii.sheet,
                         maxWidth: 640,
                         mx: "auto",
                         maxHeight: "90vh",
                     },
                 },
-                backdrop: { sx: { bgcolor: "mashil.scrim" } },
             }}
         >
             <Box sx={{ px: 2, pt: 1.25, pb: 2, display: "flex", flexDirection: "column", gap: 2.25, overflowY: "auto" }}>
-                <Box aria-hidden sx={{ width: 36, height: 4, borderRadius: 2, bgcolor: "mashil.line", alignSelf: "center" }} />
                 <Typography component="h2" variant="h6">
                     {t("filter.title")}
                 </Typography>
@@ -94,7 +89,7 @@ export function FilterSheet({ open, onClose, center, filter, radiusM, onApply }:
                 </Section>
 
                 <Section label={t("filter.facilities")}>
-                    <Box role="group" aria-label={t("filter.facilities")} sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1 }}>
+                    <Box role="group" aria-label={t("filter.facilities")} sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1 }}>
                         {FACILITY_TILE_OPTIONS.map((f) => {
                             const on = draft.facilities.includes(f);
                             return (
@@ -104,13 +99,13 @@ export function FilterSheet({ open, onClose, center, filter, radiusM, onApply }:
                                     onClick={() => toggleFacility(f)}
                                     sx={{
                                         height: 56,
-                                        borderRadius: 1,
-                                        border: "1px solid",
-                                        borderColor: on ? "mashil.selected" : "mashil.line",
-                                        bgcolor: on ? "mashil.selected" : "mashil.bg",
-                                        color: on ? "mashil.onSelected" : "mashil.text",
-                                        fontWeight: 700,
-                                        fontSize: 15,
+                                        border: "var(--rule-bar) solid var(--color-ink)",
+                                        bgcolor: on ? "var(--color-ink)" : "var(--color-paper-3)",
+                                        color: on ? "var(--color-paper)" : "var(--color-ink)",
+                                        fontWeight: on ? 800 : 500,
+                                        fontSize: "var(--text-md)",
+                                        "&:hover": { bgcolor: on ? "var(--color-ink)" : "var(--color-paper-2)" },
+                                        "&:focus-visible": { outline: "2px solid var(--color-focus)", outlineOffset: 2 },
                                     }}
                                 >
                                     {t(`facility.filter.${f}`)}
@@ -141,7 +136,7 @@ export function FilterSheet({ open, onClose, center, filter, radiusM, onApply }:
                         {KIND_FILTER_OPTIONS.map((k) => {
                             const on = draft.kinds.includes(k);
                             return (
-                                <ToggleButton key={k} value={k} selected={on} onChange={() => toggleKind(k)} size="small" sx={{ borderRadius: 1, px: 1.5 }}>
+                                <ToggleButton key={k} value={k} selected={on} onChange={() => toggleKind(k)} size="small" sx={{ px: 1.5 }}>
                                     {t(`filter.kinds.${k}`)}
                                 </ToggleButton>
                             );

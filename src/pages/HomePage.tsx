@@ -9,7 +9,6 @@ import {
     Card,
     CardActions,
     CardContent,
-    Chip,
     Stack,
     ToggleButton,
     ToggleButtonGroup,
@@ -20,7 +19,6 @@ import { computeStraightRoute, fetchNearbyToilets } from "../api";
 import type { LatLng, ToiletNear } from "../api";
 import { MapView } from "../components/MapView";
 import { StatusTile } from "../components/OpenStatusBadge";
-import { fonts } from "../design/tokens";
 import { ToiletInteractions } from "../components/ToiletInteractions";
 import { ToiletList } from "../components/ToiletList";
 import { ChangeRequestKind, DEFAULT_SEARCH_RADIUS, SearchRadius, ViewMode } from "../lib/enums";
@@ -134,7 +132,7 @@ export function HomePage() {
                 >
                     {t("filter.button")}
                     {activeFilters > 0 && ` ${activeFilters}`}
-                    <Box component="span" sx={{ ml: 1, fontFamily: fonts.mono, fontSize: 13, opacity: 0.8 }}>
+                    <Box component="span" sx={{ ml: 1, fontWeight: 500 }}>
                         {formatDistance(radiusM, true)}
                     </Box>
                 </Button>
@@ -198,35 +196,21 @@ export function HomePage() {
             {selectedToilet && (
                 <Card variant="outlined">
                     <CardContent sx={{ pb: 1 }}>
-                        {/* 정보 위계: 거리 숫자 → 이름 → 상태 → 시설. 거리 타일과 상태 타일을 나란히. */}
-                        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1, mb: 1.5 }}>
-                            <Box
-                                sx={{
-                                    border: "1.5px solid",
-                                    borderColor: "mashil.line",
-                                    bgcolor: "mashil.bg",
-                                    borderRadius: 1,
-                                    p: 1.5,
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    justifyContent: "space-between",
-                                    gap: 0.5,
-                                }}
-                            >
-                                <Box component="span" sx={{ fontFamily: fonts.mono, fontSize: 30, lineHeight: 1 }}>
-                                    {formatDistance(selectedToilet.distanceM, true)}
-                                </Box>
-                                <Box component="span" sx={{ fontSize: 12, color: "text.secondary" }}>
+                        {/* 정보 위계: 거리 숫자, 이름, 상태, 시설. 거리 판과 상태 판을 나란히 */}
+                        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1, mb: 2 }}>
+                            <div className="plate">
+                                <span className="figure">{formatDistance(selectedToilet.distanceM, true)}</span>
+                                <span className="unit">
                                     {t(
                                         userLocation && center && userLocation.lat === center.lat && userLocation.lng === center.lng
                                             ? "home.distanceFromMe"
                                             : "home.distanceFromCenter",
                                     )}
-                                </Box>
-                            </Box>
+                                </span>
+                            </div>
                             <StatusTile toilet={selectedToilet} />
                         </Box>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.35 }}>
+                        <Typography component="h2" variant="h6">
                             {selectedToilet.name}
                         </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -240,7 +224,7 @@ export function HomePage() {
 
                         <Stack direction="row" spacing={0.5} sx={{ mt: 1 }} useFlexGap flexWrap="wrap" alignItems="center">
                             {facilityChipLabels(t, selectedToilet, "detailed").map((label) => (
-                                <Chip key={label} size="small" label={label} variant="outlined" />
+                                <span key={label} className="amenity">{label}</span>
                             ))}
                         </Stack>
 
@@ -249,7 +233,7 @@ export function HomePage() {
                                 {t("home.listedHours", {
                                     hours: [selectedToilet.openHours, selectedToilet.openHoursDetail]
                                         .filter(Boolean)
-                                        .join(" · "),
+                                        .join(", "),
                                 })}
                             </Typography>
                         )}
@@ -376,10 +360,10 @@ export function HomePage() {
             {/* === 상태 표시 (dev 전용 디버그 줄, 주소에 ?debug 를 붙였을 때만) === */}
             {import.meta.env.DEV && !USE_MOCK && new URLSearchParams(window.location.search).has("debug") && (
                 <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "monospace" }}>
-                    center=({center?.lat.toFixed(5)}, {center?.lng.toFixed(5)}) · status={query.status}
-                    {" · "}{filteredToilets.length}/{query.data?.length ?? 0} 곳
-                    {activeFilters > 0 && ` · filter=${JSON.stringify(filter)}`}
-                    {query.isFetching && " · 갱신 중…"}
+                    center=({center?.lat.toFixed(5)}, {center?.lng.toFixed(5)}) status={query.status}
+                    {" "}{filteredToilets.length}/{query.data?.length ?? 0}
+                    {activeFilters > 0 && ` filter=${JSON.stringify(filter)}`}
+                    {query.isFetching && " fetching"}
                 </Typography>
             )}
         </Stack>
