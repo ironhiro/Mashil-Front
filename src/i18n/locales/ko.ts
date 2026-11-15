@@ -131,7 +131,7 @@ export const ko = {
     detail: {
         back: "뒤로",
         share: "공유",
-        copied: "주소를 복사했어요",
+        copied: "링크를 복사했어요",
         notFound: "화장실 정보를 찾지 못했어요.",
         hoursTitle: "개방 시간",
         weekdays: "월~금",
@@ -274,6 +274,13 @@ export const ko = {
         voteGroup: "이 댓글이 도움이 됐나요?",
         voteLoginRequired: "댓글 평가는 로그인하면 할 수 있어요.",
         voteFailed: "평가를 남기지 못했어요. 잠시 후 다시 시도해 주세요.",
+    },
+    copy: {
+        button: "{{what}} 복사",
+        done: "{{what}}를 복사했어요",
+        failed: "복사하지 못했어요",
+        address: "주소",
+        phone: "전화번호",
     },
     login: {
         intro: "평점, 댓글, 화장실 정보 제보는 로그인 후에 할 수 있어요. 화장실 찾기는 로그인 없이도 돼요.",

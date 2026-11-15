@@ -271,6 +271,13 @@ export const en: Messages = {
         voteLoginRequired: "Log in to rate comments.",
         voteFailed: "Couldn't save your vote. Please try again in a moment.",
     },
+    copy: {
+        button: "Copy {{what}}",
+        done: "{{what}} copied",
+        failed: "Couldn't copy",
+        address: "address",
+        phone: "phone number",
+    },
     login: {
         intro: "Log in to rate, comment, or report restroom info. You can find restrooms without logging in.",
         continueWith: {

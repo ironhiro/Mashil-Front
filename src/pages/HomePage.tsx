@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CopyButton } from "../components/CopyButton";
 import { useNavigate } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
@@ -379,7 +380,10 @@ export function HomePage() {
                         {(selectedToilet.roadAddress || selectedToilet.lotAddress) && (
                             <>
                                 <dt>{t("home.factAddress")}</dt>
-                                <dd>{selectedToilet.roadAddress ?? selectedToilet.lotAddress}</dd>
+                                <dd>
+                                    {selectedToilet.roadAddress ?? selectedToilet.lotAddress}
+                                    <CopyButton text={(selectedToilet.roadAddress ?? selectedToilet.lotAddress)!} what={t("copy.address")} />
+                                </dd>
                             </>
                         )}
                         {(selectedToilet.openHours || selectedToilet.openHoursDetail) && (
@@ -393,6 +397,7 @@ export function HomePage() {
                                 <dt>{t("home.phone")}</dt>
                                 <dd>
                                     <a href={`tel:${selectedToilet.phone}`}>{selectedToilet.phone}</a>
+                                    <CopyButton text={selectedToilet.phone} what={t("copy.phone")} />
                                 </dd>
                             </>
                         )}

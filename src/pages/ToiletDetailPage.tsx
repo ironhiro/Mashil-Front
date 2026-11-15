@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { CopyButton } from "../components/CopyButton";
+import { copyText } from "../lib/copyText";
 import { Alert, Box, Button, CircularProgress, IconButton, Link, Snackbar, Stack, Typography } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import IosShareIcon from "@mui/icons-material/IosShare";
@@ -88,8 +90,7 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                 await navigator.share({ title: toilet.name, url });
                 return;
             }
-            await navigator.clipboard.writeText(url);
-            setCopied(true);
+            setCopied(await copyText(url));
         } catch {
             /* 사용자가 공유 창을 닫음 */
         }
@@ -144,6 +145,13 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                         {(toilet.roadAddress || toilet.lotAddress) && (
                             <Typography variant="body1" sx={{ mt: 0.5 }}>
                                 {toilet.roadAddress ?? toilet.lotAddress}
+                                <CopyButton text={(toilet.roadAddress ?? toilet.lotAddress)!} what={t("copy.address")} />
+                            </Typography>
+                        )}
+                        {toilet.phone && (
+                            <Typography variant="body1" sx={{ mt: 0.5 }}>
+                                {toilet.phone}
+                                <CopyButton text={toilet.phone} what={t("copy.phone")} />
                             </Typography>
                         )}
                     </Box>
