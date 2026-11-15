@@ -5,6 +5,7 @@ import "@fontsource/overpass/latin-500.css";
 import "@fontsource/overpass/latin-700.css";
 import "@fontsource/overpass/latin-800.css";
 import "./styles/app.css";
+import "./lib/inAppChrome";
 import "./i18n";
 import "./i18n/syncAppLanguage";
 import { createRoot } from "react-dom/client";

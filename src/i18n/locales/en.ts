@@ -274,7 +274,7 @@ export const en: Messages = {
     login: {
         intro: "Log in to rate, comment, or report restroom info. You can find restrooms without logging in.",
         continueWith: {
-            kakao: "Continue with Kakao",
+            kakao: "Login with Kakao",
             google: "Continue with Google",
             apple: "Continue with Apple",
         },

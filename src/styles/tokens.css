@@ -35,10 +35,15 @@
   /* 잉크 띠: 안내판과 판(plate). 다크 모드에서도 어두운 채로 */
   --color-band: var(--color-ink); --color-on-band: var(--color-paper); --color-band-muted: var(--color-paper-2);
   --color-band-rule: oklch(43.9% 0.033 240.4); --color-band-hover: var(--color-ink-2);
-  /* 로그인 버튼: 각 사 브랜드 가이드의 값 (테마 색이 아님) */
-  --color-kakao: #fee500; --color-kakao-ink: oklch(0% 0 0 / 0.85);
-  --color-google: oklch(99.5% 0.003 250); --color-google-ink: #1f1f1f; --color-google-rule: #747775;
+  /* 로그인 버튼: 각 사 브랜드 가이드의 값 그대로 (테마 색이 아님, 2026-11-16 확인).
+     Kakao 디자인 가이드: 바탕 #FEE500, 심볼 #000, 레이블 #000 85%, 모서리 12px.
+     Google branding guidelines (Light): 바탕 #FFFFFF, 테두리 #747775 1px, 글자 #1F1F1F.
+     Apple HIG Sign in with Apple: 바탕과 로고·글자는 검정 또는 흰색만 (눈으로 구분되지 않는 정도의 무채색 검정·흰색). */
+  --color-kakao: #fee500; --color-kakao-ink: rgb(0 0 0 / 0.85);
+  --color-google: #ffffff; --color-google-ink: #1f1f1f; --color-google-rule: #747775;
+  --google-g: url("/brand/google-signin-light-square@4x.png");
   --color-apple: oklch(10% 0.003 262); --color-apple-ink: oklch(99.5% 0.003 250);
+  --font-system: system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
   /* 앱 아이콘 "열린 문": 파랑 바탕, 흰 문짝, 빨강 손잡이 (app/tool/make_icons.py 와 같은 값) */
   --color-door-bg: var(--color-accent); --color-door-light: oklch(81.7% 0.065 254.3); --color-door-leaf: oklch(99.5% 0.003 250); --color-door-handle: var(--color-accent-2);
 }
@@ -61,5 +66,9 @@
     --color-scrim: oklch(5% 0.01 262 / 0.7);
     --color-band: oklch(26% 0.019 248.6); --color-on-band: oklch(91.8% 0.014 248); --color-band-muted: oklch(71.2% 0.02 243.1);
     --color-band-rule: oklch(36.1% 0.022 240.7); --color-band-hover: oklch(36.1% 0.022 240.7);
+    /* 로그인 버튼 밤: Google Dark 테마 (#131314, 테두리 #8E918F, 글자 #E3E3E3), Apple 은 어두운 바탕에 흰 버튼 */
+    --color-google: #131314; --color-google-ink: #e3e3e3; --color-google-rule: #8e918f;
+    --google-g: url("/brand/google-signin-dark-square@4x.png");
+    --color-apple: oklch(99.5% 0.003 250); --color-apple-ink: oklch(10% 0.003 262);
   }
 }

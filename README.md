@@ -111,6 +111,9 @@ npm run lint     # eslint
 | [Kakao 지도 JavaScript API](https://apis.map.kakao.com/) | 지도, 마커 | Kakao Developers 약관. 앱 키는 `VITE_KAKAO_MAP_KEY` (저장소에 넣지 않음) |
 | [카카오맵](https://map.kakao.com/) 링크 | 길찾기, 점검 중 대체 안내 (`map.kakao.com/link/...`) | 카카오맵 이용약관 |
 | [LOCALDATA](https://www.localdata.go.kr/) 공중화장실정보 | 화장실 정보 (백엔드가 가공) | 공공데이터. 상세 화면에 출처 표시 |
+| 카카오 로그인 심볼 (`public/brand/kakao_login_large_wide.png`) | 로그인 버튼 | [카카오 로그인 디자인 가이드](https://developers.kakao.com/docs/ko/kakaologin/design-guide). 공식 버튼 PNG 를 받은 그대로 두고 CSS 로 심볼 칸만 보인다 |
+| Google "G" 로고 (`public/brand/google-signin-*-square@4x.png`) | 로그인 버튼 | [Sign in with Google branding guidelines](https://developers.google.com/identity/branding-guidelines). 공식 `signin-assets.zip` 의 로고 단독 버튼 PNG 그대로 |
+| Apple 로고 (`LoginPage.tsx` 의 `AppleLogo`) | 로그인 버튼 | [HIG: Sign in with Apple](https://developer.apple.com/design/human-interface-guidelines/sign-in-with-apple). Apple 공식 JS SDK(`appleid.auth.js`)의 로고 경로 그대로 |
 
 ## 라이선스
 

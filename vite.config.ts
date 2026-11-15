@@ -18,8 +18,8 @@ export default defineConfig(({ mode }) => {
                     // 잘 바뀌지 않는 라이브러리를 따로 묶는다. 앱 코드만 고친 배포에서는 이 파일들을 웹뷰가 캐시에서 다시 쓴다
                     manualChunks(id: string) {
                         if (!id.includes("node_modules")) return undefined;
-                        if (/node_modules[\/](react|react-dom|scheduler|react-router|react-router-dom)[\/]/.test(id)) return "vendor-react";
-                        if (/node_modules[\/](@mui|@emotion)[\/]/.test(id)) return "vendor-mui";
+                        if (/node_modules[/\\](react|react-dom|scheduler|react-router|react-router-dom)[/\\]/.test(id)) return "vendor-react";
+                        if (/node_modules[/\\](@mui|@emotion)[/\\]/.test(id)) return "vendor-mui";
                         return undefined;
                     },
                 },

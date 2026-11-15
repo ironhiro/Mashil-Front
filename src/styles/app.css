@@ -241,3 +241,40 @@ a.activity-row:hover, a.activity-row:active { background: var(--color-paper-2); 
 @media (prefers-reduced-motion: reduce) { .vote { transition: none; } }
 /* 좁은 폭(40rem 이하)에선 행의 첫 칸이 4.25rem, 여백이 sm 이라 이름 칸 시작점도 따라 옮긴다 */
 @media (max-width: 40rem) { .rec-why { padding-inline: var(--space-sm); padding-left: calc(var(--space-sm) + 4.25rem + var(--space-sm)); } }
+
+/* 소셜 로그인 버튼 (각 사 가이드, 2026-11-16 확인). 세 버튼은 같은 크기·같은 모서리·같은 글자 크기이고,
+   로고는 왼쪽에 같은 중심선(왼쪽 끝에서 29px)으로, 레이블은 가운데. 로고 파일은 받은 그대로 두고 보이는 영역만 잘라 쓴다.
+   - Kakao: 공식 버튼 PNG(kakao_login_large_wide, 600x90)를 높이 52px 로 맞춰 심볼 칸만 보인다 (비율·색 그대로).
+   - Google: 공식 로고 단독 버튼 PNG(@4x, 40pt 기준 G 는 20pt)를 1.3배(52/40)로 맞춰 G 칸만 보인다.
+   - Apple: Apple JS SDK 의 로고(56pt 정사각 파일 기준)를 버튼 높이와 같게. */
+.provider-btn {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  inline-size: 100%; block-size: 52px; padding-inline: 56px; border-radius: 12px;
+  font: 600 var(--text-md)/1.25 var(--font-system); letter-spacing: 0; cursor: pointer;
+  transition: filter 120ms ease-out;
+}
+.provider-btn:hover:not(:disabled) { filter: brightness(0.96); }
+.provider-btn:active:not(:disabled) { filter: brightness(0.92); }
+.provider-btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.provider-btn:disabled { cursor: not-allowed; filter: grayscale(1); opacity: 0.6; } /* 로고가 PNG 라 바탕을 바꾸면 로고 칸만 남는다: 바탕·글자·로고를 함께 흐린다 */
+.provider-btn-logo { position: absolute; inset-block: 0; margin-block: auto; pointer-events: none; }
+.provider-btn--kakao { background: var(--color-kakao); color: var(--color-kakao-ink); border: 0; }
+.provider-btn--kakao .provider-btn-logo {
+  left: 15px; inline-size: 28px; block-size: 52px;
+  background: url("/brand/kakao_login_large_wide.png") -13.87px 0 / 346.67px 52px no-repeat;
+}
+.provider-btn--google { background: var(--color-google); color: var(--color-google-ink); border: var(--rule-hair) solid var(--color-google-rule); font-weight: 500; }
+.provider-btn--google .provider-btn-logo {
+  left: 15px; inline-size: 26px; block-size: 26px;
+  background: var(--google-g) -13px -13px / 52px 52px no-repeat;
+}
+.provider-btn--apple { background: var(--color-apple); color: var(--color-apple-ink); border: 0; }
+.provider-btn--apple .provider-btn-logo { left: 3px; inline-size: 52px; block-size: 52px; fill: currentColor; }
+@media (prefers-reduced-motion: reduce) { .provider-btn { transition: none; } }
+
+/* 앱(웹뷰) 안에서만: 웹 페이지 티가 나는 기본 동작을 끈다 (src/lib/inAppChrome.ts 가 html 에 in-app 을 붙인다).
+   입력 칸은 선택·붙여넣기가 되어야 하므로 되살린다. 지도는 자체 터치 처리라 손가락 두 개 확대가 그대로 된다. */
+html.in-app { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+html.in-app body { touch-action: manipulation; }
+html.in-app :is(input, textarea, select, [contenteditable=""], [contenteditable="true"]) { -webkit-touch-callout: default; -webkit-user-select: text; user-select: text; }
+html.in-app :is(img, svg, a) { -webkit-user-drag: none; }

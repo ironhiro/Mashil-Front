@@ -278,7 +278,7 @@ export const ko = {
     login: {
         intro: "평점, 댓글, 화장실 정보 제보는 로그인 후에 할 수 있어요. 화장실 찾기는 로그인 없이도 돼요.",
         continueWith: {
-            kakao: "카카오로 계속하기",
+            kakao: "카카오 로그인",
             google: "Google로 계속하기",
             apple: "Apple로 계속하기",
         },
