@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CopyButton } from "../components/CopyButton";
 import { useNavigate } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
@@ -7,57 +8,102 @@ import {
     Box,
     Button,
     Card,
-    CardActions,
     CardContent,
-    Chip,
-    MenuItem,
+    IconButton,
+    Link,
     Stack,
-    TextField,
     ToggleButton,
     ToggleButtonGroup,
     Typography,
+    useMediaQuery,
 } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
-import { computeStraightRoute, fetchNearbyToilets } from "../api";
+import { computeStraightRoute, fetchNearbyToilets, fetchRecommendedToilets, haversineMeters, searchToilets } from "../api";
+import { SearchResults } from "../components/SearchResults";
+import { SearchField } from "../components/SearchField";
 import type { LatLng, ToiletNear } from "../api";
 import { MapView } from "../components/MapView";
-import { OpenStatusBadge } from "../components/OpenStatusBadge";
+import { BoardRowContent } from "../components/BoardRow";
+import CloseIcon from "@mui/icons-material/Close";
 import { ToiletInteractions } from "../components/ToiletInteractions";
 import { ToiletList } from "../components/ToiletList";
-import {
-    ChangeRequestKind,
-    DEFAULT_SEARCH_RADIUS,
-    FACILITY_FILTER_OPTIONS,
-    FacilityFilter,
-    SEARCH_RADIUS_OPTIONS,
-    SearchRadius,
-    ViewMode,
-} from "../lib/enums";
+import { RecommendedList } from "../components/RecommendedList";
+import { ChangeRequestKind, DEFAULT_SEARCH_RADIUS, SearchRadius, ViewMode } from "../lib/enums";
+import { FilterSheet } from "../components/FilterSheet";
+import { EMPTY_FILTER, activeFilterCount, applyFilter } from "../lib/toiletFilter";
+import type { ToiletFilter } from "../lib/toiletFilter";
+import TuneIcon from "@mui/icons-material/Tune";
 
 import { MOCK_USER_LOCATION, USE_MOCK } from "../mock/flag";
-import { getCurrentPosition, isApp, LocationError, openDirectionsInApp } from "../lib/nativeBridge";
+import { getCurrentPosition, isApp, LocationError, openAppSettings, openDirectionsInApp } from "../lib/nativeBridge";
 import { friendlyError } from "../lib/friendlyError";
 import { formatDistance } from "../i18n";
-import { facilityChipLabels, toiletKindLabel } from "../lib/facilityChips";
+import { toiletKindLabel } from "../lib/facilityChips";
 import type { LocationFailure } from "../lib/nativeBridge";
 
 const SEOUL_CITY_HALL: LatLng = { lat: 37.5666, lng: 126.9784 };
+
+/**
+ * 탭을 옮기거나 상세에서 돌아와도 홈을 처음부터 다시 시작하지 않도록, 이 세션 동안의 홈 상태를 기억한다
+ * (위치, 반경, 조건, 지도/목록). 위치는 LOCATION_FRESH_MS 가 지나면 뒤에서 조용히 다시 잰다.
+ */
+const LOCATION_FRESH_MS = 2 * 60_000;
+/** 기기가 기억하는 위치를 이 시간 안의 것이면 먼저 쓴다 (그 뒤 정확한 위치로 고침) */
+const QUICK_LOCATION_MAX_AGE_MS = 10 * 60_000;
+/** 정확히 다시 잰 위치가 이만큼 이상 달라야 지도를 옮긴다 (그 아래는 측정 오차) */
+const LOCATION_MOVE_THRESHOLD_M = 30;
+const homeMemory: {
+    center: LatLng | null;
+    userLocation: LatLng | null;
+    locatedAt: number;
+    geoFailure: LocationFailure | null;
+    radiusM: SearchRadius;
+    filter: ToiletFilter;
+    viewMode: ViewMode;
+} = {
+    center: null,
+    userLocation: null,
+    locatedAt: 0,
+    geoFailure: null,
+    radiusM: DEFAULT_SEARCH_RADIUS,
+    filter: EMPTY_FILTER,
+    viewMode: ViewMode.Map,
+};
 
 export function HomePage() {
     const auth = useAuth();
     const navigate = useNavigate();
     const { t } = useTranslation();
-    const [center, setCenter] = useState<LatLng | null>(null);
-    const [userLocation, setUserLocation] = useState<LatLng | null>(null);
+    const [center, setCenter] = useState<LatLng | null>(homeMemory.center);
+    const [userLocation, setUserLocation] = useState<LatLng | null>(homeMemory.userLocation);
     // 클릭 시점의 스냅샷 — 표시용 값은 아래에서 최신 /near 응답으로 다시 풀어 씀 (평점 등록 후 평균 갱신).
     const [pickedToilet, setSelectedToilet] = useState<ToiletNear | null>(null);
+    const cardRef = useRef<HTMLDivElement | null>(null);
+    // 지도에서 마커를 누르면 그 장소의 카드로 스크롤 (목록에서는 바로 상세로 가므로 해당 없음)
+    const scrollToCard = useRef(false);
     const [routing, setRouting] = useState(false);
     // 위치를 못 받았을 때 이유 — 문장은 렌더 시 번역 (언어를 바꿔도 따라감)
-    const [geoFailure, setGeoFailure] = useState<LocationFailure | null>(null);
+    const [geoFailure, setGeoFailure] = useState<LocationFailure | null>(homeMemory.geoFailure);
 
-    const [radiusM, setRadiusM] = useState<SearchRadius>(DEFAULT_SEARCH_RADIUS);
-    const [facilityFilters, setFacilityFilters] = useState<FacilityFilter[]>([]);
-    const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.Map);
+    const [radiusM, setRadiusM] = useState<SearchRadius>(homeMemory.radiusM);
+    const [filter, setFilter] = useState<ToiletFilter>(homeMemory.filter);
+    // 이름·주소 검색 (MAP-06): 두 글자부터, 입력이 잠시 멈추면 찾는다. 검색 중에는 목록 자리에 결과가 나온다
+    // 입력 중인 글자는 SearchField 안에만 있고, 여기에는 정해진 검색어만 온다 (타자마다 지도·목록을 다시 그리지 않게)
+    const [searchTerm, setSearchTerm] = useState("");
+    const search = useQuery({
+        // 위치는 검색어를 칠 때의 것만 쓴다 (지도를 움직일 때마다 다시 찾지 않게 키에는 넣지 않음)
+        queryKey: ["toilets", "search", searchTerm],
+        queryFn: () => searchToilets(searchTerm, userLocation ?? center),
+        enabled: searchTerm !== "",
+        staleTime: 60_000,
+    });
+    const [sheetOpen, setSheetOpen] = useState(false);
+    const [viewMode, setViewMode] = useState<ViewMode>(homeMemory.viewMode);
+
+    // 바뀔 때마다 기억 (다음에 홈으로 돌아왔을 때 그대로 시작)
+    useEffect(() => {
+        Object.assign(homeMemory, { center, userLocation, geoFailure, radiusM, filter, viewMode });
+    }, [center, userLocation, geoFailure, radiusM, filter, viewMode]);
 
     useEffect(() => {
         if (USE_MOCK) {
@@ -65,17 +111,39 @@ export function HomePage() {
             setUserLocation(MOCK_USER_LOCATION);
             return;
         }
-        // 앱이면 브리지로 네이티브 GPS (권한 요청 포함), 브라우저면 navigator.geolocation
+        // 이 세션에서 이미 잰 위치가 아직 새것이면 다시 재지 않는다
+        if (homeMemory.center && Date.now() - homeMemory.locatedAt < LOCATION_FRESH_MS) return;
+        const hadCenter = homeMemory.center !== null;
+        // 앱이면 브리지로 네이티브 위치 (권한 요청 포함), 브라우저면 navigator.geolocation
         let cancelled = false;
-        getCurrentPosition({ enableHighAccuracy: false, timeout: 5_000, maximumAge: 60_000 })
-            .then(({ lat, lng }) => {
+        // 사용자가 지도를 다른 곳으로 옮겨 검색했으면 그 중심은 그대로 두고 내 위치 점만 옮긴다
+        const apply = (here: LatLng, first: boolean) => {
+            setCenter((c) => (!c || (first && !hadCenter) || sameLatLng(c, homeMemory.userLocation) ? here : c));
+            setUserLocation(here);
+        };
+        // 1단계: 기기가 기억하는 최근 위치(10분 안)면 GPS 를 기다리지 않고 바로 지도를 그린다.
+        // 2단계: 그 위치가 기억값이었으면 뒤에서 정확히 다시 재고, 의미 있게 달라졌을 때만 옮긴다.
+        getCurrentPosition({ enableHighAccuracy: false, timeout: 8_000, maximumAge: QUICK_LOCATION_MAX_AGE_MS })
+            .then((first) => {
                 if (cancelled) return;
-                const here = { lat, lng };
-                setCenter(here);
-                setUserLocation(here);
+                const here = { lat: first.lat, lng: first.lng };
+                homeMemory.locatedAt = Date.now();
+                setGeoFailure(null);
+                apply(here, true);
+                if (!first.cached) return;
+                getCurrentPosition({ enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 })
+                    .then((precise) => {
+                        if (cancelled) return;
+                        const p = { lat: precise.lat, lng: precise.lng };
+                        if (haversineMeters(here, p) < LOCATION_MOVE_THRESHOLD_M) return;
+                        homeMemory.locatedAt = Date.now();
+                        apply(p, false);
+                    })
+                    .catch(() => undefined); // 기억값이라도 보여 주고 있으니 조용히 둔다
             })
             .catch((err: unknown) => {
                 if (cancelled) return;
+                if (hadCenter) return; // 다시 재기 실패: 보고 있던 화면을 그대로 둔다
                 setCenter(SEOUL_CITY_HALL);
                 setGeoFailure(err instanceof LocationError ? err.reason : "failed");
             });
@@ -96,14 +164,45 @@ export function HomePage() {
     }, [pickedToilet, query.data]);
 
     const filteredToilets = useMemo(() => {
-        const list = query.data ?? [];
-        return list.filter((t) => {
-            for (const f of facilityFilters) {
-                if (!facilityMatch(t, f)) return false;
-            }
-            return true;
-        });
-    }, [query.data, facilityFilters]);
+        return applyFilter(query.data ?? [], filter);
+    }, [query.data, filter]);
+
+    // 추천: 추천 보기를 열었을 때만 받는다. 조건(필터)은 근처 목록과 같게 적용
+    const recQuery = useQuery({
+        enabled: center !== null && viewMode === ViewMode.Recommended,
+        queryKey: ["toilets", "recommended", center?.lat, center?.lng, radiusM],
+        queryFn: () => fetchRecommendedToilets(center!.lat, center!.lng, radiusM),
+    });
+    const recommended = useMemo(() => {
+        if (!recQuery.data) return undefined;
+        const allowed = new Set(applyFilter(recQuery.data.map((r) => r.toilet), filter).map((t) => t.id));
+        return recQuery.data.filter((r) => allowed.has(r.toilet.id));
+    }, [recQuery.data, filter]);
+
+    // 지도 가운데가 내 위치인가 (거리를 "내 위치에서"로 말할 수 있는가)
+    const centeredOnMe = sameLatLng(userLocation, center);
+
+    /** 상세 화면으로 — 거리 계산 기준점과 그 기준이 "내 위치"인지 함께 넘긴다 */
+    const openDetail = (toilet: ToiletNear) => {
+        navigate(`/toilets/${toilet.id}`, { state: { origin: center, fromMe: centeredOnMe } });
+    };
+    const activeFilters = activeFilterCount(filter);
+    // 넓은 화면에서는 지도가 늘 오른쪽에 있으므로 왼쪽 패널은 목록이나 추천 (지도 보기는 목록으로 본다)
+    const wide = useMediaQuery("(min-width: 64rem)");
+    const panelMode = wide && viewMode === ViewMode.Map ? ViewMode.List : viewMode;
+    /** 넓은 화면의 목록에서 고르면 상세로 가지 않고 지도에서 고른다 (지도와 카드가 함께 보이므로) */
+    const selectOnMap = (toilet: ToiletNear) => {
+        scrollToCard.current = true;
+        setSelectedToilet(toilet);
+    };
+
+    // 카드가 그려진 뒤 스크롤. 동작 줄이기 설정이면 부드러운 스크롤 없이 바로
+    useEffect(() => {
+        if (!scrollToCard.current || !pickedToilet) return;
+        scrollToCard.current = false;
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        cardRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    }, [pickedToilet]);
 
     const route = useMemo(() => {
         if (!routing || !userLocation || !selectedToilet) return null;
@@ -114,187 +213,219 @@ export function HomePage() {
         });
     }, [routing, userLocation, selectedToilet]);
 
-    return (
-        <Stack spacing={2}>
-            <Typography variant="h4">{t("home.title")}</Typography>
-            {geoFailure && (
-                <Alert severity="info">{t("home.geoFallback", { reason: t(`location.${geoFailure}`) })}</Alert>
-            )}
-            {query.isError && (
-                <Alert severity="error">
-                    {friendlyError(query.error, t("home.loadFailed"))}
-                </Alert>
-            )}
-
-            {/* === 필터 패널 === */}
-            <Stack
-                direction={{ xs: "column", sm: "row" }}
-                spacing={1.5}
-                alignItems={{ xs: "stretch", sm: "center" }}
-                sx={{ flexWrap: "wrap" }}
-                useFlexGap
+    // 제목 · 알림 · 필터와 보기 전환
+    const header = (
+        <>
+        <Typography variant="h4" component="h1">{t("home.title")}</Typography>
+        {geoFailure && (
+            <Alert
+                severity="info"
+                action={
+                    // "다시 묻지 않음"이면 앱이 권한을 다시 물을 수 없으니 설정 앱으로 보낸다 (APP-02)
+                    geoFailure === "deniedForever" && isApp() ? (
+                        <Button color="inherit" size="small" onClick={() => void openAppSettings()}>
+                            {t("home.openSettings")}
+                        </Button>
+                    ) : undefined
+                }
             >
-                <TextField
-                    select
-                    size="small"
-                    label={t("home.radius")}
-                    value={radiusM}
-                    onChange={(e) => setRadiusM(Number(e.target.value) as SearchRadius)}
-                    sx={{ minWidth: 130 }}
-                >
-                    {SEARCH_RADIUS_OPTIONS.map((o) => (
-                        <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
-                    ))}
-                </TextField>
+                {t("home.geoFallback", { reason: t(`location.${geoFailure}`) })}
+            </Alert>
+        )}
+        {query.isError && (
+            <Alert severity="error">
+                {friendlyError(query.error, t("home.loadFailed"))}
+            </Alert>
+        )}
 
-                <ToggleButtonGroup
-                    size="small"
-                    value={facilityFilters}
-                    onChange={(_, v: FacilityFilter[]) => setFacilityFilters(v)}
-                    aria-label={t("home.facilityFilter")}
-                >
-                    {FACILITY_FILTER_OPTIONS.map((f) => (
-                        <ToggleButton key={f} value={f}>{t(`facility.filter.${f}`)}</ToggleButton>
-                    ))}
-                </ToggleButtonGroup>
+        <SearchField onSearch={setSearchTerm} />
 
-                <Box sx={{ flexGrow: 1 }} />
+        {/* === 필터 버튼 + 지도/목록 전환 === */}
+        <Stack direction="row" spacing={1} alignItems="center">
+            <Button
+                variant={activeFilters > 0 ? "contained" : "outlined"}
+                color="secondary"
+                onClick={() => setSheetOpen(true)}
+                startIcon={<TuneIcon />}
+                sx={{ minHeight: 40 }}
+            >
+                {t("filter.button")}
+                {activeFilters > 0 && ` ${activeFilters}`}
+                <Box component="span" sx={{ ml: 1, fontWeight: 500 }}>
+                    {formatDistance(radiusM, true)}
+                </Box>
+            </Button>
+            <Box sx={{ flexGrow: 1 }} />
+            <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={panelMode}
+                onChange={(_, v: ViewMode | null) => v && setViewMode(v)}
+                aria-label={t("home.viewToggle")}
+            >
+                {!wide && <ToggleButton value={ViewMode.Map}>{t("home.viewMap")}</ToggleButton>}
+                <ToggleButton value={ViewMode.List}>{t("home.viewList")}</ToggleButton>
+                <ToggleButton value={ViewMode.Recommended}>{t("home.viewRecommended")}</ToggleButton>
+            </ToggleButtonGroup>
+        </Stack>
+        <FilterSheet
+            open={sheetOpen}
+            onClose={() => setSheetOpen(false)}
+            center={center}
+            filter={filter}
+            radiusM={radiusM}
+            onApply={(f, r) => {
+                setFilter(f);
+                setRadiusM(r);
+            }}
+        />
 
-                <ToggleButtonGroup
-                    size="small"
-                    exclusive
-                    value={viewMode}
-                    onChange={(_, v: ViewMode | null) => v && setViewMode(v)}
-                    aria-label={t("home.viewToggle")}
-                >
-                    <ToggleButton value={ViewMode.Map}>{t("home.viewMap")}</ToggleButton>
-                    <ToggleButton value={ViewMode.List}>{t("home.viewList")}</ToggleButton>
-                </ToggleButtonGroup>
-            </Stack>
+        </>
+    );
 
-            {/* === 지도 또는 목록 === */}
-            {center && viewMode === ViewMode.Map && (
-                <MapView
-                    center={center}
-                    radiusM={radiusM}
-                    toilets={filteredToilets}
-                    selectedId={selectedToilet?.id ?? null}
-                    onSearchAtCenter={(c) => {
-                        setCenter(c);
-                        // 새 영역으로 이동했으면 이전 선택은 컨텍스트가 어긋나므로 자동 해제
-                        setSelectedToilet(null);
-                        setRouting(false);
-                    }}
-                    onSelectToilet={(t) => setSelectedToilet(t)}
-                    routeFrom={route ? userLocation : null}
-                    routeTo={
-                        route && selectedToilet?.latitude != null && selectedToilet.longitude != null
-                            ? { lat: selectedToilet.latitude, lng: selectedToilet.longitude }
-                            : null
-                    }
-                />
-            )}
-            {viewMode === ViewMode.List && (
-                <ToiletList
-                    toilets={filteredToilets}
-                    totalBeforeFilter={query.data?.length}
-                    selectedId={selectedToilet?.id ?? null}
-                    onSelect={(t) => setSelectedToilet(t)}
-                />
-            )}
+    const mapView = (
+        <MapView
+            center={center}
+            loadingPlaces={query.isLoading}
+            radiusM={radiusM}
+            toilets={filteredToilets}
+            selectedId={selectedToilet?.id ?? null}
+            onSearchAtCenter={(c) => {
+                setCenter(c);
+                // 새 영역으로 이동했으면 이전 선택은 컨텍스트가 어긋나므로 자동 해제
+                setSelectedToilet(null);
+                setRouting(false);
+            }}
+            onSelectToilet={(t) => {
+                scrollToCard.current = true;
+                setSelectedToilet(t);
+            }}
+            userLocation={userLocation}
+            routeFrom={route ? userLocation : null}
+            routeTo={
+                route && selectedToilet?.latitude != null && selectedToilet.longitude != null
+                    ? { lat: selectedToilet.latitude, lng: selectedToilet.longitude }
+                    : null
+            }
+        />
+    );
 
-            {/* === 선택 화장실 카드 === */}
-            {selectedToilet && (
-                <Card variant="outlined">
-                    <CardContent sx={{ pb: 1 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                            {selectedToilet.name}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                            {toiletKindLabel(t, selectedToilet.kind)} ·{" "}
-                            {t(
-                                userLocation && center && userLocation.lat === center.lat && userLocation.lng === center.lng
-                                    ? "home.fromMe"
-                                    : "home.fromMapCenter",
-                                { distance: formatDistance(selectedToilet.distanceM) },
-                            )}
-                        </Typography>
+    // 목록 또는 추천
+    const results = searchTerm !== "" ? (
+        <SearchResults
+            results={search.data}
+            loading={search.isFetching}
+            failed={search.isError}
+            origin={userLocation ?? center}
+            onSelect={(r) => navigate(`/toilets/${r.id}`)}
+        />
+    ) : (
+        <>
+        {panelMode === ViewMode.List && (
+            <ToiletList
+                toilets={filteredToilets}
+                totalBeforeFilter={query.data?.length}
+                selectedId={selectedToilet?.id ?? null}
+                onSelect={wide ? selectOnMap : openDetail}
+            />
+        )}
+
+        {panelMode === ViewMode.Recommended && (
+            <RecommendedList
+                items={recommended}
+                loading={recQuery.isLoading}
+                failed={recQuery.isError}
+                onSelect={wide ? selectOnMap : openDetail}
+                onShowList={() => setViewMode(ViewMode.List)}
+            />
+        )}
+
+        </>
+    );
+
+    // 고른 화장실 카드와 평점·댓글
+    const selection = (
+        <>
+        {/* === 선택 화장실 카드 === */}
+        {selectedToilet && (
+            <Card variant="outlined" ref={cardRef} sx={{ scrollMarginTop: "var(--space-md)" }}>
+                <CardContent sx={{ pt: 1, pb: 2 }}>
+                    {/* 머리 줄은 목록의 안내판 행과 같은 모양: 거리, 이름과 시설, 오른쪽 끝 상태 */}
+                    <Stack direction="row" alignItems="flex-start" spacing={1}>
+                        <Box className="board-row is-static" sx={{ flex: 1, minWidth: 0 }}>
+                            <BoardRowContent toilet={selectedToilet} facilities="detailed" />
+                        </Box>
+                        <IconButton
+                            aria-label={t("common.close")}
+                            onClick={() => {
+                                setSelectedToilet(null);
+                                setRouting(false);
+                            }}
+                            sx={{ width: 44, height: 44, flexShrink: 0, mt: 1 }}
+                        >
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+
+                    {/* 사실 목록: 머리카락 선으로 나눈 2열 */}
+                    <Box component="dl" className="facts" sx={{ mt: 1 }}>
+                        <dt>{t("home.factKind")}</dt>
+                        <dd>{toiletKindLabel(t, selectedToilet.kind)}</dd>
+                        <dt>{t("home.factDistance")}</dt>
+                        <dd>
+                            {t(centeredOnMe ? "home.fromMe" : "home.fromMapCenter", {
+                                distance: formatDistance(selectedToilet.distanceM),
+                            })}
+                        </dd>
                         {(selectedToilet.roadAddress || selectedToilet.lotAddress) && (
-                            <Typography variant="body2" sx={{ mb: 0.5 }}>
-                                {selectedToilet.roadAddress ?? selectedToilet.lotAddress}
-                            </Typography>
+                            <>
+                                <dt>{t("home.factAddress")}</dt>
+                                <dd>
+                                    {selectedToilet.roadAddress ?? selectedToilet.lotAddress}
+                                    <CopyButton text={(selectedToilet.roadAddress ?? selectedToilet.lotAddress)!} what={t("copy.address")} />
+                                </dd>
+                            </>
                         )}
-
-                        <Stack direction="row" spacing={0.5} sx={{ mt: 1 }} useFlexGap flexWrap="wrap" alignItems="center">
-                            <OpenStatusBadge
-                                openHours={selectedToilet.openHours}
-                                openHoursDetail={selectedToilet.openHoursDetail}
-                            />
-                            {facilityChipLabels(t, selectedToilet, "detailed").map((label) => (
-                                <Chip key={label} size="small" label={label} />
-                            ))}
-                        </Stack>
-
                         {(selectedToilet.openHours || selectedToilet.openHoursDetail) && (
-                            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
-                                {t("home.listedHours", {
-                                    hours: [selectedToilet.openHours, selectedToilet.openHoursDetail]
-                                        .filter(Boolean)
-                                        .join(" · "),
-                                })}
-                            </Typography>
+                            <>
+                                <dt>{t("home.factHours")}</dt>
+                                <dd>{[selectedToilet.openHours, selectedToilet.openHoursDetail].filter(Boolean).join(", ")}</dd>
+                            </>
                         )}
                         {selectedToilet.phone && (
-                            <Typography variant="body2">
-                                <b>{t("home.phone")}</b> <a href={`tel:${selectedToilet.phone}`}>{selectedToilet.phone}</a>
-                            </Typography>
+                            <>
+                                <dt>{t("home.phone")}</dt>
+                                <dd>
+                                    <a href={`tel:${selectedToilet.phone}`}>{selectedToilet.phone}</a>
+                                    <CopyButton text={selectedToilet.phone} what={t("copy.phone")} />
+                                </dd>
+                            </>
                         )}
+                    </Box>
 
-                        {route && (
-                            <Alert severity="success" sx={{ mt: 1.5 }} icon={false}>
-                                <Stack spacing={0.5}>
-                                    <Typography variant="body2">
-                                        <Trans
-                                            i18nKey="home.routeSummary"
-                                            values={{ distance: formatDistance(route.distanceM), minutes: route.walkingMinutes }}
-                                            components={{ b: <b /> }}
-                                        />
-                                    </Typography>
-                                    <Typography variant="caption" color="text.secondary">
-                                        {t("home.routeNote")}
-                                    </Typography>
-                                </Stack>
-                            </Alert>
-                        )}
-                    </CardContent>
-                    <CardActions
-                        disableSpacing
-                        // disableSpacing: MUI 기본 selector 비활성화.
-                        //   기본은 `& > :not(:first-of-type) { ml: 1 }` 인데, "카카오맵에서 길찾기"
-                        //   버튼이 `component="a"` 로 <a> 가 되면서 다른 <button> 들과 element type 이
-                        //   섞여 first-of-type 평가가 종류별로 따로 일어나 간격이 어긋남.
-                        // 대신 flex `gap` 으로 element type 무관 균일 간격.
-                        sx={{
-                            gap: 1,
-                            flexWrap: "wrap",
-                            flexDirection: { xs: "column", sm: "row" },
-                            alignItems: { xs: "stretch", sm: "center" },
-                        }}
-                    >
-                        {userLocation ? (
-                            <Button size="small" onClick={() => setRouting((v) => !v)}>
-                                {routing ? t("home.hideDistance") : t("home.showDistance")}
-                            </Button>
-                        ) : (
-                            <Typography variant="caption" color="text.secondary" sx={{ pl: 1 }}>
-                                {t("home.distanceNeedsLocation")}
-                            </Typography>
-                        )}
+                    {route && (
+                        <Alert severity="success" sx={{ mt: 1.5 }} icon={false}>
+                            <Stack spacing={0.5}>
+                                <Typography variant="body2">
+                                    <Trans
+                                        i18nKey="home.routeSummary"
+                                        values={{ distance: formatDistance(route.distanceM), minutes: route.walkingMinutes }}
+                                        components={{ b: <b /> }}
+                                    />
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                    {t("home.routeNote")}
+                                </Typography>
+                            </Stack>
+                        </Alert>
+                    )}
+                    {/* 행동은 세 층: 주 행동(길찾기) 하나, 보조 두 칸, 글자 링크 */}
+                    <Stack spacing={1} sx={{ mt: 2 }}>
                         {selectedToilet.latitude != null && selectedToilet.longitude != null && (
                             <Button
-                                size="small"
                                 variant="contained"
-                                color="primary"
+                                size="large"
+                                fullWidth
                                 component="a"
                                 href={buildKakaoMapRouteUrl(selectedToilet, userLocation, t("home.myLocation"))}
                                 target="_blank"
@@ -310,82 +441,108 @@ export function HomePage() {
                                 {t("home.kakaoDirections")}
                             </Button>
                         )}
+                        <Box sx={{ display: "grid", gridTemplateColumns: userLocation ? "repeat(2, minmax(0, 1fr))" : "minmax(0, 1fr)", gap: 1 }}>
+                            <Button variant="outlined" onClick={() => openDetail(selectedToilet)}>
+                                {t("detail.more")}
+                            </Button>
+                            {userLocation && (
+                                <Button variant="outlined" aria-pressed={routing} onClick={() => setRouting((v) => !v)}>
+                                    {routing ? t("home.hideDistance") : t("home.showDistance")}
+                                </Button>
+                            )}
+                        </Box>
+                        {!userLocation && (
+                            <Typography variant="body2" color="text.secondary">
+                                {t("home.distanceNeedsLocation")}
+                            </Typography>
+                        )}
                         {auth.user && (
-                            <>
-                                <Button
-                                    size="small"
+                            <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" sx={{ pt: 0.5 }}>
+                                <Link
+                                    component="button"
+                                    type="button"
+                                    variant="body2"
                                     onClick={() => navigate("/change-requests/new", {
-                                        state: {
-                                            kind: ChangeRequestKind.Update,
-                                            targetToiletId: selectedToilet.id,
-                                            targetName: selectedToilet.name,
-                                        },
-                                    })}
+                                    state: {
+                                        kind: ChangeRequestKind.Edit,
+                                        targetToiletId: selectedToilet.id,
+                                        targetName: selectedToilet.name,
+                                    },
+                                })}
                                 >
                                     {t("home.fixInfo")}
-                                </Button>
-                                <Button
-                                    size="small"
-                                    color="error"
+                                </Link>
+                                <Link
+                                    component="button"
+                                    type="button"
+                                    variant="body2"
                                     onClick={() => navigate("/change-requests/new", {
-                                        state: {
-                                            kind: ChangeRequestKind.Delete,
-                                            targetToiletId: selectedToilet.id,
-                                            targetName: selectedToilet.name,
-                                        },
-                                    })}
+                                    state: {
+                                        kind: ChangeRequestKind.Delete,
+                                        targetToiletId: selectedToilet.id,
+                                        targetName: selectedToilet.name,
+                                    },
+                                })}
                                 >
                                     {t("home.reportGone")}
-                                </Button>
-                            </>
+                                </Link>
+                            </Stack>
                         )}
-                        <Button
-                            size="small"
-                            onClick={() => {
-                                setSelectedToilet(null);
-                                setRouting(false);
-                            }}
-                        >
-                            {t("common.close")}
-                        </Button>
-                    </CardActions>
-                </Card>
-            )}
+                    </Stack>
+                </CardContent>
+            </Card>
+        )}
 
-            {selectedToilet && (
-                <ToiletInteractions
-                    toiletId={selectedToilet.id}
-                    averageRating={selectedToilet.averageRating}
-                />
-            )}
+        {selectedToilet && (
+            <ToiletInteractions
+                toiletId={selectedToilet.id}
+                averageRating={selectedToilet.averageRating}
+                ratingCount={selectedToilet.ratingCount}
+            />
+        )}
 
-            {/* === 상태 표시 (dev 전용 디버그 줄, 주소에 ?debug 를 붙였을 때만) === */}
-            {import.meta.env.DEV && !USE_MOCK && new URLSearchParams(window.location.search).has("debug") && (
-                <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "monospace" }}>
-                    center=({center?.lat.toFixed(5)}, {center?.lng.toFixed(5)}) · status={query.status}
-                    {" · "}{filteredToilets.length}/{query.data?.length ?? 0} 곳
-                    {facilityFilters.length > 0 && ` · 필터: ${facilityFilters.join(",")}`}
-                    {query.isFetching && " · 갱신 중…"}
-                </Typography>
-            )}
+        </>
+    );
+
+    // dev 전용 디버그 줄
+    const debug = (
+        <>
+        {/* === 상태 표시 (dev 전용 디버그 줄, 주소에 ?debug 를 붙였을 때만) === */}
+        {import.meta.env.DEV && !USE_MOCK && new URLSearchParams(window.location.search).has("debug") && (
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "monospace" }}>
+                center=({center?.lat.toFixed(5)}, {center?.lng.toFixed(5)}) status={query.status}
+                {" "}{filteredToilets.length}/{query.data?.length ?? 0}
+                {activeFilters > 0 && ` filter=${JSON.stringify(filter)}`}
+                {query.isFetching && " fetching"}
+            </Typography>
+        )}
+        </>
+    );
+
+    // 넓은 화면(64rem~): 왼쪽 패널(제목·필터·고른 곳·목록)과 오른쪽 지도를 나란히. 지도는 화면 높이를 채운 채 붙어 있다
+    if (wide) {
+        return (
+            <Box className="home-split">
+                <Stack spacing={2} className="home-panel">
+                    {header}
+                    {selection}
+                    {results}
+                    {debug}
+                </Stack>
+                <Box className="home-map">{mapView}</Box>
+            </Box>
+        );
+    }
+
+    return (
+        <Stack spacing={2}>
+            {header}
+            {viewMode === ViewMode.Map && mapView}
+            {results}
+            {selection}
+            {debug}
         </Stack>
     );
-}
-
-function facilityMatch(t: ToiletNear, key: FacilityFilter): boolean {
-    switch (key) {
-        case FacilityFilter.Men:
-            return t.maleStallCount + t.maleUrinalCount > 0;
-        case FacilityFilter.Women:
-            return t.femaleStallCount > 0;
-        case FacilityFilter.Accessible:
-            return (
-                t.maleAccessibleStallCount + t.maleAccessibleUrinalCount + t.femaleAccessibleStallCount
-                > 0
-            );
-        case FacilityFilter.Child:
-            return t.maleChildStallCount + t.maleChildUrinalCount + t.femaleChildStallCount > 0;
-    }
 }
 
 function buildKakaoMapRouteUrl(
@@ -402,4 +559,8 @@ function buildKakaoMapRouteUrl(
         return `https://map.kakao.com/link/from/${sName},${user.lat},${user.lng}/to/${eName},${eLat},${eLng}`;
     }
     return `https://map.kakao.com/link/to/${eName},${eLat},${eLng}`;
+}
+
+function sameLatLng(a: LatLng | null, b: LatLng | null) {
+    return !!a && !!b && a.lat === b.lat && a.lng === b.lng;
 }

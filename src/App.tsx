@@ -1,201 +1,126 @@
-import { useState } from "react";
-import {
-    AppBar,
-    Box,
-    Button,
-    Container,
-    Divider,
-    Drawer,
-    IconButton,
-    List,
-    ListItemButton,
-    ListItemText,
-    ListSubheader,
-    Stack,
-    ToggleButton,
-    ToggleButtonGroup,
-    Toolbar,
-    Typography,
-} from "@mui/material";
-import MenuIcon from "@mui/icons-material/Menu";
-import {
-    Link as RouterLink,
-    Route,
-    Routes,
-    useNavigate,
-} from "react-router-dom";
+import { lazy, Suspense, useEffect, useRef } from "react";
+import { Box, CircularProgress, Container } from "@mui/material";
 import { useTranslation } from "react-i18next";
-import { useAuth, userLabel } from "./auth/AuthContext";
+import { Route, Routes, useLocation } from "react-router-dom";
+import { BottomNav, showsBottomNav } from "./components/BottomNav";
 import { RequireAdmin } from "./components/RequireAdmin";
-import { SUPPORTED_LANGUAGES, currentLanguage } from "./i18n";
-import type { LanguageCode } from "./i18n";
-import { UserRole } from "./lib/enums";
-import { AdminChangeRequestsPage } from "./pages/AdminChangeRequestsPage";
+// 찾기와 상세는 첫 화면과 가장 잦은 이동이라 바로 싣고, 나머지 화면은 처음 열 때 받는다 (첫 로딩 번들을 줄인다)
 import { HomePage } from "./pages/HomePage";
-import { LoginPage } from "./pages/LoginPage";
-import { NewChangeRequestPage } from "./pages/NewChangeRequestPage";
+import { ToiletDetailPage } from "./pages/ToiletDetailPage";
+
+/** 이름 있는 export 를 React.lazy 가 받는 default 모양으로 */
+function page<K extends string>(load: () => Promise<Record<K, React.ComponentType>>, name: K) {
+    return lazy(() => load().then((m) => ({ default: m[name] })));
+}
+const LoginPage = page(() => import("./pages/LoginPage"), "LoginPage");
+const MePage = page(() => import("./pages/MePage"), "MePage");
+const NewChangeRequestPage = page(() => import("./pages/NewChangeRequestPage"), "NewChangeRequestPage");
+const ConsentPage = page(() => import("./pages/ConsentPage"), "ConsentPage");
+const TermsPage = page(() => import("./pages/TermsPage"), "TermsPage");
+const AdminChangeRequestsPage = page(() => import("./pages/AdminChangeRequestsPage"), "AdminChangeRequestsPage");
+const AdminCommentReportsPage = page(() => import("./pages/AdminCommentReportsPage"), "AdminCommentReportsPage");
+const AdminHomePage = page(() => import("./pages/AdminHomePage"), "AdminHomePage");
+const AdminImportsPage = page(() => import("./pages/AdminImportsPage"), "AdminImportsPage");
+const AdminIssuesPage = page(() => import("./pages/AdminIssuesPage"), "AdminIssuesPage");
+const AdminStatusPage = page(() => import("./pages/AdminStatusPage"), "AdminStatusPage");
+const AdminToiletPage = page(() => import("./pages/AdminToiletPage"), "AdminToiletPage");
+import { MaintenanceScreen, ReadOnlyBanner } from "./components/Maintenance";
+import { useAppStatus } from "./lib/appStatus";
+import { useAuth } from "./auth/AuthContext";
+import { UserRole } from "./lib/enums";
+
+/** 관리 화면 경로 → 화면. 모두 RequireAdmin 으로 감싼다 */
+const ADMIN_ROUTES = [
+    { path: "/admin", element: <AdminHomePage /> },
+    { path: "/admin/change-requests", element: <AdminChangeRequestsPage /> },
+    { path: "/admin/comments", element: <AdminCommentReportsPage /> },
+    { path: "/admin/issues", element: <AdminIssuesPage /> },
+    { path: "/admin/imports", element: <AdminImportsPage /> },
+    { path: "/admin/toilets/:id", element: <AdminToiletPage /> },
+    { path: "/admin/status", element: <AdminStatusPage /> },
+];
+
+/** 화면을 처음 열 때 코드를 받는 동안 */
+function PageLoading() {
+    const { t } = useTranslation();
+    return (
+        <Box sx={{ display: "grid", placeItems: "center", py: 8 }}>
+            <CircularProgress aria-label={t("common.loadingPage")} />
+        </Box>
+    );
+}
+
+/**
+ * 화면이 바뀌면 포커스를 새 화면의 제목(h1)으로 옮기고 탭 제목도 맞춘다. SPA 는 페이지를 새로 읽지 않아서,
+ * 그대로 두면 스크린리더가 화면이 바뀐 줄 모르고 포커스가 사라진 버튼에 남는다. 첫 화면에서는 건드리지 않는다.
+ */
+function useRouteFocus(pathname: string) {
+    // 직전에 포커스를 옮긴 경로. 첫 화면은 여기서 시작해 건너뛴다 (StrictMode 가 효과를 두 번 돌려도 그대로)
+    const last = useRef(pathname);
+    useEffect(() => {
+        if (last.current === pathname) return;
+        last.current = pathname;
+        let tries = 0;
+        let frame = 0;
+        const focusHeading = () => {
+            const main = document.getElementById("main");
+            const h1 = main?.querySelector<HTMLElement>("h1");
+            // 나중에 받는 화면은 제목이 조금 늦게 생긴다
+            if (!h1 && tries++ < 20) {
+                frame = requestAnimationFrame(focusHeading);
+                return;
+            }
+            const target = h1 ?? main;
+            if (!target) return;
+            if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
+            target.focus({ preventScroll: true });
+            const base = document.title.split(" · ").pop() ?? document.title;
+            document.title = h1?.textContent ? `${h1.textContent} · ${base}` : base;
+        };
+        frame = requestAnimationFrame(focusHeading);
+        return () => cancelAnimationFrame(frame);
+    }, [pathname]);
+}
 
 export function App() {
-    const auth = useAuth();
-    const navigate = useNavigate();
-    const { t, i18n } = useTranslation();
-    const [navOpen, setNavOpen] = useState(false);
+    const appStatus = useAppStatus();
+    const { pathname } = useLocation();
+    const withNav = showsBottomNav(pathname);
+    const isAdmin = useAuth().user?.role === UserRole.Admin;
+    useRouteFocus(pathname);
 
-    const closeNav = () => setNavOpen(false);
+    // 전체 점검이면 다른 화면 대신 점검 화면 (OPS-05). 관리자는 점검을 끌 수 있어야 하므로 띠만 보고 그대로 쓴다
+    if (appStatus.data?.maintenance && !isAdmin) {
+        return <MaintenanceScreen status={appStatus.data} onRetry={() => void appStatus.refetch()} retrying={appStatus.isFetching} />;
+    }
 
+    // 위쪽 앱 바와 왼쪽 서랍 대신 하단 탭 세 칸 (찾기 / 제보 / 내 정보)
     return (
-        <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-            <AppBar position="static" color="primary">
-                <Toolbar>
-                    <IconButton
-                        edge="start"
-                        color="inherit"
-                        aria-label={t("app.openMenu")}
-                        onClick={() => setNavOpen(true)}
-                        sx={{ mr: 1 }}
-                    >
-                        <MenuIcon />
-                    </IconButton>
-                    <Stack
-                        direction="row"
-                        alignItems="baseline"
-                        spacing={1.5}
-                        component={RouterLink}
-                        to="/"
-                        sx={{ color: "inherit", textDecoration: "none", flexGrow: 1 }}
-                    >
-                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                            {t("app.name")}
-                        </Typography>
-                        <Typography variant="caption" sx={{ opacity: 0.85, display: { xs: "none", sm: "inline" } }}>
-                            {t("app.tagline")}
-                        </Typography>
-                    </Stack>
+        <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }} className={withNav ? "app-root has-bottom-nav" : "app-root"}>
+            {appStatus.data?.maintenance ? (
+                <ReadOnlyBanner status={appStatus.data} text="adminConsole.adminMaintenanceBanner" />
+            ) : (
+                appStatus.data?.readOnly && <ReadOnlyBanner status={appStatus.data} />
+            )}
 
-                    {auth.user ? (
-                        <Typography variant="body2" sx={{ opacity: 0.9, display: { xs: "none", sm: "inline" } }}>
-                            {userLabel(auth.user)}
-                            {auth.user.role === UserRole.Admin && ` · ${t("app.roleAdmin")}`}
-                        </Typography>
-                    ) : (
-                        <Button color="inherit" component={RouterLink} to="/login">
-                            {t("nav.login")}
-                        </Button>
-                    )}
-                </Toolbar>
-            </AppBar>
-
-            <Drawer anchor="left" open={navOpen} onClose={closeNav}>
-                <Box sx={{ width: 260, pt: 1 }} role="navigation">
-                    {auth.user && (
-                        <Box sx={{ px: 2, py: 1.5 }}>
-                            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                                {userLabel(auth.user)}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                                {auth.user.role === UserRole.Admin ? t("app.roleAdmin") : t("app.roleUser")}
-                            </Typography>
-                        </Box>
-                    )}
-                    <Divider />
-                    <List>
-                        <ListItemButton
-                            onClick={() => {
-                                closeNav();
-                                navigate("/");
-                            }}
-                        >
-                            <ListItemText primary={t("nav.home")} secondary={t("nav.homeHint")} />
-                        </ListItemButton>
-                        {auth.user && (
-                            <ListItemButton
-                                onClick={() => {
-                                    closeNav();
-                                    navigate("/change-requests/new");
-                                }}
-                            >
-                                <ListItemText primary={t("nav.report")} secondary={t("nav.reportHint")} />
-                            </ListItemButton>
-                        )}
-                        {auth.user?.role === UserRole.Admin && (
-                            <ListItemButton
-                                onClick={() => {
-                                    closeNav();
-                                    navigate("/admin/change-requests");
-                                }}
-                            >
-                                <ListItemText primary={t("nav.review")} secondary={t("nav.reviewHint")} />
-                            </ListItemButton>
-                        )}
-                    </List>
-                    <Divider />
-                    <List>
-                        {auth.user ? (
-                            <ListItemButton
-                                onClick={() => {
-                                    auth.logout();
-                                    closeNav();
-                                    navigate("/");
-                                }}
-                            >
-                                <ListItemText primary={t("nav.logout")} />
-                            </ListItemButton>
-                        ) : (
-                            <ListItemButton
-                                onClick={() => {
-                                    closeNav();
-                                    navigate("/login");
-                                }}
-                            >
-                                <ListItemText primary={t("nav.loginOrRegister")} />
-                            </ListItemButton>
-                        )}
-                    </List>
-                    <Divider />
-                    <List
-                        subheader={
-                            // 언어 이름은 번역하지 않고 각 언어로 표기 (내가 못 읽는 언어로 바뀌어도 돌아올 수 있게)
-                            <ListSubheader disableSticky sx={{ bgcolor: "transparent" }}>
-                                {t("nav.language")}
-                                {currentLanguage() !== "en" && " · Language"}
-                            </ListSubheader>
-                        }
-                    >
-                        <Box sx={{ px: 2, pb: 2 }}>
-                            <ToggleButtonGroup
-                                exclusive
-                                fullWidth
-                                size="small"
-                                value={currentLanguage()}
-                                onChange={(_, v: LanguageCode | null) => v && void i18n.changeLanguage(v)}
-                                aria-label={t("nav.language")}
-                            >
-                                {SUPPORTED_LANGUAGES.map((l) => (
-                                    <ToggleButton key={l.code} value={l.code} lang={l.code}>
-                                        {l.label}
-                                    </ToggleButton>
-                                ))}
-                            </ToggleButtonGroup>
-                        </Box>
-                    </List>
-                </Box>
-            </Drawer>
-
-            <Container maxWidth="md" sx={{ py: 3, flex: 1 }}>
+            {/* 홈은 넓은 화면에서 목록과 지도를 나란히 놓으므로 넓게, 나머지(글·양식)는 읽기 좋은 폭 */}
+            <Container component="main" id="main" maxWidth={pathname === "/" ? "xl" : "md"} sx={{ py: 3, flex: 1 }}>
+                <Suspense fallback={<PageLoading />}>
                 <Routes>
                     <Route path="/" element={<HomePage />} />
+                    <Route path="/me" element={<MePage />} />
                     <Route path="/login" element={<LoginPage />} />
+                    <Route path="/consent" element={<ConsentPage />} />
+                    <Route path="/terms/:docType" element={<TermsPage />} />
+                    <Route path="/toilets/:id" element={<ToiletDetailPage />} />
                     <Route path="/change-requests/new" element={<NewChangeRequestPage />} />
-                    <Route
-                        path="/admin/change-requests"
-                        element={
-                            <RequireAdmin>
-                                <AdminChangeRequestsPage />
-                            </RequireAdmin>
-                        }
-                    />
+                    {ADMIN_ROUTES.map((r) => (
+                        <Route key={r.path} path={r.path} element={<RequireAdmin>{r.element}</RequireAdmin>} />
+                    ))}
                 </Routes>
+                </Suspense>
             </Container>
+            {withNav && <BottomNav />}
         </Box>
     );
 }

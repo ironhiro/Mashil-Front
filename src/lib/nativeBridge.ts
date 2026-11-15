@@ -58,6 +58,8 @@ export interface Position {
     lat: number;
     lng: number;
     accuracy?: number;
+    /** 새로 잰 것이 아니라 기기가 기억하던 위치 (maximumAge 안). 정확한 위치는 다시 재야 한다 */
+    cached?: boolean;
 }
 
 export type LocationFailure = "denied" | "deniedForever" | "serviceDisabled" | "timeout" | "unsupported" | "failed";
@@ -77,15 +79,27 @@ export async function getCurrentPosition(
     opts: { enableHighAccuracy?: boolean; timeout?: number; maximumAge?: number } = {},
 ): Promise<Position> {
     if (isApp()) {
-        const r = await callNative("getLocation", {}, Math.max(opts.timeout ?? 0, 30_000));
-        if (r.ok) return { lat: Number(r.lat), lng: Number(r.lng), accuracy: Number(r.accuracy) };
+        // 예전 앱은 이 파라미터를 무시하고 정밀 측정만 한다 (cached 도 오지 않음)
+        const r = await callNative(
+            "getLocation",
+            { maximumAgeMs: opts.maximumAge ?? 0, highAccuracy: opts.enableHighAccuracy ?? true, timeoutMs: opts.timeout },
+            Math.max(opts.timeout ?? 0, 30_000),
+        );
+        if (r.ok) return { lat: Number(r.lat), lng: Number(r.lng), accuracy: Number(r.accuracy), cached: r.cached === true };
         const reason = (r.reason as LocationFailure) ?? "failed";
         throw new LocationError(LOCATION_FAILURES.includes(reason) ? reason : "failed");
     }
     if (!navigator.geolocation) throw new LocationError("unsupported");
     return new Promise((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(
-            (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+            (pos) =>
+                resolve({
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude,
+                    accuracy: pos.coords.accuracy,
+                    // 브라우저는 캐시 여부를 따로 알려 주지 않으므로 잰 시각으로 판단
+                    cached: Date.now() - pos.timestamp > 5_000,
+                }),
             (err) =>
                 reject(
                     new LocationError(

@@ -13,16 +13,22 @@ import {
     Typography,
 } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchComments, postComment, postRating } from "../api";
+import ThumbDownOutlinedIcon from "@mui/icons-material/ThumbDownOutlined";
+import ThumbUpOutlinedIcon from "@mui/icons-material/ThumbUpOutlined";
+import { fetchComments, postComment, postRating, voteComment } from "../api";
+import type { CommentRow } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { useTranslation } from "react-i18next";
 import { formatRelativeOrDate } from "../i18n";
 import { friendlyError } from "../lib/friendlyError";
+import { useAppStatus } from "../lib/appStatus";
 
 interface Props {
     toiletId: number;
     /** /near 응답에 함께 실려온 집계 평점 — 표시용. 평점 없으면 null. */
     averageRating: number | null;
+    /** 그 평균을 낸 평점 수 */
+    ratingCount?: number;
 }
 
 /**
@@ -30,10 +36,11 @@ interface Props {
  * 백엔드 endpoint 가 `RequireAuthorization()` (Admin 한정 아님) 이라 일반 사용자/관리자 모두 사용 가능.
  * 비로그인 시 안내만 표시.
  */
-export function ToiletInteractions({ toiletId, averageRating }: Props) {
+export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }: Props) {
     const auth = useAuth();
     const { t } = useTranslation();
     const qc = useQueryClient();
+    const readOnly = useAppStatus().data?.readOnly ?? false;
 
     const [pendingScore, setPendingScore] = useState<number | null>(null);
     const [comment, setComment] = useState("");
@@ -50,9 +57,25 @@ export function ToiletInteractions({ toiletId, averageRating }: Props) {
             setError(null);
             // 평균 평점은 /near 응답에 실려 오므로 그 쿼리를 다시 받아야 상단 ★ 와 지도 배지가 갱신됨.
             qc.invalidateQueries({ queryKey: ["toilets", "near"] });
+            qc.invalidateQueries({ queryKey: ["toilets", "recommended"] }); // 추천 점수의 절반이 평점
+            qc.invalidateQueries({ queryKey: ["toilet", toiletId] }); // 상세 화면의 평균
         },
         onError: (e: Error) => setError(friendlyError(e, t("interactions.ratingFailed"))),
     });
+
+    // 도움돼요 / 아니에요: 같은 버튼을 다시 누르면 취소. 응답의 집계로 그 댓글만 바꾼다
+    const voteMut = useMutation({
+        mutationFn: (args: { id: number; value: 1 | -1 | 0 }) => voteComment(args.id, args.value),
+        onSuccess: (r, args) => {
+            setError(null);
+            qc.setQueryData<CommentRow[]>(["toilet-comments", toiletId], (rows) =>
+                rows?.map((c) => (c.id === args.id ? { ...c, upCount: r.upCount, downCount: r.downCount, myVote: r.myVote } : c)),
+            );
+            qc.invalidateQueries({ queryKey: ["toilets", "recommended"] }); // 추천의 근거가 바뀜
+        },
+        onError: (e: Error) => setError(friendlyError(e, t("interactions.voteFailed"))),
+    });
+    const canVote = !!auth.user && !readOnly;
 
     const commentMut = useMutation({
         mutationFn: (text: string) => postComment(toiletId, text),
@@ -61,6 +84,7 @@ export function ToiletInteractions({ toiletId, averageRating }: Props) {
             setError(null);
             qc.invalidateQueries({ queryKey: ["toilet-comments", toiletId] });
             qc.invalidateQueries({ queryKey: ["toilets", "near"] }); // 지도 배지의 댓글 수
+            qc.invalidateQueries({ queryKey: ["me", "comments"] }); // 내 정보의 댓글 목록
         },
         onError: (e: Error) => setError(friendlyError(e, t("interactions.commentFailed"))),
     });
@@ -69,18 +93,20 @@ export function ToiletInteractions({ toiletId, averageRating }: Props) {
         <Card variant="outlined">
             <CardContent>
                 <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1 }} flexWrap="wrap" useFlexGap>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 700 }}>
                         {t("interactions.title")}
                     </Typography>
                     {averageRating !== null && (
-                        <Typography variant="body2" sx={{ color: "primary.main", fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: "var(--color-accent-text)", fontWeight: 600 }}>
                             ★ {averageRating.toFixed(1)}
-                            {(commentsQuery.data?.length ?? 0) > 0 && ` (${commentsQuery.data!.length})`}
+                            {ratingCount > 0 && ` (${t("interactions.ratingCount", { count: ratingCount })})`}
                         </Typography>
                     )}
                 </Stack>
 
-                {!auth.user ? (
+                {readOnly ? (
+                    <Alert severity="info">{t("maintenance.readOnly")}</Alert>
+                ) : !auth.user ? (
                     <Alert severity="info">{t("interactions.loginRequired")}</Alert>
                 ) : (
                     <>
@@ -153,16 +179,63 @@ export function ToiletInteractions({ toiletId, averageRating }: Props) {
                         {t("interactions.noComments")}
                     </Typography>
                 )}
-                {commentsQuery.data?.map((c) => (
-                    <Box key={c.id} sx={{ borderTop: 1, borderColor: "divider", py: 1 }}>
-                        <Typography variant="caption" color="text.secondary">
-                            {formatRelativeOrDate(c.createdAt)}
-                        </Typography>
-                        <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 0.5 }}>
-                            {c.text}
-                        </Typography>
-                    </Box>
-                ))}
+                {commentsQuery.data?.map((c) => {
+                    const up = c.upCount ?? 0;
+                    const down = c.downCount ?? 0;
+                    const mine = c.myVote ?? 0;
+                    const busy = voteMut.isPending && voteMut.variables?.id === c.id;
+                    return (
+                        <article key={c.id} className="comment">
+                            <div className="comment-meta">
+                                {c.authorName && <b>{c.isMine ? t("interactions.me") : c.authorName}</b>}
+                                <span>{formatRelativeOrDate(c.createdAt)}</span>
+                            </div>
+                            <p className="comment-text">{c.text}</p>
+                            {c.isMine ? (
+                                // 내 댓글: 표는 못 누르고 받은 수만
+                                <div className="votes">
+                                    <span className="vote-tally">
+                                        <ThumbUpOutlinedIcon fontSize="inherit" aria-hidden /> {t("interactions.helpfulCount", { count: up })}
+                                    </span>
+                                    <span className="vote-tally">
+                                        <ThumbDownOutlinedIcon fontSize="inherit" aria-hidden /> {t("interactions.notHelpfulCount", { count: down })}
+                                    </span>
+                                </div>
+                            ) : (
+                                <div className="votes" role="group" aria-label={t("interactions.voteGroup")}>
+                                    <button
+                                        type="button"
+                                        className="vote"
+                                        aria-pressed={mine === 1}
+                                        disabled={busy || readOnly}
+                                        onClick={() =>
+                                            canVote
+                                                ? voteMut.mutate({ id: c.id, value: mine === 1 ? 0 : 1 })
+                                                : setError(t("interactions.voteLoginRequired"))
+                                        }
+                                    >
+                                        <ThumbUpOutlinedIcon fontSize="inherit" aria-hidden />
+                                        {t("interactions.helpful")} {up}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="vote"
+                                        aria-pressed={mine === -1}
+                                        disabled={busy || readOnly}
+                                        onClick={() =>
+                                            canVote
+                                                ? voteMut.mutate({ id: c.id, value: mine === -1 ? 0 : -1 })
+                                                : setError(t("interactions.voteLoginRequired"))
+                                        }
+                                    >
+                                        <ThumbDownOutlinedIcon fontSize="inherit" aria-hidden />
+                                        {t("interactions.notHelpful")} {down}
+                                    </button>
+                                </div>
+                            )}
+                        </article>
+                    );
+                })}
             </CardContent>
         </Card>
     );

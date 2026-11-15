@@ -18,13 +18,21 @@ declare namespace kakao.maps {
         constructor(src: string, size: Size, options?: { offset?: Point });
     }
 
+    class LatLngBounds {
+        contain(latlng: LatLng): boolean;
+    }
+
     class Map {
         constructor(container: HTMLElement, options: { center: LatLng; level: number });
         setCenter(latlng: LatLng): void;
+        panTo(latlng: LatLng): void;
+        getBounds(): LatLngBounds;
         getCenter(): LatLng;
         getLevel(): number;
         setLevel(level: number): void;
         relayout(): void;
+        setDraggable(draggable: boolean): void;
+        setZoomable(zoomable: boolean): void;
         addListener(event: string, handler: () => void): void;
     }
 
@@ -53,6 +61,7 @@ declare namespace kakao.maps {
         });
         setMap(map: Map | null): void;
         setPosition(latlng: LatLng): void;
+        getPosition(): LatLng;
         setZIndex(zIndex: number): void;
     }
 
@@ -82,6 +91,7 @@ declare namespace kakao.maps {
         setMap(map: Map | null): void;
         setPosition(latlng: LatLng): void;
         setRadius(radius: number): void;
+        setOptions(options: { strokeColor?: string; fillColor?: string; strokeOpacity?: number; fillOpacity?: number }): void;
     }
 
     namespace event {
