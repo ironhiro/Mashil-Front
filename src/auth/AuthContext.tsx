@@ -111,6 +111,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         else localStorage.removeItem(USER_KEY);
     }, [user]);
 
+    // apiFetch 가 토큰을 갱신했거나 세션이 끝났으면 화면 상태도 따라간다
+    useEffect(() => {
+        const onToken = (e: Event) => setToken((e as CustomEvent<string>).detail);
+        const onExpired = () => {
+            setToken(null);
+            setUser(null);
+        };
+        window.addEventListener(TOKEN_EVENT, onToken);
+        window.addEventListener(EXPIRED_EVENT, onExpired);
+        return () => {
+            window.removeEventListener(TOKEN_EVENT, onToken);
+            window.removeEventListener(EXPIRED_EVENT, onExpired);
+        };
+    }, []);
+
     const applyResponse = useCallback(async (res: AuthResponse, extra: Partial<AuthUser>) => {
         const me = res.email === undefined ? await fetchMe(res.token) : null;
         if (res.refreshToken) localStorage.setItem(REFRESH_KEY, res.refreshToken);
@@ -187,4 +202,52 @@ export function useAuth(): AuthState {
 /** 인증 헤더가 필요한 fetch 호출이 토큰을 가져갈 모듈 게이트 — 함수 호출 시점의 최신 값을 읽음. */
 export function readAuthToken(): string | null {
     return localStorage.getItem(TOKEN_KEY);
+}
+
+/** 토큰이 바뀌었거나(갱신) 세션이 끝났을 때 AuthProvider 에 알리는 창 이벤트 */
+const TOKEN_EVENT = "mashil:auth-token";
+const EXPIRED_EVENT = "mashil:auth-expired";
+
+let refreshing: Promise<string | null> | null = null;
+
+/**
+ * 액세스 토큰(30분)이 만료됐을 때 refresh token 으로 새 쌍을 받는다.
+ * 서버는 refresh token 을 회전시키고, 이미 쓴 토큰을 다시 보내면 세션을 끊으므로 **한 번에 하나만** 보낸다
+ * (동시에 여러 요청이 401 을 받아도 같은 갱신을 기다린다).
+ * 새 액세스 토큰을 돌려준다. 서버가 거절하면(세션 끝) 로컬 로그인 정보를 지우고 null.
+ * 네트워크 오류면 로그인 정보는 그대로 두고 null.
+ */
+export function refreshAccessToken(): Promise<string | null> {
+    if (USE_MOCK) return Promise.resolve(null);
+    refreshing ??= (async () => {
+        const refreshToken = localStorage.getItem(REFRESH_KEY);
+        if (!refreshToken) return null;
+        let res: Response;
+        try {
+            res = await fetch("/api/auth/refresh", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ refreshToken }),
+            });
+        } catch {
+            return null;
+        }
+        if (!res.ok) {
+            if (res.status === 400 || res.status === 401) {
+                localStorage.removeItem(REFRESH_KEY);
+                localStorage.removeItem(TOKEN_KEY);
+                localStorage.removeItem(USER_KEY);
+                window.dispatchEvent(new Event(EXPIRED_EVENT));
+            }
+            return null;
+        }
+        const body = (await res.json()) as AuthResponse;
+        localStorage.setItem(TOKEN_KEY, body.token);
+        if (body.refreshToken) localStorage.setItem(REFRESH_KEY, body.refreshToken);
+        window.dispatchEvent(new CustomEvent<string>(TOKEN_EVENT, { detail: body.token }));
+        return body.token;
+    })().finally(() => {
+        refreshing = null;
+    });
+    return refreshing;
 }

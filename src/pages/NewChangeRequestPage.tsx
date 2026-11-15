@@ -231,7 +231,7 @@ export function NewChangeRequestPage() {
 
                             <Divider textAlign="left">{t("report.sectionBasic")}</Divider>
                             <TextField
-                                label={kind === ChangeRequestKind.Add ? t("report.nameRequired") : t("report.name")}
+                                label={t("report.name")}
                                 value={fields.name}
                                 onChange={(e) => patch("name", e.target.value)}
                                 placeholder={detailQuery.data?.name ?? ""}

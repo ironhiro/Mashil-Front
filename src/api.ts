@@ -1,6 +1,6 @@
 /** 마실 백엔드(Mashil.Api)에 대한 typed fetch 헬퍼. */
 
-import { readAuthToken } from "./auth/AuthContext";
+import { readAuthToken, refreshAccessToken } from "./auth/AuthContext";
 import type { ChangeRequestKind, ChangeRequestStatus } from "./lib/enums";
 import { USE_MOCK } from "./mock/flag";
 
@@ -67,17 +67,22 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
         const { mockFetch } = await import("./mock/mockApi");
         return mockFetch<T>(path, method, body);
     }
-    const headers: Record<string, string> = {};
-    if (body !== undefined) headers["Content-Type"] = "application/json";
-    if (auth) {
-        const token = readAuthToken();
-        if (token) headers["Authorization"] = `Bearer ${token}`;
+    const send = (token: string | null) => {
+        const headers: Record<string, string> = {};
+        if (body !== undefined) headers["Content-Type"] = "application/json";
+        if (auth && token) headers["Authorization"] = `Bearer ${token}`;
+        return fetch(`${BASE}${path}`, {
+            method,
+            headers,
+            body: body !== undefined ? JSON.stringify(body) : undefined,
+        });
+    };
+    let res = await send(auth ? readAuthToken() : null);
+    // 액세스 토큰이 만료됐으면 한 번 갱신하고 다시 보낸다 (갱신도 거절되면 로그아웃 상태가 되고 401 그대로)
+    if (res.status === 401 && auth && readAuthToken()) {
+        const fresh = await refreshAccessToken();
+        if (fresh) res = await send(fresh);
     }
-    const res = await fetch(`${BASE}${path}`, {
-        method,
-        headers,
-        body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
     if (!res.ok) {
         const text = await res.text();
         throw new Error(text || `HTTP ${res.status}`);
@@ -257,6 +262,39 @@ export async function submitChangeRequest(payload: SubmitChangeRequestPayload): 
         body: payload,
         auth: true,
     });
+}
+
+// --- 내 활동 (GET /api/me/comments, /api/me/change-requests) ---
+
+/** 내가 쓴 댓글. 신고로 가려졌으면 hidden. 화장실이 지워졌으면 toiletName = null. */
+export interface MyComment {
+    id: number;
+    toiletId: number;
+    toiletName: string | null;
+    text: string;
+    hidden: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+/** 내가 보낸 제보와 진행 상황. toiletName 은 대상 이름, 추가 요청이면 제보에 적은 이름. */
+export interface MyChangeRequest {
+    id: number;
+    kind: ChangeRequestKind;
+    status: ChangeRequestStatus;
+    targetToiletId: number | null;
+    toiletName: string | null;
+    createdAt: string;
+    reviewedAt: string | null;
+    reviewNote: string | null;
+}
+
+export function fetchMyComments(): Promise<MyComment[]> {
+    return apiFetch<MyComment[]>("/api/me/comments", { auth: true });
+}
+
+export function fetchMyChangeRequests(): Promise<MyChangeRequest[]> {
+    return apiFetch<MyChangeRequest[]>("/api/me/change-requests", { auth: true });
 }
 
 // ── 점검 모드 (GET /api/app/status) ─────────────────────────────────────

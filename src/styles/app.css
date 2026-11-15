@@ -4,6 +4,7 @@
 /* Hallmark · pre-emit critique: P4 H5 E4 S4 R4 V4 · weakest: P, the board could read as a transit costume; kept the voice plain (거리, 이름, 상태) and the map as the second view, not a theme prop */
 /* Hallmark · dropped onSelectToilet={(t) => setSelectedToilet(t)} · the marker handler still selects the place and now also scrolls to its card, as the user asked for the map tab */
 /* Hallmark · dropped onClick={() => setNavOpen(true)}, onClick={() => { auth.logout(); closeNav(); navigate("/"); }}, onClick={() => { closeNav(); navigate("/"); }}, onClick={() => { closeNav(); navigate("/admin/change-requests"); }}, onClick={() => { closeNav(); navigate("/change-requests/new"); }}, onClick={() => { closeNav(); navigate("/login"); }}, onClose={closeNav} · the left drawer became the bottom tabs at the user's request: find, report and me are NavLinks; review, login, logout and language live on /me (MePage) */
+/* Hallmark · dropped onChange={(e) => setStatusFilter(e.target.value as ChangeRequestStatus | "")}, onReview={(approve, note) => reviewMut.mutate({ id: row.id, approve, note }) } · the admin table became one card per report: the status select is a ToggleButtonGroup with the same setStatusFilter, and the card calls reviewMut.mutate with the same id, approve and note */
 @import url("./tokens.css");
 @import url("./base.css");
 
@@ -141,3 +142,27 @@ button:disabled, [aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
 .bottom-nav-tab.active:hover { background: var(--color-ink-2); }
 .bottom-nav-tab svg { font-size: 1.5rem; }
 @media (prefers-reduced-motion: reduce) { .bottom-nav-tab { transition: none; } }
+
+/* ── 내 정보: 내 제보·내 댓글 (안내판과 같은 면, 잉크 머리 줄) ─────────── */
+.activity-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); background: var(--color-band); color: var(--color-on-band); }
+.activity-head h2 { margin: 0; font: 800 var(--text-md)/1.2 var(--font-body); }
+.activity-head span { font: 500 var(--text-sm)/1.2 var(--font-body); color: var(--color-band-muted); }
+.activity-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md); color: inherit; text-decoration: none;
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+  transition: background-color var(--dur-micro) steps(1);
+}
+a.activity-row:hover, a.activity-row:active { background: var(--color-paper-2); }
+.activity-row:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -4px; }
+.activity-text { display: block; margin-top: var(--space-2xs); font: 400 var(--text-md)/1.45 var(--font-body); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.activity-note { display: block; margin-top: var(--space-xs); padding-left: var(--space-xs); border-left: var(--rule-bar) solid var(--color-ink); font: 400 var(--text-sm)/1.4 var(--font-body); color: var(--color-ink-2); }
+.activity-more {
+  display: block; width: 100%; min-height: 48px; padding: 0 var(--space-md); border: 0; background: transparent;
+  color: var(--color-ink); font: 500 var(--text-sm)/1 var(--font-body); text-align: left; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px;
+  transition: background-color var(--dur-micro) steps(1);
+}
+.activity-more:hover, .activity-more:active { background: var(--color-paper-2); }
+.activity-more:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -4px; }
+@media (prefers-reduced-motion: reduce) { .activity-row, .activity-more { transition: none; } }

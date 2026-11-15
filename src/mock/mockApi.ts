@@ -6,8 +6,8 @@
  */
 
 import rawToilets from "./toilets.json";
-import type { ChangeRequestRow, CommentRow, ToiletDetail, ToiletNear } from "../api";
-import type { ChangeRequestStatus, UserRole } from "../lib/enums";
+import type { ChangeRequestRow, CommentRow, MyChangeRequest, MyComment, ToiletDetail, ToiletNear } from "../api";
+import type { ChangeRequestKind, ChangeRequestStatus, UserRole } from "../lib/enums";
 
 type ToiletSeed = Omit<ToiletNear, "distanceM" | "averageRating" | "commentCount"> & { managementNo: string };
 
@@ -100,6 +100,27 @@ const changeRequests: ChangeRequestRow[] = [
         status: "Rejected", reviewedById: ME.id, reviewedAt: daysAgo(6), reviewNote: "전화번호 확인 불가", createdAt: daysAgo(8),
     },
 ];
+// 데모 사용자(ME)의 활동: "내 정보" 탭에서 보이도록
+changeRequests.push(
+    {
+        id: changeRequests.length + 1, requesterId: ME.id, targetToiletId: null, kind: "Add",
+        payloadJson: JSON.stringify({ name: "세종문화회관 뒤 공원 화장실", kind: "공중화장실" }),
+        status: "Pending", reviewedById: null, reviewedAt: null, reviewNote: null, createdAt: daysAgo(0.2),
+    },
+    {
+        id: changeRequests.length + 2, requesterId: ME.id, targetToiletId: toilets[1]?.id ?? null, kind: "Update",
+        payloadJson: JSON.stringify({ openHours: "07:00~23:00" }),
+        status: "Approved", reviewedById: ME.id, reviewedAt: daysAgo(1), reviewNote: "알려 주셔서 고마워요. 영업시간을 고쳤어요.", createdAt: daysAgo(3),
+    },
+);
+for (const [toiletIdx, text, hidden, ago] of [
+    [0, "깨끗하고 휴지도 넉넉해요. 저녁에는 조금 붐벼요.", false, 0.5],
+    [2, "입구 찾기가 어려워요. 주차장 안쪽 계단 옆이에요.", false, 2],
+    [4, "광고 문구", true, 4],
+] as const) {
+    const t = toilets[toiletIdx];
+    if (t) comments.push({ id: commentSeq++, userId: ME.id, toiletId: t.id, text, hidden, createdAt: daysAgo(ago), updatedAt: daysAgo(ago) });
+}
 let changeSeq = changeRequests.length + 1;
 
 // --- 헬퍼 ---
@@ -221,6 +242,34 @@ export async function mockFetch<T>(path: string, method: string, body: unknown):
         row.reviewedAt = new Date().toISOString();
         row.reviewNote = (b.note as string | undefined) ?? null;
         return undefined as T;
+    }
+
+    // 내 활동
+    const nameOf = (id: number | null) => (id === null ? null : (toilets.find((x) => x.id === id)?.name ?? null));
+    if (method === "GET" && p === "/api/me/comments") {
+        return comments
+            .filter((c) => c.userId === ME.id)
+            .sort((a, b2) => b2.createdAt.localeCompare(a.createdAt))
+            .map((c): MyComment => ({ id: c.id, toiletId: c.toiletId, toiletName: nameOf(c.toiletId), text: c.text, hidden: c.hidden, createdAt: c.createdAt, updatedAt: c.updatedAt })) as T;
+    }
+    if (method === "GET" && p === "/api/me/change-requests") {
+        return changeRequests
+            .filter((r) => r.requesterId === ME.id)
+            .sort((a, b2) => b2.createdAt.localeCompare(a.createdAt))
+            .map((r): MyChangeRequest => {
+                let payloadName: string | null = null;
+                try {
+                    const n = (JSON.parse(r.payloadJson) as { name?: unknown }).name;
+                    payloadName = typeof n === "string" && n.trim() ? n.trim() : null;
+                } catch {
+                    payloadName = null;
+                }
+                return {
+                    id: r.id, kind: r.kind as ChangeRequestKind, status: r.status, targetToiletId: r.targetToiletId,
+                    toiletName: nameOf(r.targetToiletId) ?? payloadName,
+                    createdAt: r.createdAt, reviewedAt: r.reviewedAt, reviewNote: r.reviewNote,
+                };
+            }) as T;
     }
 
     throw new MockHttpError(`목업에 없는 API: ${method} ${p}`);
