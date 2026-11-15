@@ -18,7 +18,12 @@ npm install
 cp .env.example .env.local
 # 그 다음 .env.local 을 열어서 VITE_KAKAO_MAP_KEY 에 본인 키 입력
 
-# 3) 개발 서버
+# 3) 한글 웹폰트(서울남산체) 만들기 — 한 번만
+#    서울서체는 재배포가 금지라 저장소에 넣지 않고, 공식 zip 에서 public/fonts 로 만든다
+pip install fonttools brotli
+python tool/make_fonts.py
+
+# 4) 개발 서버
 npm run dev
 # → http://localhost:5173 (포트는 VITE_DEV_PORT 로 변경 가능)
 ```

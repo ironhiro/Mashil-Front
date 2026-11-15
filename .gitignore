@@ -41,3 +41,6 @@ Thumbs.db
 # Misc
 *.pem
 coverage/
+
+# Seoul Namsan web fonts: licence forbids redistribution. Build with: python tool/make_fonts.py
+public/fonts/

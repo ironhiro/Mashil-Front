@@ -16,7 +16,7 @@ The locked system. Every Hallmark run reads this first and pages share it. Chang
   --color-paper: oklch(91.8% 0.014 248);  --color-paper-2: oklch(85% 0.019 250.6);  --color-paper-3: oklch(100% 0 0);
   --color-ink: oklch(24% 0.076 257.2);  --color-ink-2: oklch(28.3% 0.069 258.9);  --color-muted: oklch(43.9% 0.033 240.4);  --color-rule: oklch(82.5% 0.025 254);
   --color-accent: oklch(37.8% 0.182 262.5);  --color-accent-2: oklch(57.5% 0.213 29.6);  --color-accent-ink: oklch(99.5% 0.003 250);  --color-focus: oklch(37.8% 0.182 262.5);
-  --font-display: "Chivo Mono", "Nanum Gothic Coding", ui-monospace, monospace;  --font-body: var(--font-display);  --font-outlier: var(--font-body);
+  --font-display: "Overpass", "Seoul Namsan", system-ui, sans-serif;  --font-body: var(--font-display);  --font-outlier: var(--font-body);
   --radius-card: 0;  --radius-pill: 999px;  --rule-hair: 1px;  --rule-bar: 2px;  --shadow-card: 0 24px 40px -24px oklch(8% 0.01 260 / 0.6);
 }
 ```
@@ -40,3 +40,7 @@ Project roles on top of the theme:
 
 ## Exports
 `src/styles/tokens.css` in this project, plus the MUI mirror in `src/design/tokens.ts`. The Flutter app (Mashil-App `app/lib/theme.dart`) copies the same values for its native screens.
+
+
+## Type (2026-11-15)
+The monospace pair (Chivo Mono + Nanum Gothic Coding) was replaced by a real signage pair: Overpass (Highway Gothic lineage) for Latin and figures, Seoul Namsan (Seoul City's public typeface, self-hosted woff2 subset in `public/fonts`) for Hangul. One stack, so figures come from Overpass. Display tracking -0.02em.
