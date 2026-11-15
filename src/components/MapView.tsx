@@ -222,6 +222,9 @@ export function MapView({
             const selected = toiletId === selectedId;
             el.setAttribute("aria-pressed", String(selected));
             overlay.setZIndex(selected ? 100 : 10);
+            // 목록에서 고른 곳이 지금 보이는 범위 밖이면 그쪽으로 옮긴다 (넓은 화면에서 목록과 지도를 함께 볼 때)
+            const map = mapRef.current;
+            if (selected && map && !map.getBounds().contain(overlay.getPosition())) map.panTo(overlay.getPosition());
         }
     }, [ready, selectedId, toilets]);
 

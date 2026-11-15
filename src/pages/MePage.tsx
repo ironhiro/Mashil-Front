@@ -164,7 +164,7 @@ function ReportRow({ row }: { row: MyChangeRequest }) {
     const body = (
         <>
             <span style={{ minWidth: 0 }}>
-                <span className="board-name">{name}</span>
+                <span className="board-name" title={name}>{name}</span>
                 <span className="board-meta">
                     <span>{t(`report.kind.${row.kind}.label`)}</span>
                     <span>{t("me.sentAt", { time: formatDateTime(row.createdAt) })}</span>
@@ -188,7 +188,7 @@ function CommentRowView({ row }: { row: MyComment }) {
     const { t } = useTranslation();
     const body = (
         <span style={{ minWidth: 0, gridColumn: "1 / -1" }}>
-            <span className="board-name">{row.toiletName ?? t("me.goneToilet")}</span>
+            <span className="board-name" title={row.toiletName ?? undefined}>{row.toiletName ?? t("me.goneToilet")}</span>
             <span className="activity-text">{row.text}</span>
             <span className="board-meta">
                 <span>{formatDateTime(row.createdAt)}</span>

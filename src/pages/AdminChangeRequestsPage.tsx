@@ -215,7 +215,7 @@ function TargetToiletCell({ id }: { id: number | null }) {
     if (id === null) return <span className="board-name">{t("admin.newToilet")}</span>;
     return (
         <Box sx={{ minWidth: 0 }}>
-            <span className="board-name">{q.data?.name ?? (q.isError ? t("admin.targetLoadFailed") : "…")}</span>
+            <span className="board-name" title={q.data?.name}>{q.data?.name ?? (q.isError ? t("admin.targetLoadFailed") : "…")}</span>
             <span className="board-meta">
                 <span>#{id}</span>
             </span>

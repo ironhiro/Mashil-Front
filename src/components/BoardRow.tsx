@@ -18,7 +18,7 @@ export function BoardRowContent({ toilet, facilities = "compact" }: { toilet: To
         <>
             <span className="board-dist">{formatDistance(toilet.distanceM, true)}</span>
             <span style={{ minWidth: 0 }}>
-                <span className="board-name">{toilet.name}</span>
+                <span className="board-name" title={toilet.name}>{toilet.name}</span>
                 {labels.length > 0 && (
                     <span className="board-meta">
                         {labels.map((f) => (

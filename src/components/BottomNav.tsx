@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import EditNoteIcon from "@mui/icons-material/EditNote";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
@@ -24,6 +24,10 @@ export function BottomNav() {
     ];
     return (
         <nav className="bottom-nav" aria-label={t("nav.label")}>
+            {/* 넓은 화면(64rem~)에서만 보이는 워드마크. 그때 탭 줄은 화면 위쪽 바가 된다 */}
+            <Link to="/" className="bottom-nav-brand">
+                {t("app.name")}
+            </Link>
             {tabs.map((tab) => (
                 <NavLink key={tab.to} to={tab.to} end className="bottom-nav-tab">
                     {tab.icon}
@@ -34,7 +38,9 @@ export function BottomNav() {
     );
 }
 
-/** 하단 탭의 실제 높이 (없으면 0). 지도 칸처럼 화면 아래까지 채우는 요소가 뺀다. */
+/** 하단 탭의 실제 높이 (없거나 넓은 화면에서 위쪽 바가 됐으면 0). 지도 칸처럼 화면 아래까지 채우는 요소가 뺀다. */
 export function bottomNavHeight() {
-    return document.querySelector(".bottom-nav")?.getBoundingClientRect().height ?? 0;
+    const r = document.querySelector(".bottom-nav")?.getBoundingClientRect();
+    if (!r) return 0;
+    return r.top < window.innerHeight / 2 ? 0 : r.height;
 }

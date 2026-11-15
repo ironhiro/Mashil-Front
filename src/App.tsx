@@ -28,7 +28,8 @@ export function App() {
         <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }} className={withNav ? "app-root has-bottom-nav" : "app-root"}>
             {appStatus.data?.readOnly && <ReadOnlyBanner status={appStatus.data} />}
 
-            <Container maxWidth="md" sx={{ py: 3, flex: 1 }}>
+            {/* 홈은 넓은 화면에서 목록과 지도를 나란히 놓으므로 넓게, 나머지(글·양식)는 읽기 좋은 폭 */}
+            <Container maxWidth={pathname === "/" ? "xl" : "md"} sx={{ py: 3, flex: 1 }}>
                 <Routes>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/me" element={<MePage />} />
