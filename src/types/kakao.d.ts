@@ -18,9 +18,15 @@ declare namespace kakao.maps {
         constructor(src: string, size: Size, options?: { offset?: Point });
     }
 
+    class LatLngBounds {
+        contain(latlng: LatLng): boolean;
+    }
+
     class Map {
         constructor(container: HTMLElement, options: { center: LatLng; level: number });
         setCenter(latlng: LatLng): void;
+        panTo(latlng: LatLng): void;
+        getBounds(): LatLngBounds;
         getCenter(): LatLng;
         getLevel(): number;
         setLevel(level: number): void;
@@ -55,6 +61,7 @@ declare namespace kakao.maps {
         });
         setMap(map: Map | null): void;
         setPosition(latlng: LatLng): void;
+        getPosition(): LatLng;
         setZIndex(zIndex: number): void;
     }
 

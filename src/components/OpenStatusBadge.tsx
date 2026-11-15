@@ -1,17 +1,17 @@
 import { Box, Tooltip } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { tileStateOf, tileSx } from "../design/statusTile";
+import { stateClass, tileStateOf } from "../design/statusTile";
 import { statusOf } from "../lib/openStatus";
 import type { OpenStatus } from "../lib/openStatus";
 
 interface Props {
     toilet: Parameters<typeof statusOf>[0];
-    /** short: 타일·마커용 짧은 표기 ("24시간", "20:30까지", "종료", "정보없음") */
+    /** short: 안내판·마커용 짧은 표기 ("24시간", "20:30까지", "종료", "정보없음") */
     variant?: "full" | "short";
 }
 
-/** 닫혀 있을 때 "내일 09:00 열림" 같은 다음 개방 안내. */
+/** 닫혀 있을 때 "내일 09:00에 열려요" 같은 다음 개방 안내. */
 function closedLabel(t: TFunction, status: Extract<OpenStatus, { kind: "closed" }>): string {
     if (!status.opensAt) return t("openStatus.closedNoNext");
     if (status.opensInDays === undefined || status.opensInDays === 0) return t("openStatus.opensToday", { time: status.opensAt });
@@ -19,7 +19,7 @@ function closedLabel(t: TFunction, status: Extract<OpenStatus, { kind: "closed" 
     return t("openStatus.opensOn", { day: t(`days.${status.opensDay ?? "Mon"}`), time: status.opensAt });
 }
 
-/** 영업 상태 문구. full = 카드용, short = 타일·마커용. */
+/** 영업 상태 문구. full = 카드·상세용, short = 안내판·마커용. */
 export function openStatusLabel(t: TFunction, status: OpenStatus, variant: "full" | "short"): string {
     if (variant === "short") {
         if (status.kind === "24h") return t("openStatus.short.always");
@@ -37,74 +37,47 @@ export function openStatusLabel(t: TFunction, status: OpenStatus, variant: "full
     return t("openStatus.unknown");
 }
 
+/** 설명 줄 (상세의 상태 판 아래) */
+function statusDetail(t: TFunction, status: OpenStatus): string {
+    if (status.kind === "unknown") {
+        return status.raw ? t("openStatus.unknownWithRaw", { raw: status.raw }) : t("openStatus.unknownEmpty");
+    }
+    if (status.kind === "24h") return t("openStatus.alwaysDetail");
+    // 큰 글자("22:00까지")와 다른 정보: 남은 시간
+    if (status.kind === "open" && status.minutesLeft !== undefined) {
+        const h = Math.floor(status.minutesLeft / 60);
+        const m = status.minutesLeft % 60;
+        return h > 0 ? t("openStatus.leftHours", { h, m }) : t("openStatus.leftMinutes", { m });
+    }
+    return openStatusLabel(t, status, "full");
+}
+
 /**
- * 상세 카드의 큰 상태 타일 — 거리 타일 옆에 나란히. 위: 짧은 상태(크게), 아래: 자세한 문구.
+ * 상세의 상태 판 — 거리 판 옆. 위: 짧은 상태(크게), 아래: 자세한 문구.
+ * 상태 4단계는 app.css 의 .state--live / soon / closed / unknown.
  */
 export function StatusTile({ toilet }: Omit<Props, "variant">) {
     const { t } = useTranslation();
     const status = statusOf(toilet);
-    const detail =
-        status.kind === "unknown"
-            ? status.raw
-                ? t("openStatus.unknownWithRaw", { raw: status.raw })
-                : t("openStatus.unknownEmpty")
-            : status.kind === "24h"
-              ? t("openStatus.alwaysDetail")
-              : openStatusLabel(t, status, "full");
     return (
-        <Box
-            sx={{
-                ...tileSx(tileStateOf(status)),
-                borderRadius: 1,
-                p: 1.5,
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                gap: 0.5,
-                minWidth: 0,
-            }}
-        >
-            <Box component="span" sx={{ fontSize: 20, fontWeight: 700, lineHeight: 1.1 }}>
-                {openStatusLabel(t, status, "short")}
-            </Box>
-            <Box component="span" sx={{ fontSize: 12, opacity: 0.9, lineHeight: 1.4 }}>
-                {detail}
-            </Box>
-        </Box>
+        <div className={`plate ${stateClass(tileStateOf(status))}`}>
+            <span className="figure">{openStatusLabel(t, status, "short")}</span>
+            <span className="unit">{statusDetail(t, status)}</span>
+        </div>
     );
 }
 
-/**
- * 영업 상태 칩 — 타일 4단계(열림 채움 / 곧 닫힘 연한 채움 / 종료 점선 / 정보없음 회색).
- * 툴팁은 공공데이터 원문(번역하지 않음) 또는 "가기 전에 확인" 안내.
- */
+/** 상태 칸 — 한 줄에 들어가는 작은 표시. 툴팁은 공공데이터 원문(번역하지 않음). */
 export function OpenStatusBadge({ toilet, variant = "full" }: Props) {
     const { t } = useTranslation();
     const status = statusOf(toilet);
-    const state = tileStateOf(status);
-    const tooltip =
-        status.kind === "unknown"
-            ? status.raw
-                ? t("openStatus.unknownWithRaw", { raw: status.raw })
-                : t("openStatus.unknownEmpty")
-            : status.raw;
-
+    const tooltip = status.kind === "unknown" ? statusDetail(t, status) : status.raw;
     return (
-        <Tooltip title={tooltip}>
+        <Tooltip title={tooltip} enterDelay={800}>
             <Box
                 component="span"
-                sx={{
-                    ...tileSx(state),
-                    display: "inline-flex",
-                    alignItems: "center",
-                    height: 26,
-                    px: 1,
-                    borderRadius: 1,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    whiteSpace: "nowrap",
-                    boxSizing: "border-box",
-                }}
+                className={stateClass(tileStateOf(status))}
+                sx={{ display: "inline-flex", alignItems: "center", minHeight: 28, px: 1, fontSize: "var(--text-sm)", fontWeight: 800, whiteSpace: "nowrap" }}
             >
                 {openStatusLabel(t, status, variant)}
             </Box>

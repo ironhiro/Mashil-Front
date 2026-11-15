@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="theme-color" content="#E8F2F0" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#111213" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#dde5ed" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#101820" media="(prefers-color-scheme: dark)" />
     <meta name="color-scheme" content="light dark" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- 서체: 로고 Gowun Dodum · 본문 IBM Plex Sans KR · 거리 숫자 DM Mono (docs/07-ui-design.md §4) -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=IBM+Plex+Sans+KR:wght@400;600;700&family=DM+Mono:wght@500&display=swap" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>마실 — 잠깐, 다녀와</title>
+    <!-- 서체: Overpass (라틴·숫자, @fontsource 로 직접 제공 — main.tsx) + 서울남산체 (한글, /fonts 에 직접 둠, tokens.css 의 @font-face).
+         예전에는 Google Fonts CSS 를 불러 첫 화면을 약 0.9초 막았다 (Lighthouse render-blocking) -->
+    <link rel="preload" href="/fonts/SeoulNamsanM.woff2" as="font" type="font/woff2" crossorigin />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>마실: 가까운 화장실 찾기</title>
+    <meta name="description" content="지금 열린 가까운 공중화장실을 지도와 안내판으로 찾고, 카카오맵으로 길을 안내받아요." />
   </head>
   <body>
     <div id="root"></div>

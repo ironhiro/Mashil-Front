@@ -89,9 +89,9 @@ export function ConsentPage() {
             {query.isError && <Alert severity="error">{friendlyError(query.error, t("consent.loadFailed"))}</Alert>}
 
             {docs.length > 0 && (
-                <Box sx={{ border: "1px solid", borderColor: "mashil.line", borderRadius: 1, bgcolor: "mashil.surface", mb: 2 }}>
+                <Box sx={{ border: "var(--rule-bar) solid var(--color-ink)", bgcolor: "var(--color-paper-3)", mb: 2 }}>
                     <FormControlLabel
-                        sx={{ m: 0, px: 1.5, py: 1, width: "100%", borderBottom: "1px solid", borderColor: "mashil.line" }}
+                        sx={{ m: 0, px: 1.5, py: 1, width: "100%", borderBottom: "var(--rule-bar) solid var(--color-ink)" }}
                         control={
                             <Checkbox
                                 checked={allChecked}
@@ -129,7 +129,7 @@ export function ConsentPage() {
             )}
 
             {/* 위치 정보 안내는 별도 칸 (NFR-06) */}
-            <Box sx={{ bgcolor: "mashil.accentSoft", color: "mashil.onAccentSoft", borderRadius: 1, p: 1.5, mb: 3 }}>
+            <Box className="plate" sx={{ mb: 3 }}>
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
                     {t("consent.locationNote")}
                 </Typography>

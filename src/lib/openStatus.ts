@@ -14,7 +14,7 @@ import type { ServerOpenStatus, Weekday } from "../api";
 
 export type OpenStatus =
     | { kind: "24h"; raw: string }
-    | { kind: "open"; closesAt: string; raw: string; /** 닫기까지 30분 이내 */ closingSoon: boolean }
+    | { kind: "open"; closesAt: string; raw: string; /** 닫기까지 30분 이내 */ closingSoon: boolean; /** 닫기까지 남은 분 (서버 판정일 때) */ minutesLeft?: number }
     | {
           kind: "closed";
           /** 다음에 여는 시각. 모르면 "" */
@@ -43,7 +43,7 @@ export function statusOf(
         case "Open": {
             const closesAt = s.closesAt ?? "";
             const left = closesAt ? minutesUntilKst(closesAt, now) : Infinity;
-            return { kind: "open", closesAt, raw, closingSoon: left <= CLOSING_SOON_MIN };
+            return { kind: "open", closesAt, raw, closingSoon: left <= CLOSING_SOON_MIN, minutesLeft: Number.isFinite(left) ? left : undefined };
         }
         case "Closed":
             return {

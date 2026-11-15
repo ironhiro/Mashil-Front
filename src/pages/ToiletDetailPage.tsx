@@ -10,11 +10,11 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { computeStraightRoute, fetchToilet } from "../api";
 import type { LatLng, ScheduleDay, ToiletDetail } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import { AdminToiletLink } from "../components/AdminToiletLink";
 import { MiniMap } from "../components/MiniMap";
 import { StatusTile, openStatusLabel } from "../components/OpenStatusBadge";
 import { ToiletInteractions } from "../components/ToiletInteractions";
 import { tileStateOf } from "../design/statusTile";
-import { fonts } from "../design/tokens";
 import { formatDistance } from "../i18n";
 import { ChangeRequestKind } from "../lib/enums";
 import { toiletKindLabel } from "../lib/facilityChips";
@@ -31,9 +31,8 @@ interface DetailState {
 }
 
 /**
- * 화장실 상세 (docs/07-ui-design.md §7 "상세"):
- * 지도 띠 · 거리 타일 + 상태 타일 · 요일 8칸 개방 시간(오늘 강조) · 묶음 표 + 원문 · 시설 4칸 · 편의시설 칩 ·
- * 평점·댓글 · 출처와 "정보 수정 요청" · 하단 고정 바(전화 + 길찾기).
+ * 화장실 상세 (Hallmark · Wayfind): 지도 띠, 거리 판과 상태 판, 요일 8칸(오늘은 잉크 칸), 묶음 표와 원문,
+ * 시설 4칸, 편의시설, 평점·댓글, 출처와 "정보 수정 요청", 하단 고정 바(전화와 길찾기).
  */
 export function ToiletDetailPage() {
     const { id } = useParams();
@@ -53,8 +52,8 @@ export function ToiletDetailPage() {
 
     if (query.isLoading) {
         return (
-            <Stack direction="row" spacing={1} alignItems="center">
-                <CircularProgress size={18} />
+            <Stack direction="row" spacing={1} alignItems="center" role="status">
+                <CircularProgress size={18} color="inherit" />
                 <span>{t("common.loading")}</span>
             </Stack>
         );
@@ -63,7 +62,7 @@ export function ToiletDetailPage() {
         return (
             <Stack spacing={2}>
                 <Alert severity="error">{query.isError ? friendlyError(query.error, t("detail.notFound")) : t("detail.notFound")}</Alert>
-                <Button color="secondary" onClick={goBack}>{t("detail.back")}</Button>
+                <Button variant="outlined" onClick={goBack}>{t("detail.back")}</Button>
             </Stack>
         );
     }
@@ -71,12 +70,11 @@ export function ToiletDetailPage() {
 }
 
 function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: DetailState; onBack: () => void }) {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const navigate = useNavigate();
     const auth = useAuth();
     const [copied, setCopied] = useState(false);
     const status = statusOf(toilet);
-    const state = tileStateOf(status);
 
     const distanceM = useMemo(() => {
         if (!nav.origin || toilet.latitude == null || toilet.longitude == null) return null;
@@ -98,7 +96,7 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
     };
 
     const requestFix = () => {
-        const state = { kind: ChangeRequestKind.Update, targetToiletId: toilet.id, targetName: toilet.name };
+        const state = { kind: ChangeRequestKind.Edit, targetToiletId: toilet.id, targetName: toilet.name };
         if (auth.user) navigate("/change-requests/new", { state });
         else navigate("/login");
     };
@@ -110,9 +108,9 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
         <Box sx={{ mx: { xs: -2, sm: -3 }, mt: -3 }}>
             <Box sx={{ position: "relative" }}>
                 {hasCoords ? (
-                    <MiniMap lat={toilet.latitude!} lng={toilet.longitude!} label={openStatusLabel(t, status, "short")} state={state} />
+                    <MiniMap lat={toilet.latitude!} lng={toilet.longitude!} label={openStatusLabel(t, status, "short")} state={tileStateOf(status)} />
                 ) : (
-                    <Box sx={{ height: 72 }} />
+                    <Box sx={{ height: 72, borderBottom: "var(--rule-bar) solid var(--color-ink)" }} />
                 )}
                 <Stack direction="row" justifyContent="space-between" sx={{ position: "absolute", top: 12, left: 12, right: 12, zIndex: 2 }}>
                     <OverlayButton label={t("detail.back")} onClick={onBack}>
@@ -124,32 +122,27 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                 </Stack>
             </Box>
 
-            {/* 시트 — 상단 14px 둥근 모서리 */}
-            <Box sx={{ position: "relative", mt: "-14px", zIndex: 1, bgcolor: "mashil.surface", borderRadius: "14px 14px 0 0", px: 2, pt: 2, pb: 2 }}>
-                <Stack spacing={2.5}>
-                    <Box sx={{ display: "grid", gridTemplateColumns: distanceM !== null ? "1fr 1fr" : "1fr", gap: 1 }}>
+            <Box sx={{ px: 2, pt: 2.5, pb: 3 }}>
+                <Stack spacing={3}>
+                    <Box sx={{ display: "grid", gridTemplateColumns: distanceM !== null ? "repeat(2, minmax(0, 1fr))" : "minmax(0, 1fr)", gap: 1 }}>
                         {distanceM !== null && (
-                            <Box sx={{ border: "1.5px solid", borderColor: "mashil.line", bgcolor: "mashil.bg", borderRadius: 1, p: 1.5, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 0.5 }}>
-                                <Box component="span" sx={{ fontFamily: fonts.mono, fontSize: 30, lineHeight: 1 }}>
-                                    {formatDistance(distanceM, true)}
-                                </Box>
-                                <Box component="span" sx={{ fontSize: 12, color: "text.secondary" }}>
-                                    {t(nav.fromMe ? "home.distanceFromMe" : "home.distanceFromCenter")}
-                                </Box>
-                            </Box>
+                            <div className="plate">
+                                <span className="figure">{formatDistance(distanceM, true)}</span>
+                                <span className="unit">{t(nav.fromMe ? "home.distanceFromMe" : "home.distanceFromCenter")}</span>
+                            </div>
                         )}
                         <StatusTile toilet={toilet} />
                     </Box>
 
                     <Box>
-                        <Typography component="h1" variant="h5" sx={{ lineHeight: 1.3 }}>
+                        <Typography component="h1" variant="h4">
                             {toilet.name}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                             {toiletKindLabel(t, toilet.kind)}
                         </Typography>
                         {(toilet.roadAddress || toilet.lotAddress) && (
-                            <Typography variant="body2" sx={{ mt: 0.5 }}>
+                            <Typography variant="body1" sx={{ mt: 0.5 }}>
                                 {toilet.roadAddress ?? toilet.lotAddress}
                             </Typography>
                         )}
@@ -158,33 +151,46 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                     <HoursSection toilet={toilet} />
                     <FacilitiesSection toilet={toilet} />
 
-                    <ToiletInteractions toiletId={toilet.id} averageRating={null} />
+                    <ToiletInteractions toiletId={toilet.id} averageRating={toilet.averageRating ?? null} ratingCount={toilet.ratingCount ?? 0} />
 
                     <Box>
                         {toilet.source && (
-                            <Typography variant="caption" color="text.secondary" display="block">
-                                {t("detail.source", { date: toilet.source.dataReferenceDate ?? "—" })}
-                                {toilet.source.editedByPeople && ` · ${t("detail.sourceEdited")}`}
+                            <Typography variant="body2" color="text.secondary">
+                                {t("detail.source", { date: toilet.source.dataReferenceDate ?? t("detail.noInfo") })}
                             </Typography>
                         )}
-                        <Link component="button" variant="body2" color="secondary" onClick={requestFix} sx={{ mt: 0.5, fontWeight: 600 }}>
+                        {toilet.source?.lastRefreshedAt && (
+                            <Typography variant="body2" color="text.secondary">
+                                {t("detail.sourceRefreshed", { date: new Date(toilet.source.lastRefreshedAt).toLocaleDateString(i18n.language) })}
+                            </Typography>
+                        )}
+                        {toilet.source?.editedByPeople && (
+                            <Typography variant="body2" color="text.secondary">
+                                {t("detail.sourceEdited")}
+                            </Typography>
+                        )}
+                        <Link component="button" type="button" variant="body2" onClick={requestFix} sx={{ mt: 1, fontWeight: 800 }}>
                             {t("detail.requestFix")}
                         </Link>
+                        <AdminToiletLink toiletId={toilet.id} />
                     </Box>
                 </Stack>
             </Box>
 
-            {/* 하단 고정 바: 전화(아이콘) + 길찾기(주 행동) */}
+            {/* 하단 고정 바: 전화(아이콘)와 길찾기(주 행동) */}
             <Box
                 sx={{
                     position: "sticky",
                     bottom: 0,
                     zIndex: 3,
-                    bgcolor: "mashil.surface",
-                    borderTop: "1px solid",
-                    borderColor: "mashil.line",
+                    bgcolor: "var(--color-paper)",
+                    borderTop: "var(--rule-bar) solid var(--color-ink)",
                     px: 2,
-                    py: 1.25,
+                    pt: 1.25,
+                    // 제스처 막대 위로 (앱은 웹뷰를 화면 맨 아래까지 그린다)
+                    pb: "calc(10px + env(safe-area-inset-bottom))",
+                    // 페이지 끝에서도 화면 맨 아래에 붙도록, App 의 아래 여백(24px + 제스처 막대)만큼 내려 앉힌다
+                    mb: "calc(-24px - env(safe-area-inset-bottom))",
                     display: "flex",
                     gap: 1,
                 }}
@@ -194,7 +200,7 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                         component="a"
                         href={`tel:${toilet.phone}`}
                         aria-label={`${t("detail.call")} ${toilet.phone}`}
-                        sx={{ width: 52, height: 52, borderRadius: 1, border: "1px solid", borderColor: "mashil.line", color: "mashil.text" }}
+                        sx={{ width: 52, height: 52, border: "var(--rule-bar) solid var(--color-ink)", color: "var(--color-ink)" }}
                     >
                         <PhoneIcon />
                     </IconButton>
@@ -203,7 +209,7 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                     <Button
                         variant="contained"
                         fullWidth
-                        sx={{ minHeight: 52, fontSize: 16 }}
+                        size="large"
                         component="a"
                         href={`https://map.kakao.com/link/to/${encodeURIComponent(toilet.name)},${toilet.latitude},${toilet.longitude}`}
                         target="_blank"
@@ -232,12 +238,10 @@ function OverlayButton({ label, onClick, children }: { label: string; onClick: (
             sx={{
                 width: 44,
                 height: 44,
-                borderRadius: 1,
-                bgcolor: "mashil.surface",
-                color: "mashil.text",
-                border: "1px solid",
-                borderColor: "mashil.line",
-                "&:hover": { bgcolor: "mashil.surface" },
+                bgcolor: "var(--color-paper-3)",
+                color: "var(--color-ink)",
+                border: "var(--rule-bar) solid var(--color-ink)",
+                "&:hover": { bgcolor: "var(--color-paper-2)" },
             }}
         >
             {children}
@@ -246,22 +250,25 @@ function OverlayButton({ label, onClick, children }: { label: string; onClick: (
 }
 
 /** 요일 하나의 표시 문구. */
-function dayText(t: TFunction, toilet: ToiletDetail, day: ScheduleDay): { text: string; kind: "hours" | "closed" | "none" } {
+function dayText(t: TFunction, toilet: ToiletDetail, day: ScheduleDay, cell = false): { text: string; kind: "hours" | "closed" | "none" } {
     if (toilet.scheduleStatus === "AlwaysOpen") return { text: t("detail.allDay"), kind: "hours" };
     const slots = (toilet.schedules ?? []).filter((s) => s.day === day);
     if (slots.length === 0) return { text: t("detail.noInfo"), kind: "none" };
     if (slots.every((s) => s.closed)) return { text: t("detail.closedDay"), kind: "closed" };
     const parts = slots
         .filter((s) => !s.closed && s.open && s.close)
-        .map((s) => (s.open === "00:00" && s.close === "24:00" ? t("detail.allDay") : `${s.open}–${s.close}`));
+        // 칸 안에서는 여는 시각과 닫는 시각을 두 줄로 (고정폭 글꼴이라 한 줄이면 칸을 넘친다)
+        .map((s) => (s.open === "00:00" && s.close === "24:00" ? t("detail.allDay") : cell ? `${s.open}
+~${s.close}` : `${s.open}~${s.close}`));
     return parts.length ? { text: parts.join("\n"), kind: "hours" } : { text: t("detail.noInfo"), kind: "none" };
 }
 
 function HoursSection({ toilet }: { toilet: ToiletDetail }) {
     const { t } = useTranslation();
     const today = todayKst();
-    const raw = [toilet.openHours, toilet.openHoursDetail].filter(Boolean).join(" · ");
+    const raw = [toilet.openHours, toilet.openHoursDetail].filter(Boolean).join(", ");
     const texts = Object.fromEntries(DAYS.map((d) => [d, dayText(t, toilet, d)])) as Record<ScheduleDay, ReturnType<typeof dayText>>;
+    const cellTexts = Object.fromEntries(DAYS.map((d) => [d, dayText(t, toilet, d, true)])) as Record<ScheduleDay, ReturnType<typeof dayText>>;
     const group = (days: ScheduleDay[]) => {
         const vals = new Set(days.map((d) => texts[d].text));
         return vals.size === 1 ? [...vals][0] : t("detail.varies");
@@ -274,71 +281,62 @@ function HoursSection({ toilet }: { toilet: ToiletDetail }) {
             : null;
 
     return (
-        <Box component="section">
-            <Typography component="h2" variant="subtitle1" sx={{ mb: 1 }}>
+        <Box component="section" aria-labelledby="hours-title">
+            <Typography id="hours-title" component="h2" variant="h6" sx={{ mb: 1.5 }}>
                 {t("detail.hoursTitle")}
             </Typography>
             {note && (
-                <Alert severity="info" sx={{ mb: 1 }}>
+                <Alert severity="info" sx={{ mb: 1.5 }}>
                     {note}
                 </Alert>
             )}
-            <Box component="ol" sx={{ listStyle: "none", m: 0, p: 0, display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 0.75 }}>
+            {/* 요일 8칸: 2px 테두리를 공유하는 정사각 칸, 오늘은 잉크 칸 */}
+            <Box component="ol" className="cells" sx={{ listStyle: "none", m: 0, p: 0, gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
                 {DAYS.map((d) => {
-                    const { text, kind } = texts[d];
+                    const { text, kind } = cellTexts[d];
                     const isToday = d === today;
                     return (
-                        <Box
-                            component="li"
-                            key={d}
-                            aria-current={isToday ? "date" : undefined}
-                            sx={{
-                                borderRadius: 1,
-                                p: 1,
-                                minHeight: 62,
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 0.25,
-                                ...(kind === "hours"
-                                    ? { bgcolor: "mashil.surface", border: "1.5px solid", borderColor: "mashil.line" }
-                                    : kind === "closed"
-                                      ? { bgcolor: "mashil.surface", border: "1.5px dashed", borderColor: "mashil.closedBorder", color: "mashil.closedText" }
-                                      : { bgcolor: "mashil.surfaceSunken", border: "1.5px solid", borderColor: "mashil.line", color: "text.secondary" }),
-                                // 오늘은 굵은 먹색 테두리
-                                ...(isToday && { border: "2.5px solid", borderColor: "mashil.selected" }),
-                            }}
-                        >
-                            <Box component="span" sx={{ fontSize: 12, fontWeight: 700 }}>
-                                {t(`days.${d}`)}
-                                {isToday && ` · ${t("detail.today")}`}
-                            </Box>
-                            <Box component="span" sx={{ fontFamily: fonts.mono, fontSize: 12, whiteSpace: "pre-line", lineHeight: 1.35 }}>
+                        <li key={d} aria-current={isToday ? "date" : undefined} className={isToday ? "is-today" : kind === "hours" ? undefined : "is-off"}>
+                            {/* 오늘은 잉크 칸으로만 표시 (화면 낭독기는 aria-current 로 안다) */}
+                            <span className="cell-day">{t(`days.${d}`)}</span>
+                            <span className="cell-hours" style={{ display: "block" }}>
                                 {text}
-                            </Box>
-                        </Box>
+                            </span>
+                        </li>
                     );
                 })}
             </Box>
 
-            <Box component="table" sx={{ width: "100%", mt: 1.5, borderCollapse: "collapse", fontSize: 14, "& th, & td": { py: 0.75, borderBottom: "1px solid", borderColor: "mashil.line", textAlign: "left", verticalAlign: "top" }, "& th": { fontWeight: 600, width: 96, color: "text.secondary" } }}>
+            <Box
+                component="table"
+                sx={{
+                    width: "100%",
+                    mt: 2,
+                    borderCollapse: "collapse",
+                    fontSize: "var(--text-sm)",
+                    "& th, & td": { py: 1, textAlign: "left", verticalAlign: "top", borderBottom: "var(--rule-hair) solid var(--color-rule)" },
+                    "& th": { fontWeight: 500, color: "var(--color-muted)", width: "7rem" },
+                    "& td": { whiteSpace: "pre-line" },
+                }}
+            >
                 <tbody>
                     <tr>
                         <th scope="row">{t("detail.weekdays")}</th>
-                        <td style={{ whiteSpace: "pre-line" }}>{group(["Mon", "Tue", "Wed", "Thu", "Fri"])}</td>
+                        <td>{group(["Mon", "Tue", "Wed", "Thu", "Fri"])}</td>
                     </tr>
                     <tr>
                         <th scope="row">{t("detail.weekend")}</th>
-                        <td style={{ whiteSpace: "pre-line" }}>{group(["Sat", "Sun"])}</td>
+                        <td>{group(["Sat", "Sun"])}</td>
                     </tr>
                     <tr>
                         <th scope="row">{t("detail.holiday")}</th>
-                        <td style={{ whiteSpace: "pre-line" }}>{texts.Holiday.text}</td>
+                        <td>{texts.Holiday.text}</td>
                     </tr>
                 </tbody>
             </Box>
             {raw && (
                 // 정규화 결과를 사용자가 검증할 수 있게 원문도 함께
-                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                     {t("detail.rawHours", { raw })}
                 </Typography>
             )}
@@ -350,77 +348,50 @@ function FacilitiesSection({ toilet }: { toilet: ToiletDetail }) {
     const { t } = useTranslation();
     const f = toilet.facilities;
     if (!f) return null;
-    const tiles: { label: string; total: number; detail: string }[] = [
+    const tiles: { label: string; total: number; detail: string[] }[] = [
         {
             label: t("detail.men"),
             total: f.maleStall + f.maleUrinal,
-            detail: [f.maleStall && t("detail.stalls", { count: f.maleStall }), f.maleUrinal && t("detail.urinals", { count: f.maleUrinal })].filter(Boolean).join(" · "),
+            detail: [f.maleStall ? t("detail.stalls", { count: f.maleStall }) : "", f.maleUrinal ? t("detail.urinals", { count: f.maleUrinal }) : ""].filter(Boolean),
         },
-        { label: t("detail.women"), total: f.femaleStall, detail: f.femaleStall ? t("detail.stalls", { count: f.femaleStall }) : "" },
-        { label: t("detail.accessible"), total: f.maleAccessibleStall + f.maleAccessibleUrinal + f.femaleAccessibleStall, detail: "" },
-        { label: t("detail.child"), total: f.maleChildStall + f.maleChildUrinal + f.femaleChildStall, detail: "" },
+        { label: t("detail.women"), total: f.femaleStall, detail: f.femaleStall ? [t("detail.stalls", { count: f.femaleStall })] : [] },
+        { label: t("detail.accessible"), total: f.maleAccessibleStall + f.maleAccessibleUrinal + f.femaleAccessibleStall, detail: [] },
+        { label: t("detail.child"), total: f.maleChildStall + f.maleChildUrinal + f.femaleChildStall, detail: [] },
     ];
     const amenities = (["emergencyBell", "entranceCctv", "diaperChanger"] as const).filter((k) => f[k] !== null && f[k] !== undefined);
 
     return (
-        <Box component="section">
-            <Typography component="h2" variant="subtitle1" sx={{ mb: 1 }}>
+        <Box component="section" aria-labelledby="facilities-title">
+            <Typography id="facilities-title" component="h2" variant="h6" sx={{ mb: 1.5 }}>
                 {t("detail.facilitiesTitle")}
             </Typography>
-            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 0.75 }}>
+            <Box component="dl" className="cells" sx={{ m: 0, gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
                 {tiles.map((tile) => (
-                    <Box
-                        key={tile.label}
-                        sx={{
-                            borderRadius: 1,
-                            p: 1,
-                            minHeight: 72,
-                            display: "flex",
-                            flexDirection: "column",
-                            justifyContent: "space-between",
-                            ...(tile.total > 0
-                                ? { bgcolor: "mashil.surface", border: "1.5px solid", borderColor: "mashil.line" }
-                                : { bgcolor: "mashil.surfaceSunken", border: "1.5px solid", borderColor: "mashil.line", color: "text.secondary" }),
-                        }}
-                    >
-                        <Box component="span" sx={{ fontSize: 12, fontWeight: 700 }}>
-                            {tile.label}
-                        </Box>
-                        <Box component="span" sx={{ fontFamily: fonts.mono, fontSize: 22, lineHeight: 1.1 }}>
-                            {tile.total > 0 ? tile.total : "–"}
-                        </Box>
-                        <Box component="span" sx={{ fontSize: 11, opacity: 0.85, minHeight: 14 }}>
-                            {tile.total > 0 ? tile.detail : t("detail.none")}
-                        </Box>
-                    </Box>
+                    <div key={tile.label} className={tile.total > 0 ? undefined : "is-off"}>
+                        <dt className="cell-day">{tile.label}</dt>
+                        <dd style={{ margin: 0 }}>
+                            <span className="cell-figure" style={{ display: "block" }}>
+                                {tile.total > 0 ? tile.total : t("detail.none")}
+                            </span>
+                            {tile.detail.map((line) => (
+                                <span key={line} className="cell-hours" style={{ display: "block" }}>
+                                    {line}
+                                </span>
+                            ))}
+                        </dd>
+                    </div>
                 ))}
             </Box>
             {amenities.length > 0 && (
-                <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
+                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1.5 }}>
                     {amenities.map((k) => {
                         const has = f[k] === true;
                         const name = t(`detail.amenities.${k}`);
                         return (
-                            <Box
-                                key={k}
-                                component="span"
-                                // 없는 항목은 취소선 (시안) — 화면 낭독기에는 "없음"으로 읽히게
-                                aria-label={has ? name : t("detail.amenityMissing", { name })}
-                                sx={{
-                                    px: 1.25,
-                                    height: 30,
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    borderRadius: 1,
-                                    fontSize: 13,
-                                    fontWeight: 600,
-                                    border: "1px solid",
-                                    borderColor: "mashil.line",
-                                    ...(has ? { bgcolor: "mashil.surface" } : { color: "text.secondary", textDecoration: "line-through" }),
-                                }}
-                            >
+                            // 없는 항목은 취소선. 화면 낭독기에는 "없음"으로 읽히게
+                            <span key={k} className={has ? "amenity" : "amenity is-missing"} aria-label={has ? name : t("detail.amenityMissing", { name })}>
                                 {name}
-                            </Box>
+                            </span>
                         );
                     })}
                 </Stack>

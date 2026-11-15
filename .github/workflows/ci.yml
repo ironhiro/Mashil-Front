@@ -1,0 +1,68 @@
+# 웹 CI
+#   모든 push·PR: 타입 검사(tsc -b) + 빌드(vite build)
+#   main push: 배포용 dist 를 아티팩트로 (서울남산체 생성 포함). 서버 반영은 백엔드 저장소의 deploy/web-deploy.sh
+#              (이전 해시 에셋 7일 보존, OPS-04 — 백엔드 docs/OPERATIONS.md)
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Type check
+        run: npx tsc -b
+      - name: Build
+        run: npx vite build
+
+  # 배포용 빌드. 글꼴은 라이선스상 저장소에 넣지 않으므로 여기서 만든다 (tool/make_fonts.py, seoul.go.kr 에서 받음)
+  dist:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fonts
+        run: |
+          pip install fonttools brotli
+          python tool/make_fonts.py
+      - run: npm ci
+      - name: Build
+        env:
+          # 저장소 Settings → Variables (Kakao JS 키는 브라우저에 공개되는 값이고 도메인으로 제한된다)
+          VITE_KAKAO_MAP_KEY: ${{ vars.VITE_KAKAO_MAP_KEY }}
+          VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
+          VITE_SENTRY_ENVIRONMENT: production
+          VITE_RELEASE: ${{ github.sha }}
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-dist-${{ github.sha }}
+          path: dist/
+          retention-days: 14

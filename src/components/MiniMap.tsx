@@ -1,8 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Box } from "@mui/material";
-import { tileCss } from "../design/statusTile";
+import { stateClass } from "../design/statusTile";
 import type { TileState } from "../design/statusTile";
-import { fonts, tileGrid } from "../design/tokens";
 import { loadKakaoMaps } from "../lib/kakaoMap";
 
 interface Props {
@@ -28,10 +27,8 @@ export function MiniMap({ lat, lng, label, state, height = 168 }: Props) {
                 map.setZoomable(false);
                 const el = document.createElement("div");
                 el.textContent = label;
-                el.style.cssText =
-                    tileCss(state) +
-                    `height:32px;padding:0 10px;border-radius:6px;box-sizing:border-box;display:inline-flex;align-items:center;` +
-                    `font:700 13px ${fonts.body};white-space:nowrap;transform:translateY(-4px);`;
+                el.className = `pin ${stateClass(state)}`;
+                el.style.cursor = "default";
                 new maps.CustomOverlay({ position: pos, content: el, xAnchor: 0.5, yAnchor: 1 }).setMap(map);
             })
             .catch(() => undefined); // 지도가 안 떠도 격자 바탕은 남는다
@@ -44,10 +41,12 @@ export function MiniMap({ lat, lng, label, state, height = 168 }: Props) {
         <Box
             ref={ref}
             aria-hidden
+            // 장식용 지도: 카카오가 넣는 로고 링크까지 탭 순서에서 빼야 aria-hidden 과 어긋나지 않는다 (axe aria-hidden-focus)
+            inert
             sx={{
                 height,
-                bgcolor: "mashil.surfaceSunken",
-                backgroundImage: tileGrid("var(--mui-palette-mashil-line)"),
+                bgcolor: "var(--color-paper-2)",
+                borderBottom: "var(--rule-bar) solid var(--color-ink)",
             }}
         />
     );
