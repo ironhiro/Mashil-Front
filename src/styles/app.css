@@ -6,8 +6,12 @@
 /* Hallmark · dropped onClick={() => setNavOpen(true)}, onClick={() => { auth.logout(); closeNav(); navigate("/"); }}, onClick={() => { closeNav(); navigate("/"); }}, onClick={() => { closeNav(); navigate("/admin/change-requests"); }}, onClick={() => { closeNav(); navigate("/change-requests/new"); }}, onClick={() => { closeNav(); navigate("/login"); }}, onClose={closeNav} · the left drawer became the bottom tabs at the user's request: find, report and me are NavLinks; review, login, logout and language live on /me (MePage) */
 /* Hallmark · dropped onChange={(e) => setStatusFilter(e.target.value as ChangeRequestStatus | "")}, onReview={(approve, note) => reviewMut.mutate({ id: row.id, approve, note }) } · the admin table became one card per report: the status select is a ToggleButtonGroup with the same setStatusFilter, and the card calls reviewMut.mutate with the same id, approve and note */
 /* Hallmark · dropped onSelect={openDetail} · list and picks rows now use onSelect={wide ? selectOnMap : openDetail}: on phones they still open the detail page, on wide screens they select the place on the map beside the list */
+/* Hallmark · dropped onClick={() => navigate("/change-requests/new", { state: { kind: ChangeRequestKind.Update, targetToiletId: selectedToilet.id, targetName: selectedToilet.name, }, })} · renamed, not dropped: the same handler now sends ChangeRequestKind.Edit (CR-05, the server's name for it) */
 @import url("./tokens.css");
 @import url("./base.css");
+
+/* 화면을 옮길 때 포커스를 받는 제목(App.tsx useRouteFocus). 누를 수 있는 요소가 아니라 테두리는 그리지 않는다 */
+h1[tabindex="-1"]:focus, main[tabindex="-1"]:focus { outline: none; }
 
 /* 앱 화면: 본문 크기 고정 비율, 숫자는 표 숫자 */
 body { font-variant-numeric: tabular-nums; }

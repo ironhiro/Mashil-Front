@@ -86,7 +86,7 @@ for (const t of toilets) {
 
 const changeRequests: ChangeRequestRow[] = [
     {
-        id: 1, requesterId: DEMO_USERS[0], targetToiletId: toilets[3]?.id ?? null, kind: "Update",
+        id: 1, requesterId: DEMO_USERS[0], targetToiletId: toilets[3]?.id ?? null, kind: "Edit",
         payloadJson: JSON.stringify({ openHours: "정시", openHoursDetail: "평일 07:00~22:00, 주말 09:00~18:00" }),
         status: "Pending", reviewedById: null, reviewedAt: null, reviewNote: null, createdAt: daysAgo(1),
     },
@@ -101,7 +101,7 @@ const changeRequests: ChangeRequestRow[] = [
         status: "Approved", reviewedById: ME.id, reviewedAt: daysAgo(3), reviewNote: "현장 확인 완료", createdAt: daysAgo(5),
     },
     {
-        id: 4, requesterId: DEMO_USERS[3], targetToiletId: toilets[20]?.id ?? null, kind: "Update",
+        id: 4, requesterId: DEMO_USERS[3], targetToiletId: toilets[20]?.id ?? null, kind: "Edit",
         payloadJson: JSON.stringify({ phone: "02-000-0000" }),
         status: "Rejected", reviewedById: ME.id, reviewedAt: daysAgo(6), reviewNote: "전화번호 확인 불가", createdAt: daysAgo(8),
     },
@@ -114,7 +114,7 @@ changeRequests.push(
         status: "Pending", reviewedById: null, reviewedAt: null, reviewNote: null, createdAt: daysAgo(0.2),
     },
     {
-        id: changeRequests.length + 2, requesterId: ME.id, targetToiletId: toilets[1]?.id ?? null, kind: "Update",
+        id: changeRequests.length + 2, requesterId: ME.id, targetToiletId: toilets[1]?.id ?? null, kind: "Edit",
         payloadJson: JSON.stringify({ openHours: "07:00~23:00" }),
         status: "Approved", reviewedById: ME.id, reviewedAt: daysAgo(1), reviewNote: "알려 주셔서 고마워요. 영업시간을 고쳤어요.", createdAt: daysAgo(3),
     },

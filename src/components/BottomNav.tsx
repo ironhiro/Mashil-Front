@@ -5,7 +5,7 @@ import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
 
 /** 하단 탭이 보이는 경로. 자기 하단 바가 있는 상세나 로그인·동의·약관 같은 한 번 거치는 화면에서는 숨긴다. */
-export const BOTTOM_NAV_PATHS = ["/", "/change-requests/new", "/me", "/admin/change-requests"];
+export const BOTTOM_NAV_PATHS = ["/", "/change-requests/new", "/me", "/admin", "/admin/change-requests", "/admin/comments", "/admin/issues", "/admin/imports", "/admin/status"];
 
 export function showsBottomNav(pathname: string) {
     return BOTTOM_NAV_PATHS.includes(pathname);

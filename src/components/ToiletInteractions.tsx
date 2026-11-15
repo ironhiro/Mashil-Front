@@ -58,6 +58,7 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
             // 평균 평점은 /near 응답에 실려 오므로 그 쿼리를 다시 받아야 상단 ★ 와 지도 배지가 갱신됨.
             qc.invalidateQueries({ queryKey: ["toilets", "near"] });
             qc.invalidateQueries({ queryKey: ["toilets", "recommended"] }); // 추천 점수의 절반이 평점
+            qc.invalidateQueries({ queryKey: ["toilet", toiletId] }); // 상세 화면의 평균
         },
         onError: (e: Error) => setError(friendlyError(e, t("interactions.ratingFailed"))),
     });
@@ -92,11 +93,11 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
         <Card variant="outlined">
             <CardContent>
                 <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1 }} flexWrap="wrap" useFlexGap>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 700 }}>
                         {t("interactions.title")}
                     </Typography>
                     {averageRating !== null && (
-                        <Typography variant="body2" sx={{ color: "primary.main", fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ color: "var(--color-accent-text)", fontWeight: 600 }}>
                             ★ {averageRating.toFixed(1)}
                             {ratingCount > 0 && ` (${t("interactions.ratingCount", { count: ratingCount })})`}
                         </Typography>

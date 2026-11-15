@@ -62,13 +62,13 @@ export function MaintenanceScreen({ status, onRetry, retrying }: { status: AppSt
 }
 
 /** 읽기 전용 점검 띠: 안내판의 "늦음" 행처럼 옅은 분홍(705 C) 위 잉크 글자 + 반쯤 닫힌 문. */
-export function ReadOnlyBanner({ status }: { status: AppStatus }) {
+export function ReadOnlyBanner({ status, text }: { status: AppStatus; text?: "adminConsole.adminMaintenanceBanner" }) {
     const { t } = useTranslation();
     return (
         <Box role="status" className="band-soon" sx={{ px: 2, py: 1.25, display: "flex", alignItems: "center", gap: 1.5, fontSize: "var(--text-sm)", fontWeight: 800 }}>
-            <DoorGlyph open={0.45} size={24} />
+            <DoorGlyph open={text ? 0 : 0.45} size={24} />
             <span>
-                {status.until ? t("maintenance.readOnlyUntil", { time: formatDateTime(status.until) }) : t("maintenance.readOnly")}
+                {text ? t(text) : status.until ? t("maintenance.readOnlyUntil", { time: formatDateTime(status.until) }) : t("maintenance.readOnly")}
             </span>
         </Box>
     );

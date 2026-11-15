@@ -75,8 +75,8 @@ export function MePage() {
             )}
 
             {isAdmin && (
-                <Button variant="outlined" size="large" component={RouterLink} to="/admin/change-requests">
-                    {t("nav.review")}
+                <Button variant="outlined" size="large" component={RouterLink} to="/admin">
+                    {t("adminConsole.hubTitle")}
                 </Button>
             )}
 

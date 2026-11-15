@@ -133,7 +133,12 @@ export interface ToiletDetail {
         dataReferenceDate: string | null;
         coordinateSource: string | null;
         editedByPeople: boolean;
+        /** 원본을 마지막으로 받아 반영·확인한 시각 (ISO, UTC). 임포트 기록이 없으면 null */
+        lastRefreshedAt?: string | null;
     };
+    /** 평점 평균 (평점이 없으면 null)과 평점 수 */
+    averageRating?: number | null;
+    ratingCount?: number;
 }
 
 export function fetchToilet(id: number): Promise<ToiletDetail> {
@@ -209,6 +214,22 @@ export interface RecommendedToilet {
 }
 
 /** 지금 여기서 가기 좋은 곳 (닫힌 곳 제외, 평점이나 댓글 평가가 있는 곳만, 점수순) */
+/** 이름·주소 검색 결과 (MAP-06). 좌표가 아직 없는 곳도 나온다 */
+export interface ToiletSearchResult {
+    id: number;
+    name: string;
+    roadAddress: string | null;
+    lotAddress: string | null;
+    latitude: number | null;
+    longitude: number | null;
+}
+
+/** near 를 주면 서버가 그 근처부터 고른다 */
+export function searchToilets(q: string, near: LatLng | null, limit = 30): Promise<ToiletSearchResult[]> {
+    const at = near ? `&lat=${near.lat}&lng=${near.lng}` : "";
+    return apiFetch<ToiletSearchResult[]>(`/api/toilets/search?q=${encodeURIComponent(q)}&limit=${limit}${at}`);
+}
+
 export function fetchRecommendedToilets(lat: number, lng: number, radiusM: number, limit = 5): Promise<RecommendedToilet[]> {
     return apiFetch<RecommendedToilet[]>(
         `/api/toilets/recommended?lat=${lat}&lng=${lng}&radiusM=${radiusM}&limit=${limit}`,

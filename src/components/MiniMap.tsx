@@ -41,6 +41,8 @@ export function MiniMap({ lat, lng, label, state, height = 168 }: Props) {
         <Box
             ref={ref}
             aria-hidden
+            // 장식용 지도: 카카오가 넣는 로고 링크까지 탭 순서에서 빼야 aria-hidden 과 어긋나지 않는다 (axe aria-hidden-focus)
+            inert
             sx={{
                 height,
                 bgcolor: "var(--color-paper-2)",

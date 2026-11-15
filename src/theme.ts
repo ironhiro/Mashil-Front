@@ -73,7 +73,9 @@ export const theme = createTheme({
                     color: "var(--color-ink)",
                     "&:hover": { border: bar, backgroundColor: "var(--color-paper-2)" },
                 },
-                text: { textDecoration: "underline", textUnderlineOffset: "0.2em", "&:hover": { backgroundColor: "transparent", color: "var(--color-accent)" } },
+                text: { textDecoration: "underline", textUnderlineOffset: "0.2em", "&:hover": { backgroundColor: "transparent", color: "var(--color-accent-text)" } },
+                // 글자로 쓰는 파랑은 밤에 밝힌 값 (면으로 쓰는 --color-accent 는 밤 바탕 위 글자로 대비가 모자람)
+                textPrimary: { color: "var(--color-accent-text)" },
             },
         },
         MuiIconButton: {
@@ -139,7 +141,7 @@ export const theme = createTheme({
         MuiBackdrop: { styleOverrides: { root: { backgroundColor: "var(--color-scrim)" } } },
         MuiRating: { styleOverrides: { iconFilled: { color: "var(--color-accent)" }, iconEmpty: { color: "var(--color-muted)" } } },
         MuiCheckbox: { styleOverrides: { root: { color: "var(--color-ink)", "&.Mui-checked": { color: "var(--color-accent)" } } } },
-        MuiLink: { styleOverrides: { root: { color: "var(--color-ink)", textUnderlineOffset: "0.2em", "&:hover": { color: "var(--color-accent)" } } } },
+        MuiLink: { styleOverrides: { root: { color: "var(--color-ink)", textUnderlineOffset: "0.2em", "&:hover": { color: "var(--color-accent-text)" } } } },
         MuiTab: { styleOverrides: { root: { textTransform: "none", fontWeight: 500, "&.Mui-selected": { fontWeight: 800, color: "var(--color-ink)" } } } },
         MuiTabs: { styleOverrides: { indicator: { height: 3, backgroundColor: "var(--color-ink)" } } },
         MuiTableCell: {

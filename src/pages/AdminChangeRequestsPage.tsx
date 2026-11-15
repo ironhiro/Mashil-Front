@@ -1,13 +1,16 @@
 import { Fragment, useState } from "react";
-import { Alert, Box, Button, CircularProgress, Stack, TextField, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, Stack, TextField, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { formatDateTime } from "../i18n";
 import { ko } from "../i18n/locales/ko";
 import { friendlyError } from "../lib/friendlyError";
-import { fetchChangeRequests, fetchToilet, reviewChangeRequest } from "../api";
-import type { ChangeRequestRow } from "../api";
+import { fetchToilet, reviewChangeRequest } from "../api";
+import { fetchAdminChangeRequests } from "../adminApi";
+import type { AdminChangeRequestRow, ChangeRequestOutcome } from "../adminApi";
+import { AdminPage, labelOf } from "../components/AdminParts";
+import { Link as RouterLink } from "react-router-dom";
 import { ChangeRequestStatusTag } from "../components/ChangeRequestStatusTag";
 import { CHANGE_REQUEST_KIND_OPTIONS, ChangeRequestStatus } from "../lib/enums";
 import type { ChangeRequestKind } from "../lib/enums";
@@ -47,7 +50,7 @@ export function AdminChangeRequestsPage() {
 
     const query = useQuery({
         queryKey: ["admin", "change-requests", statusFilter],
-        queryFn: () => fetchChangeRequests(statusFilter || undefined),
+        queryFn: () => fetchAdminChangeRequests(statusFilter || undefined),
     });
 
     const reviewMut = useMutation({
@@ -61,13 +64,7 @@ export function AdminChangeRequestsPage() {
     });
 
     return (
-        <Stack spacing={2}>
-            <Typography variant="h4" component="h1">
-                {t("admin.title")}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-                {t("admin.intro")}
-            </Typography>
+        <AdminPage title={t("admin.title")} intro={t("admin.intro")}>
 
             {/* 상태 고르기: 선택 묶음 칸 */}
             <ToggleButtonGroup
@@ -102,7 +99,7 @@ export function AdminChangeRequestsPage() {
                     disabled={reviewMut.isPending}
                 />
             ))}
-        </Stack>
+        </AdminPage>
     );
 }
 
@@ -112,7 +109,7 @@ function ChangeRequestCard({
     busy,
     disabled,
 }: {
-    row: ChangeRequestRow;
+    row: AdminChangeRequestRow;
     onReview: (approve: boolean, note?: string) => void;
     busy: boolean;
     disabled: boolean;
@@ -144,6 +141,7 @@ function ChangeRequestCard({
                             </dd>
                         </>
                     )}
+                    {row.status === ChangeRequestStatus.Approved && <AppliedFacts applied={row.applied} />}
                 </dl>
                 {pending && (
                     <Stack spacing={1} sx={{ mt: 2 }}>
@@ -176,6 +174,31 @@ function ChangeRequestCard({
                 )}
             </Box>
         </article>
+    );
+}
+
+/** 승인이 실제로 남긴 것 (ADM-01): 새 화장실 / 없어진 곳 표시 / 덮어쓴 필드 (뒤에 다른 값으로 바뀐 것은 따로) */
+function AppliedFacts({ applied }: { applied: ChangeRequestOutcome | null }) {
+    const { t } = useTranslation();
+    const fieldList = (fields: string[]) => fields.map((f) => labelOf(t, "field", f)).join(", ");
+    const later = applied ? applied.fields.filter((f) => !applied.activeFields.includes(f)) : [];
+    const shown = applied ? applied.activeFields.filter((f) => !(applied.markedRemoved && f === "status")) : [];
+    return (
+        <>
+            <dt>{t("adminConsole.applied.label")}</dt>
+            <dd>
+                {!applied && t("adminConsole.applied.none")}
+                {applied?.createdToilet && <span style={{ display: "block" }}>{t("adminConsole.applied.newToilet", { id: applied.toiletId })}</span>}
+                {applied?.markedRemoved && <span style={{ display: "block" }}>{t("adminConsole.applied.removed")}</span>}
+                {shown.length > 0 && <span style={{ display: "block" }}>{t("adminConsole.applied.fields", { fields: fieldList(shown) })}</span>}
+                {later.length > 0 && <span className="activity-note">{t("adminConsole.applied.later", { fields: fieldList(later) })}</span>}
+                {applied?.toiletId != null && (
+                    <RouterLink to={`/admin/toilets/${applied.toiletId}`} style={{ display: "inline-block", marginTop: "var(--space-2xs)", color: "inherit", fontWeight: 800 }}>
+                        {t("adminConsole.applied.editToilet")}
+                    </RouterLink>
+                )}
+            </dd>
+        </>
     );
 }
 

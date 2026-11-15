@@ -22,7 +22,8 @@ export function ToiletList({ toilets, totalBeforeFilter, selectedId, onSelect }:
         <section className="board" aria-labelledby="board-title">
             <div className="board-head">
                 <h2 id="board-title" style={{ fontSize: "inherit", fontWeight: 800, letterSpacing: 0, maxWidth: "none" }}>
-                    {t("list.total", { count: toilets.length })}
+                    {/* 필터·반경을 바꿔 개수가 달라지면 스크린리더가 조용히 읽는다 */}
+                    <span role="status">{t("list.total", { count: toilets.length })}</span>
                 </h2>
                 {filtered ? <span>{t("list.filtered", { total: totalBeforeFilter!.toLocaleString() })}</span> : <span aria-hidden="true" className="board-spacer" />}
                 <span className="end">{t("list.stateHead")}</span>

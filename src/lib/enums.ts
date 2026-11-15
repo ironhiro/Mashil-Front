@@ -30,7 +30,8 @@ export const ChangeRequestStatusOrder: ChangeRequestStatus[] = [
 
 export const ChangeRequestKind = {
     Add: "Add",
-    Update: "Update",
+    /** 고치기. 예전 웹은 "Update" 로 보냈다 (서버는 둘 다 받고 "Edit" 으로 돌려준다, CR-05) */
+    Edit: "Edit",
     Delete: "Delete",
 } as const;
 export type ChangeRequestKind = (typeof ChangeRequestKind)[keyof typeof ChangeRequestKind];
@@ -38,7 +39,7 @@ export type ChangeRequestKind = (typeof ChangeRequestKind)[keyof typeof ChangeRe
 /** 제보 종류 순서. 라벨·설명은 번역 키 `report.kind.<값>.label|description`. */
 export const CHANGE_REQUEST_KIND_OPTIONS: ChangeRequestKind[] = [
     ChangeRequestKind.Add,
-    ChangeRequestKind.Update,
+    ChangeRequestKind.Edit,
     ChangeRequestKind.Delete,
 ];
 

@@ -199,7 +199,8 @@ export function MapView({
             const status = statusOf(toilet);
             const label = openStatusLabel(t, status, "short");
             const el = createPinElement(label, stateClass(tileStateOf(status)), toilet.averageRating);
-            el.setAttribute("aria-label", `${toilet.name}, ${openStatusLabel(t, status, "full")}`);
+            // 보이는 글자(상태, 평점)를 이름 맨 앞에 둔다: 음성 조작에서 "종료 누르기"처럼 보이는 대로 부를 수 있게 (WCAG 2.5.3, axe)
+            el.setAttribute("aria-label", `${el.textContent}, ${toilet.name}, ${openStatusLabel(t, status, "full")}`);
             el.addEventListener("click", () => onSelectRef.current(toilet));
             const overlay = new maps.CustomOverlay({
                 position: new maps.LatLng(toilet.latitude, toilet.longitude),

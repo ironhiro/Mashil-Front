@@ -10,6 +10,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { computeStraightRoute, fetchToilet } from "../api";
 import type { LatLng, ScheduleDay, ToiletDetail } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import { AdminToiletLink } from "../components/AdminToiletLink";
 import { MiniMap } from "../components/MiniMap";
 import { StatusTile, openStatusLabel } from "../components/OpenStatusBadge";
 import { ToiletInteractions } from "../components/ToiletInteractions";
@@ -69,7 +70,7 @@ export function ToiletDetailPage() {
 }
 
 function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: DetailState; onBack: () => void }) {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const navigate = useNavigate();
     const auth = useAuth();
     const [copied, setCopied] = useState(false);
@@ -95,7 +96,7 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
     };
 
     const requestFix = () => {
-        const state = { kind: ChangeRequestKind.Update, targetToiletId: toilet.id, targetName: toilet.name };
+        const state = { kind: ChangeRequestKind.Edit, targetToiletId: toilet.id, targetName: toilet.name };
         if (auth.user) navigate("/change-requests/new", { state });
         else navigate("/login");
     };
@@ -150,12 +151,17 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                     <HoursSection toilet={toilet} />
                     <FacilitiesSection toilet={toilet} />
 
-                    <ToiletInteractions toiletId={toilet.id} averageRating={null} />
+                    <ToiletInteractions toiletId={toilet.id} averageRating={toilet.averageRating ?? null} ratingCount={toilet.ratingCount ?? 0} />
 
                     <Box>
                         {toilet.source && (
                             <Typography variant="body2" color="text.secondary">
                                 {t("detail.source", { date: toilet.source.dataReferenceDate ?? t("detail.noInfo") })}
+                            </Typography>
+                        )}
+                        {toilet.source?.lastRefreshedAt && (
+                            <Typography variant="body2" color="text.secondary">
+                                {t("detail.sourceRefreshed", { date: new Date(toilet.source.lastRefreshedAt).toLocaleDateString(i18n.language) })}
                             </Typography>
                         )}
                         {toilet.source?.editedByPeople && (
@@ -166,6 +172,7 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                         <Link component="button" type="button" variant="body2" onClick={requestFix} sx={{ mt: 1, fontWeight: 800 }}>
                             {t("detail.requestFix")}
                         </Link>
+                        <AdminToiletLink toiletId={toilet.id} />
                     </Box>
                 </Stack>
             </Box>

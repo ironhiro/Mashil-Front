@@ -31,7 +31,7 @@ interface PrefillState {
     targetName?: string;
 }
 
-/** 8개 핵심 필드 — Add/Update 둘 다 사용. */
+/** 8개 핵심 필드 — Add/Edit 둘 다 사용. */
 interface ToiletFormFields {
     name: string;
     kind: string;
@@ -68,9 +68,9 @@ export function NewChangeRequestPage() {
         prefill.targetToiletId !== undefined ? String(prefill.targetToiletId) : "",
     );
     const [fields, setFields] = useState<ToiletFormFields>(EMPTY_FIELDS);
-    /** Update 모드 일 때 fetch 직후 스냅샷 — 제출 시 fields 와 비교해 변경된 항목만 payload 에 담음. */
+    /** Edit 모드 일 때 fetch 직후 스냅샷 — 제출 시 fields 와 비교해 변경된 항목만 payload 에 담음. */
     const [originalFields, setOriginalFields] = useState<ToiletFormFields | null>(null);
-    const [note, setNote] = useState("");        // Add/Update 시 자유 메모
+    const [note, setNote] = useState("");        // Add/Edit 시 자유 메모
     const [reason, setReason] = useState("");    // Delete 시 사유 (필수)
 
     const [submitting, setSubmitting] = useState(false);
@@ -83,10 +83,10 @@ export function NewChangeRequestPage() {
 
     const qc = useQueryClient();
 
-    // Update 시 대상 toilet 현재값을 fetch — fields 에 prefill, 제출 시 diff 비교 기준.
+    // Edit 시 대상 toilet 현재값을 fetch — fields 에 prefill, 제출 시 diff 비교 기준.
     // 키는 상세 화면·관리자 화면과 같은 ["toilet", id] (같은 fetchToilet 응답, 승인 시 함께 무효화)
     const detailQuery = useQuery({
-        enabled: kind === ChangeRequestKind.Update && targetIdValid,
+        enabled: kind === ChangeRequestKind.Edit && targetIdValid,
         queryKey: ["toilet", targetIdNum],
         queryFn: () => fetchToilet(targetIdNum),
     });
@@ -97,9 +97,9 @@ export function NewChangeRequestPage() {
         setOriginalFields(null);
     }, [kind]);
 
-    // Update 모드에서 detail fetch 완료되면 fields + originalFields 동시 채움
+    // Edit 모드에서 detail fetch 완료되면 fields + originalFields 동시 채움
     useEffect(() => {
-        if (kind !== ChangeRequestKind.Update || !detailQuery.data) return;
+        if (kind !== ChangeRequestKind.Edit || !detailQuery.data) return;
         const populated = toFormFields(detailQuery.data);
         setFields(populated);
         setOriginalFields(populated);
@@ -187,7 +187,7 @@ export function NewChangeRequestPage() {
 
     return (
         <Box sx={{ maxWidth: 720, mx: "auto" }}>
-            <Typography variant="h4" sx={{ mb: 1 }}>{t("report.title")}</Typography>
+            <Typography variant="h4" component="h1" sx={{ mb: 1 }}>{t("report.title")}</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 {t("report.intro")}
             </Typography>
@@ -225,9 +225,9 @@ export function NewChangeRequestPage() {
                         />
                     )}
 
-                    {(kind === ChangeRequestKind.Add || kind === ChangeRequestKind.Update) && (
+                    {(kind === ChangeRequestKind.Add || kind === ChangeRequestKind.Edit) && (
                         <>
-                            {kind === ChangeRequestKind.Update && (
+                            {kind === ChangeRequestKind.Edit && (
                                 <Alert severity="info">
                                     <Trans i18nKey="report.updateInfo" components={{ b: <b /> }} />
                                 </Alert>
@@ -366,7 +366,7 @@ export function NewChangeRequestPage() {
                         </>
                     )}
 
-                    {detailQuery.isFetching && kind === ChangeRequestKind.Update && (
+                    {detailQuery.isFetching && kind === ChangeRequestKind.Edit && (
                         <Stack direction="row" spacing={1} alignItems="center">
                             <CircularProgress size={16} />
                             <Typography variant="caption" color="text.secondary">{t("report.loadingCurrent")}</Typography>
@@ -474,7 +474,7 @@ function toFormFields(d: import("../api").ToiletDetail): ToiletFormFields {
 /**
  * 폼 입력 → payload object.
  * - **Add**: 비어있지 않은 필드만 포함 (`name` 필수). `kind` 는 항상 포함.
- * - **Update**: `original` 과 비교해 *변경된* 필드만 포함. 빈 값으로 바꾸면 `null` 명시.
+ * - **Edit**: `original` 과 비교해 *변경된* 필드만 포함. 빈 값으로 바꾸면 `null` 명시.
  * - **Delete**: `reason` 만.
  */
 function buildPayload(
@@ -490,7 +490,7 @@ function buildPayload(
 
     const out: Record<string, unknown> = {};
 
-    if (kind === ChangeRequestKind.Update && original) {
+    if (kind === ChangeRequestKind.Edit && original) {
         // diff 모드 — 바뀐 필드만 포함. 비워서 의도적 삭제하면 명시적 null.
         const txt = (key: keyof ToiletFormFields, jsonKey: string) => {
             const cur = f[key].trim();
@@ -534,7 +534,7 @@ function buildPayload(
 
     if (kind === ChangeRequestKind.Add && !out.name) return null;
 
-    // Update 는 변경 사항이 한 개도 없으면 (note 만 있어도) null — 의미 없는 요청 차단.
+    // Edit 는 변경 사항이 한 개도 없으면 (note 만 있어도) null — 의미 없는 요청 차단.
     const meaningful = Object.keys(out).filter((k) => k !== "note");
     if (meaningful.length === 0) return null;
 

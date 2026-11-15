@@ -17,7 +17,9 @@ import {
     useMediaQuery,
 } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
-import { computeStraightRoute, fetchNearbyToilets, fetchRecommendedToilets, haversineMeters } from "../api";
+import { computeStraightRoute, fetchNearbyToilets, fetchRecommendedToilets, haversineMeters, searchToilets } from "../api";
+import { SearchResults } from "../components/SearchResults";
+import { SearchField } from "../components/SearchField";
 import type { LatLng, ToiletNear } from "../api";
 import { MapView } from "../components/MapView";
 import { BoardRowContent } from "../components/BoardRow";
@@ -32,7 +34,7 @@ import type { ToiletFilter } from "../lib/toiletFilter";
 import TuneIcon from "@mui/icons-material/Tune";
 
 import { MOCK_USER_LOCATION, USE_MOCK } from "../mock/flag";
-import { getCurrentPosition, isApp, LocationError, openDirectionsInApp } from "../lib/nativeBridge";
+import { getCurrentPosition, isApp, LocationError, openAppSettings, openDirectionsInApp } from "../lib/nativeBridge";
 import { friendlyError } from "../lib/friendlyError";
 import { formatDistance } from "../i18n";
 import { toiletKindLabel } from "../lib/facilityChips";
@@ -84,6 +86,16 @@ export function HomePage() {
 
     const [radiusM, setRadiusM] = useState<SearchRadius>(homeMemory.radiusM);
     const [filter, setFilter] = useState<ToiletFilter>(homeMemory.filter);
+    // 이름·주소 검색 (MAP-06): 두 글자부터, 입력이 잠시 멈추면 찾는다. 검색 중에는 목록 자리에 결과가 나온다
+    // 입력 중인 글자는 SearchField 안에만 있고, 여기에는 정해진 검색어만 온다 (타자마다 지도·목록을 다시 그리지 않게)
+    const [searchTerm, setSearchTerm] = useState("");
+    const search = useQuery({
+        // 위치는 검색어를 칠 때의 것만 쓴다 (지도를 움직일 때마다 다시 찾지 않게 키에는 넣지 않음)
+        queryKey: ["toilets", "search", searchTerm],
+        queryFn: () => searchToilets(searchTerm, userLocation ?? center),
+        enabled: searchTerm !== "",
+        staleTime: 60_000,
+    });
     const [sheetOpen, setSheetOpen] = useState(false);
     const [viewMode, setViewMode] = useState<ViewMode>(homeMemory.viewMode);
 
@@ -203,15 +215,29 @@ export function HomePage() {
     // 제목 · 알림 · 필터와 보기 전환
     const header = (
         <>
-        <Typography variant="h4">{t("home.title")}</Typography>
+        <Typography variant="h4" component="h1">{t("home.title")}</Typography>
         {geoFailure && (
-            <Alert severity="info">{t("home.geoFallback", { reason: t(`location.${geoFailure}`) })}</Alert>
+            <Alert
+                severity="info"
+                action={
+                    // "다시 묻지 않음"이면 앱이 권한을 다시 물을 수 없으니 설정 앱으로 보낸다 (APP-02)
+                    geoFailure === "deniedForever" && isApp() ? (
+                        <Button color="inherit" size="small" onClick={() => void openAppSettings()}>
+                            {t("home.openSettings")}
+                        </Button>
+                    ) : undefined
+                }
+            >
+                {t("home.geoFallback", { reason: t(`location.${geoFailure}`) })}
+            </Alert>
         )}
         {query.isError && (
             <Alert severity="error">
                 {friendlyError(query.error, t("home.loadFailed"))}
             </Alert>
         )}
+
+        <SearchField onSearch={setSearchTerm} />
 
         {/* === 필터 버튼 + 지도/목록 전환 === */}
         <Stack direction="row" spacing={1} alignItems="center">
@@ -284,7 +310,15 @@ export function HomePage() {
     );
 
     // 목록 또는 추천
-    const results = (
+    const results = searchTerm !== "" ? (
+        <SearchResults
+            results={search.data}
+            loading={search.isFetching}
+            failed={search.isError}
+            origin={userLocation ?? center}
+            onSelect={(r) => navigate(`/toilets/${r.id}`)}
+        />
+    ) : (
         <>
         {panelMode === ViewMode.List && (
             <ToiletList
@@ -425,7 +459,7 @@ export function HomePage() {
                                     variant="body2"
                                     onClick={() => navigate("/change-requests/new", {
                                     state: {
-                                        kind: ChangeRequestKind.Update,
+                                        kind: ChangeRequestKind.Edit,
                                         targetToiletId: selectedToilet.id,
                                         targetName: selectedToilet.name,
                                     },
