@@ -247,7 +247,7 @@ export function computeStraightRoute(from: LatLng, to: LatLng): RouteEstimate {
     return { distanceM, walkingMinutes, path: [from, to], isStraightLine: true };
 }
 
-function haversineMeters(a: LatLng, b: LatLng): number {
+export function haversineMeters(a: LatLng, b: LatLng): number {
     const toRad = (d: number) => (d * Math.PI) / 180;
     const dLat = toRad(b.lat - a.lat);
     const dLng = toRad(b.lng - a.lng);

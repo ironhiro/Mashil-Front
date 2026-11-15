@@ -16,7 +16,7 @@ import {
     Typography,
 } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
-import { computeStraightRoute, fetchNearbyToilets, fetchRecommendedToilets } from "../api";
+import { computeStraightRoute, fetchNearbyToilets, fetchRecommendedToilets, haversineMeters } from "../api";
 import type { LatLng, ToiletNear } from "../api";
 import { MapView } from "../components/MapView";
 import { BoardRowContent } from "../components/BoardRow";
@@ -44,6 +44,10 @@ const SEOUL_CITY_HALL: LatLng = { lat: 37.5666, lng: 126.9784 };
  * (위치, 반경, 조건, 지도/목록). 위치는 LOCATION_FRESH_MS 가 지나면 뒤에서 조용히 다시 잰다.
  */
 const LOCATION_FRESH_MS = 2 * 60_000;
+/** 기기가 기억하는 위치를 이 시간 안의 것이면 먼저 쓴다 (그 뒤 정확한 위치로 고침) */
+const QUICK_LOCATION_MAX_AGE_MS = 10 * 60_000;
+/** 정확히 다시 잰 위치가 이만큼 이상 달라야 지도를 옮긴다 (그 아래는 측정 오차) */
+const LOCATION_MOVE_THRESHOLD_M = 30;
 const homeMemory: {
     center: LatLng | null;
     userLocation: LatLng | null;
@@ -96,17 +100,32 @@ export function HomePage() {
         // 이 세션에서 이미 잰 위치가 아직 새것이면 다시 재지 않는다
         if (homeMemory.center && Date.now() - homeMemory.locatedAt < LOCATION_FRESH_MS) return;
         const hadCenter = homeMemory.center !== null;
-        // 앱이면 브리지로 네이티브 GPS (권한 요청 포함), 브라우저면 navigator.geolocation
+        // 앱이면 브리지로 네이티브 위치 (권한 요청 포함), 브라우저면 navigator.geolocation
         let cancelled = false;
-        getCurrentPosition({ enableHighAccuracy: false, timeout: 5_000, maximumAge: 60_000 })
-            .then(({ lat, lng }) => {
+        // 사용자가 지도를 다른 곳으로 옮겨 검색했으면 그 중심은 그대로 두고 내 위치 점만 옮긴다
+        const apply = (here: LatLng, first: boolean) => {
+            setCenter((c) => (!c || (first && !hadCenter) || sameLatLng(c, homeMemory.userLocation) ? here : c));
+            setUserLocation(here);
+        };
+        // 1단계: 기기가 기억하는 최근 위치(10분 안)면 GPS 를 기다리지 않고 바로 지도를 그린다.
+        // 2단계: 그 위치가 기억값이었으면 뒤에서 정확히 다시 재고, 의미 있게 달라졌을 때만 옮긴다.
+        getCurrentPosition({ enableHighAccuracy: false, timeout: 8_000, maximumAge: QUICK_LOCATION_MAX_AGE_MS })
+            .then((first) => {
                 if (cancelled) return;
-                const here = { lat, lng };
+                const here = { lat: first.lat, lng: first.lng };
                 homeMemory.locatedAt = Date.now();
                 setGeoFailure(null);
-                // 다시 잰 경우: 사용자가 지도를 다른 곳으로 옮겨 검색했으면 그 중심은 그대로 둔다
-                setCenter((c) => (!c || !hadCenter || sameLatLng(c, homeMemory.userLocation) ? here : c));
-                setUserLocation(here);
+                apply(here, true);
+                if (!first.cached) return;
+                getCurrentPosition({ enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 })
+                    .then((precise) => {
+                        if (cancelled) return;
+                        const p = { lat: precise.lat, lng: precise.lng };
+                        if (haversineMeters(here, p) < LOCATION_MOVE_THRESHOLD_M) return;
+                        homeMemory.locatedAt = Date.now();
+                        apply(p, false);
+                    })
+                    .catch(() => undefined); // 기억값이라도 보여 주고 있으니 조용히 둔다
             })
             .catch((err: unknown) => {
                 if (cancelled) return;
