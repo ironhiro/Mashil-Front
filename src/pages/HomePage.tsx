@@ -17,7 +17,7 @@ import {
     Typography,
     useMediaQuery,
 } from "@mui/material";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { computeStraightRoute, fetchNearbyToilets, fetchRecommendedToilets, haversineMeters, searchToilets } from "../api";
 import { SearchResults } from "../components/SearchResults";
 import { SearchField } from "../components/SearchField";
@@ -90,13 +90,21 @@ export function HomePage() {
     // 이름·주소 검색 (MAP-06): 두 글자부터, 입력이 잠시 멈추면 찾는다. 검색 중에는 목록 자리에 결과가 나온다
     // 입력 중인 글자는 SearchField 안에만 있고, 여기에는 정해진 검색어만 온다 (타자마다 지도·목록을 다시 그리지 않게)
     const [searchTerm, setSearchTerm] = useState("");
-    const search = useQuery({
+    const search = useInfiniteQuery({
         // 위치는 검색어를 칠 때의 것만 쓴다 (지도를 움직일 때마다 다시 찾지 않게 키에는 넣지 않음)
         queryKey: ["toilets", "search", searchTerm],
-        queryFn: () => searchToilets(searchTerm, userLocation ?? center),
+        queryFn: ({ pageParam }) => searchToilets(searchTerm, userLocation ?? center, pageParam),
+        initialPageParam: 0,
+        // 받은 수가 전체보다 적으면 그다음부터 (한 번에 SEARCH_PAGE 건)
+        getNextPageParam: (last, pages) => {
+            const loaded = pages.reduce((n, p) => n + p.items.length, 0);
+            return last.items.length > 0 && loaded < last.total ? loaded : undefined;
+        },
         enabled: searchTerm !== "",
         staleTime: 60_000,
     });
+    const searchItems = useMemo(() => search.data?.pages.flatMap((p) => p.items), [search.data]);
+    const searchTotal = search.data?.pages.at(-1)?.total;
     const [sheetOpen, setSheetOpen] = useState(false);
     const [viewMode, setViewMode] = useState<ViewMode>(homeMemory.viewMode);
 
@@ -313,9 +321,13 @@ export function HomePage() {
     // 목록 또는 추천
     const results = searchTerm !== "" ? (
         <SearchResults
-            results={search.data}
-            loading={search.isFetching}
+            results={searchItems}
+            total={searchTotal}
+            loading={search.isFetching && !search.isFetchingNextPage}
             failed={search.isError}
+            hasMore={search.hasNextPage}
+            loadingMore={search.isFetchingNextPage}
+            onMore={() => void search.fetchNextPage()}
             origin={userLocation ?? center}
             onSelect={(r) => navigate(`/toilets/${r.id}`)}
         />

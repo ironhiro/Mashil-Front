@@ -240,7 +240,7 @@ export async function mockFetch<T>(path: string, method: string, body: unknown):
         const kw = (q.get("q") ?? "").trim();
         return toilets
             .filter((t) => t.name.includes(kw) || t.roadAddress?.includes(kw) || t.lotAddress?.includes(kw))
-            .slice(0, Number(q.get("limit") ?? 50))
+            .slice(Number(q.get("offset") ?? 0), Number(q.get("offset") ?? 0) + Number(q.get("limit") ?? 50))
             .map((t) => summarize(t, 0)) as T;
     }
 

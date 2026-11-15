@@ -53,6 +53,7 @@ export const en: Messages = {
         placeholder: "Search by name or address",
         loading: "Searching",
         total: "{{count}} found",
+        more: "Show more ({{shown}} of {{total}})",
         empty: "No matches. Try other words.",
         failed: "Search failed. Please try again shortly.",
         noLocation: "Location not confirmed yet",

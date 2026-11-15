@@ -6,8 +6,13 @@ import { formatDistance } from "../i18n";
 
 interface Props {
     results: ToiletSearchResult[] | undefined;
+    /** 맞는 곳 전체 수. 받은 수보다 많으면 "더 보기" 가 나온다 */
+    total: number | undefined;
     loading: boolean;
     failed: boolean;
+    hasMore: boolean;
+    loadingMore: boolean;
+    onMore: () => void;
     /** 거리 표시 기준 (내 위치나 지도 가운데). 좌표가 없는 곳은 거리를 비운다 */
     origin: LatLng | null;
     onSelect: (r: ToiletSearchResult) => void;
@@ -17,9 +22,9 @@ interface Props {
  * 이름·주소 검색 결과 (MAP-06). 근처 안내판과 같은 모양이고, 지도에 없는(좌표 미확정) 곳도 나온다.
  * 행을 누르면 상세로 간다.
  */
-export function SearchResults({ results, loading, failed, origin, onSelect }: Props) {
+export function SearchResults({ results, total, loading, failed, hasMore, loadingMore, onMore, origin, onSelect }: Props) {
     const { t } = useTranslation();
-    // 가까운 곳부터. 지도 위치가 아직 없는 곳은 뒤로 (서버는 이름·주소 일치 순서로만 준다)
+    // 가까운 곳부터. 지도 위치가 아직 없는 곳은 뒤로 (위치를 못 받았으면 서버는 이름순으로 준다)
     const rows = useMemo(
         () =>
             (results ?? [])
@@ -38,7 +43,7 @@ export function SearchResults({ results, loading, failed, origin, onSelect }: Pr
             <div className="board-head">
                 <h2 id="search-title" style={{ fontSize: "inherit", fontWeight: 800, letterSpacing: 0, maxWidth: "none" }}>
                     {/* 결과 수가 바뀌면 스크린리더가 조용히 읽는다 */}
-                    <span role="status">{loading ? t("search.loading") : t("search.total", { count: results?.length ?? 0 })}</span>
+                    <span role="status">{loading ? t("search.loading") : t("search.total", { count: total ?? results?.length ?? 0 })}</span>
                 </h2>
                 <span aria-hidden="true" className="board-spacer" />
                 <span className="end" />
@@ -71,6 +76,11 @@ export function SearchResults({ results, loading, failed, origin, onSelect }: Pr
                         );
                     })}
                 </ol>
+            )}
+            {!failed && hasMore && (
+                <button type="button" className="activity-more" onClick={onMore} disabled={loadingMore} aria-busy={loadingMore}>
+                    {loadingMore ? t("search.loading") : t("search.more", { shown: results?.length ?? 0, total: total ?? 0 })}
+                </button>
             )}
         </section>
     );

@@ -60,11 +60,13 @@ interface FetchOptions {
     method?: string;
     body?: unknown;
     auth?: boolean;
+    /** 응답 헤더가 필요할 때 (예: 검색 전체 수 X-Total-Count) */
+    onHeaders?: (headers: Headers) => void;
 }
 
 /** 공통 fetch — auth=true 면 localStorage 의 JWT 를 Authorization 헤더로 자동 붙임. */
 async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T> {
-    const { method = "GET", body, auth = false } = options;
+    const { method = "GET", body, auth = false, onHeaders } = options;
     if (USE_MOCK) {
         const { mockFetch } = await import("./mock/mockApi");
         return mockFetch<T>(path, method, body);
@@ -90,6 +92,7 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
         const text = await res.text();
         throw new Error(text || `HTTP ${res.status}`);
     }
+    onHeaders?.(res.headers);
     if (res.status === 204) return undefined as T;
     return res.json();
 }
@@ -224,10 +227,29 @@ export interface ToiletSearchResult {
     longitude: number | null;
 }
 
-/** near 를 주면 서버가 그 근처부터 고른다 */
-export function searchToilets(q: string, near: LatLng | null, limit = 30): Promise<ToiletSearchResult[]> {
+/** 검색 한 번에 받는 수. 더 있으면 "더 보기" 로 이어 받는다 */
+export const SEARCH_PAGE = 30;
+
+export interface ToiletSearchPage {
+    items: ToiletSearchResult[];
+    /** 맞는 곳 전체 수 (서버 X-Total-Count). 헤더가 없으면 지금까지 받은 수로 본다 */
+    total: number;
+}
+
+/** near 를 주면 서버가 그 근처부터 고른다. offset 부터 SEARCH_PAGE 건 */
+export async function searchToilets(q: string, near: LatLng | null, offset = 0): Promise<ToiletSearchPage> {
     const at = near ? `&lat=${near.lat}&lng=${near.lng}` : "";
-    return apiFetch<ToiletSearchResult[]>(`/api/toilets/search?q=${encodeURIComponent(q)}&limit=${limit}${at}`);
+    let total: number | null = null;
+    const items = await apiFetch<ToiletSearchResult[]>(
+        `/api/toilets/search?q=${encodeURIComponent(q)}&limit=${SEARCH_PAGE}&offset=${offset}${at}`,
+        {
+            onHeaders: (h) => {
+                const n = Number(h.get("X-Total-Count"));
+                if (h.has("X-Total-Count") && Number.isFinite(n)) total = n;
+            },
+        },
+    );
+    return { items, total: total ?? offset + items.length };
 }
 
 export function fetchRecommendedToilets(lat: number, lng: number, radiusM: number, limit = 5): Promise<RecommendedToilet[]> {
