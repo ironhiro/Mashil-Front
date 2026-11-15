@@ -21,13 +21,13 @@ export function DoorGlyph({ open, size = 96 }: { open: number; size?: number }) 
                 <rect x="33" y="22" width="34" height="58" fill="var(--color-door-light)" />
             )}
             <path d={`M33 22 L${leafRight} ${top} L${leafRight} ${bottom} L33 80 Z`} fill="var(--color-door-leaf)" />
-            <circle cx={leafRight - 5} cy="53" r="2.8" fill="var(--color-door-bg)" />
+            <circle cx={leafRight - 5} cy="53" r="2.8" fill="var(--color-door-handle)" />
         </svg>
     );
 }
 
 /**
- * 전체 점검 화면: 잉크 판 위에 닫힌 문, 다시 여는 시각(앰버 숫자), 다시 확인(주 행동), 카카오맵 대안.
+ * 전체 점검 화면: 잉크 판 위에 닫힌 문, 다시 여는 시각(잉크 숫자), 다시 확인(주 행동), 카카오맵 대안.
  */
 export function MaintenanceScreen({ status, onRetry, retrying }: { status: AppStatus; onRetry: () => void; retrying: boolean }) {
     const { t } = useTranslation();
@@ -61,7 +61,7 @@ export function MaintenanceScreen({ status, onRetry, retrying }: { status: AppSt
     );
 }
 
-/** 읽기 전용 점검 띠: 안내판의 "늦음" 행처럼 앰버 바탕 위 잉크 글자 + 반쯤 닫힌 문. */
+/** 읽기 전용 점검 띠: 안내판의 "늦음" 행처럼 빨강 바탕 위 흰 글자 + 반쯤 닫힌 문. */
 export function ReadOnlyBanner({ status }: { status: AppStatus }) {
     const { t } = useTranslation();
     return (

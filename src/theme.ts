@@ -4,7 +4,7 @@ import type { MuiMirror } from "./design/tokens";
 
 /**
  * MUI 테마 — Hallmark · Wayfind (src/styles/app.css 의 스탬프).
- * 정사각(모서리 0), 2px 잉크 테두리, 코발트는 지금 열림과 주 행동에만, 선택은 잉크 칸.
+ * 정사각(모서리 0), 2px 잉크 테두리, 파랑(286 C)은 지금 열림과 주 행동에만, 선택은 잉크 칸.
  * 색은 CSS 변수(tokens.css)를 쓰고, MUI 가 계산해야 하는 자리만 hex 사본(design/tokens.ts).
  */
 function palette(m: MuiMirror) {

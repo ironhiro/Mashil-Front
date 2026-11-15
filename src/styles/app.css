@@ -102,7 +102,7 @@ button:disabled, [aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
 .cell-hours { font: 500 var(--text-sm)/1.35 var(--font-body); white-space: pre-line; margin-top: var(--space-2xs); }
 .cell-figure { font: 800 var(--text-2xl)/1 var(--font-body); margin-top: var(--space-xs); }
 
-/* ── 띠: 읽기 전용 점검 (늦은 행처럼 앰버 바탕 위 잉크 글자) ─────────── */
+/* ── 띠: 읽기 전용 점검 (늦은 행처럼 빨강 바탕 위 흰 글자) ─────────── */
 .band-soon { background: var(--color-soon); color: var(--color-soon-ink); border-bottom: var(--rule-bar) solid var(--color-ink); }
 
 /* 꺼진 편의시설: 취소선 */

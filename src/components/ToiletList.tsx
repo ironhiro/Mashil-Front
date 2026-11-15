@@ -12,7 +12,7 @@ interface Props {
 
 /**
  * 근처 안내판 (시그니처) — 출발 안내판처럼 잉크 띠 위에 거리순으로.
- * 한 행: 거리(앰버, 크게), 이름과 시설, 오른쪽 끝에 상태. 행을 누르면 상세로.
+ * 한 행: 거리(잉크, 크게), 이름과 시설, 오른쪽 끝에 상태. 행을 누르면 상세로.
  */
 export function ToiletList({ toilets, totalBeforeFilter, selectedId, onSelect }: Props) {
     const { t } = useTranslation();

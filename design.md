@@ -15,7 +15,7 @@ The locked system. Every Hallmark run reads this first and pages share it. Chang
 :root {
   --color-paper: oklch(95.5% 0.006 250);  --color-paper-2: oklch(91% 0.009 250);  --color-paper-3: oklch(99.5% 0.005 250);
   --color-ink: oklch(16% 0.014 262);  --color-ink-2: oklch(29% 0.014 262);  --color-muted: oklch(47% 0.016 260);  --color-rule: oklch(80% 0.011 250);
-  --color-accent: oklch(51% 0.22 264);  --color-accent-2: oklch(81% 0.16 82);  --color-accent-ink: oklch(99.5% 0.003 250);  --color-focus: oklch(51% 0.22 264);
+  --color-accent: oklch(37.8% 0.182 262.5);  --color-accent-2: oklch(57.5% 0.213 29.6);  --color-accent-ink: oklch(99.5% 0.003 250);  --color-focus: oklch(37.8% 0.182 262.5);
   --font-display: "Chivo Mono", "Nanum Gothic Coding", ui-monospace, monospace;  --font-body: var(--font-display);  --font-outlier: var(--font-body);
   --radius-card: 0;  --radius-pill: 999px;  --rule-hair: 1px;  --rule-bar: 2px;  --shadow-card: 0 24px 40px -24px oklch(8% 0.01 260 / 0.6);
 }
@@ -23,14 +23,15 @@ The locked system. Every Hallmark run reads this first and pages share it. Chang
 The spacing scale, the type scale, the easings and the durations are the scaffold's and live in `tokens.css`.
 
 Project roles on top of the theme:
-- Status in four kinds, never by colour alone: `--color-live` (cobalt fill, open now and 24 hours), `--color-soon` (amber fill under ink, closes within 30 min), `--color-closed` (paper with a 2px ink border), `--color-unknown` (grey paper, hairline).
-- One surface for everything: the board, the map card and the plates sit on `--color-paper-3` inside a 2px ink border with ink figures. Only the status plate fills with its status colour. `--color-band` is now just the board's head row; it stays dark in the night colourway. Amber appears only as the closing-soon fill.
+- Status in four kinds, never by colour alone: `--color-live` (blue fill, open now and 24 hours), `--color-soon` (red fill under white text, closes within 30 min), `--color-closed` (paper with a 2px ink border), `--color-unknown` (grey paper, hairline).
+- One surface for everything: the board, the map card and the plates sit on `--color-paper-3` inside a 2px ink border with ink figures. Only the status plate fills with its status colour. `--color-band` is now just the board's head row; it stays dark in the night colourway. Red appears only as the closing-soon fill, the read-only maintenance band and the icon's door handle.
 - The map card's head row is the board row itself (shared `BoardRowContent`), so a place reads the same in the list and on the map.
-- Brand values that are not the theme: the Kakao, Google and Apple sign-in buttons (their own guides) and the app icon's open door (`--color-door-*`).
+- Mashil palette (2026-11-15): the two restroom-sign colours, never mixed. Blue = Pantone 286 C `#0033A0` (accent: open now, the primary action, focus; lifted to `#2F5FD0` in the night colourway). Red = Pantone 485 C `#DA291C` (accent-2: the one signal). No gradient and no blended violet between them. The app icon uses the same two: blue tile, white door, red handle (`--color-door-*`).
+- Brand values that are not the theme: the Kakao, Google and Apple sign-in buttons (their own guides).
 - MUI cannot compute OKLCH or CSS variables, so `src/design/tokens.ts` keeps hex copies for MUI only. Screen code uses the CSS variables.
 
 ## Controls
-- Primary: cobalt fill · square · 52px (44px in dense rows)
+- Primary: blue (286 C) fill · square · 52px (44px in dense rows)
 - Secondary: transparent with a 2px ink border · square · same height
 - Choice sets: square cells sharing 2px borders; the chosen cell fills ink with paper text
 

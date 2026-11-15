@@ -27,10 +27,10 @@ export const lightMirror: MuiMirror = {
     ink2: "#282b32",
     muted: "#565b64",
     rule: "#b9bec5",
-    accent: "#2055e1",
-    accent2: "#f4b522",
+    accent: "#0033a0", // Pantone 286 C
+    accent2: "#da291c", // Pantone 485 C
     accentInk: "#fcfeff",
-    error: "#be2323",
+    error: "#b9221c",
 };
 
 /** night 색 (다크) */
@@ -42,10 +42,10 @@ export const darkMirror: MuiMirror = {
     ink2: "#cdd1d6",
     muted: "#a0a5ac",
     rule: "#2c3038",
-    accent: "#457cfd",
-    accent2: "#f4b522",
+    accent: "#2f5fd0",
+    accent2: "#da291c",
     accentInk: "#fcfeff",
-    error: "#ef675c",
+    error: "#f0675a",
 };
 
 /** CSS 변수 이름 — 화면 코드에서 `cssVar.ink` 처럼 쓴다 */

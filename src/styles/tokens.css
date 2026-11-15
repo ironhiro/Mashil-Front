@@ -5,32 +5,33 @@
   --text-display-s: 1.44rem; --text-display: 1.728rem; --text-section: 1.2rem; --text-title: 1rem; --text-lead: 1rem;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-in: cubic-bezier(0.7, 0, 0.84, 0); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --dur-micro: 120ms; --dur-short: 220ms; --dur-long: 420ms;
-  --color-error: oklch(52% 0.19 27); --color-success: oklch(50% 0.12 150);
+  --color-error: oklch(52% 0.2 29.6); --color-success: oklch(50% 0.12 150);
   --container: 1440px; --gutter: 64px; --gap-columns: 32px; --section-gap-s: 120px; --section-gap: 144px; --section-gap-l: 176px;
   --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300; --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
   --color-paper: oklch(95.5% 0.006 250); --color-paper-2: oklch(91% 0.009 250); --color-paper-3: oklch(99.5% 0.005 250);
   --color-ink: oklch(16% 0.014 262); --color-ink-2: oklch(29% 0.014 262); --color-muted: oklch(47% 0.016 260);
   --color-rule: oklch(80% 0.011 250); --color-ink-rule: oklch(34% 0.014 262);
-  --color-accent: oklch(51% 0.22 264); --color-accent-2: oklch(81% 0.16 82); --color-accent-ink: oklch(99.5% 0.003 250); --color-focus: oklch(51% 0.22 264);
+  /* 마실 배색: 남녀 화장실의 파랑과 빨강을 섞지 않고 역할로 나눈다. 파랑 = 주 색 (Pantone 286 C #0033A0), 빨강 = 신호 하나 (Pantone 485 C #DA291C) */
+  --color-accent: oklch(37.8% 0.182 262.5); --color-accent-2: oklch(57.5% 0.213 29.6); --color-accent-ink: oklch(99.5% 0.003 250); --color-focus: oklch(37.8% 0.182 262.5);
   --font-display: "Chivo Mono", "Nanum Gothic Coding", ui-monospace, monospace; --font-body: var(--font-display); --font-outlier: var(--font-body);
   --radius-card: 0; --radius-pill: 999px; --rule-hair: 1px; --rule-bar: 2px;
   --shadow-card: 0 24px 40px -24px oklch(8% 0.01 260 / 0.6);
   --tracking-display: -0.03em; --display-weight: 800;
   /* 마실: 화면 역할 토큰 (Wayfind 위에서 정한 것) */
   --color-live: var(--color-accent); --color-live-ink: var(--color-accent-ink);
-  --color-soon: var(--color-accent-2); --color-soon-ink: var(--color-ink);
+  --color-soon: var(--color-accent-2); --color-soon-ink: var(--color-accent-ink);
   --color-closed: var(--color-paper-3); --color-closed-ink: var(--color-ink-2);
   --color-unknown: var(--color-paper-2); --color-unknown-ink: var(--color-muted);
   --color-scrim: oklch(16% 0.014 262 / 0.5);
-  /* 잉크 띠: 안내판과 판(plate). 다크 모드에서도 어두운 채로 (앰버는 잉크 위에만) */
+  /* 잉크 띠: 안내판과 판(plate). 다크 모드에서도 어두운 채로 */
   --color-band: var(--color-ink); --color-on-band: var(--color-paper); --color-band-muted: var(--color-paper-2);
   --color-band-rule: var(--color-ink-rule); --color-band-hover: var(--color-ink-2);
   /* 로그인 버튼: 각 사 브랜드 가이드의 값 (테마 색이 아님) */
   --color-kakao: #fee500; --color-kakao-ink: oklch(0% 0 0 / 0.85);
   --color-google: oklch(99.5% 0.003 250); --color-google-ink: #1f1f1f; --color-google-rule: #747775;
   --color-apple: oklch(10% 0.003 262); --color-apple-ink: oklch(99.5% 0.003 250);
-  /* 앱 아이콘 "열린 문" (브랜드 자산, 유지) */
-  --color-door-bg: #1f6f69; --color-door-light: #7fe0d3; --color-door-leaf: oklch(99.5% 0.003 250);
+  /* 앱 아이콘 "열린 문": 파랑 바탕, 흰 문짝, 빨강 손잡이 (app/tool/make_icons.py 와 같은 값) */
+  --color-door-bg: var(--color-accent); --color-door-light: oklch(80.8% 0.075 265.5); --color-door-leaf: oklch(99.5% 0.003 250); --color-door-handle: var(--color-accent-2);
 }
 
 /* night colourway (Wayfind): 기기가 다크 모드일 때 */
@@ -40,9 +41,10 @@
     --color-paper: oklch(15% 0.012 262); --color-paper-2: oklch(20% 0.013 262); --color-paper-3: oklch(18% 0.012 262);
     --color-ink: oklch(96% 0.005 250); --color-ink-2: oklch(86% 0.008 250); --color-muted: oklch(72% 0.012 255);
     --color-rule: oklch(31% 0.014 262); --color-ink-rule: oklch(80% 0.011 250);
-    --color-accent: oklch(56% 0.2 264); --color-focus: oklch(62% 0.2 264); --color-accent-ink: oklch(99.5% 0.003 250);
+    /* 286 C 는 밤 바탕에 너무 어두워 밝혀 쓴다 (흰 글자 5.7:1). 485 C 는 그대로 (밤 바탕 4:1, 흰 글자 4.9:1) */
+    --color-accent: oklch(52% 0.183 263.8); --color-focus: oklch(67.8% 0.144 266.3); --color-accent-ink: oklch(99.5% 0.003 250);
+    --color-door-bg: oklch(37.8% 0.182 262.5);
     --color-error: oklch(68% 0.17 27);
-    --color-soon-ink: oklch(16% 0.014 262);
     --color-scrim: oklch(5% 0.01 262 / 0.7);
     --color-band: oklch(22% 0.014 262); --color-on-band: oklch(96% 0.005 250); --color-band-muted: oklch(80% 0.01 250);
     --color-band-rule: oklch(36% 0.014 262); --color-band-hover: oklch(27% 0.014 262);
