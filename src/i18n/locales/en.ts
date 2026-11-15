@@ -235,6 +235,8 @@ export const en: Messages = {
         title: "Ratings and comments",
         loginRequired: "Log in to rate or comment.",
         myRating: "My rating",
+        ratingCount_one: "{{count}} rating",
+        ratingCount_other: "{{count}} ratings",
         rated: "Saved",
         comment: "Comment",
         commentPlaceholder: "Share something useful about this restroom",

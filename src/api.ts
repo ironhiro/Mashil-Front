@@ -42,6 +42,8 @@ export interface ToiletNear {
 
     /** 평점 행이 0개면 null. */
     averageRating: number | null;
+    /** 평균을 낸 평점 수 */
+    ratingCount: number;
     /** Hidden 제외 댓글 수. */
     commentCount: number;
 
@@ -77,10 +79,11 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
             body: body !== undefined ? JSON.stringify(body) : undefined,
         });
     };
-    let res = await send(auth ? readAuthToken() : null);
+    const sent = auth ? readAuthToken() : null;
+    let res = await send(sent);
     // 액세스 토큰이 만료됐으면 한 번 갱신하고 다시 보낸다 (갱신도 거절되면 로그아웃 상태가 되고 401 그대로)
-    if (res.status === 401 && auth && readAuthToken()) {
-        const fresh = await refreshAccessToken();
+    if (res.status === 401 && sent && readAuthToken()) {
+        const fresh = await refreshAccessToken(sent);
         if (fresh) res = await send(fresh);
     }
     if (!res.ok) {

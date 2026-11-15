@@ -27,6 +27,8 @@ interface Props {
     toiletId: number;
     /** /near 응답에 함께 실려온 집계 평점 — 표시용. 평점 없으면 null. */
     averageRating: number | null;
+    /** 그 평균을 낸 평점 수 */
+    ratingCount?: number;
 }
 
 /**
@@ -34,7 +36,7 @@ interface Props {
  * 백엔드 endpoint 가 `RequireAuthorization()` (Admin 한정 아님) 이라 일반 사용자/관리자 모두 사용 가능.
  * 비로그인 시 안내만 표시.
  */
-export function ToiletInteractions({ toiletId, averageRating }: Props) {
+export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }: Props) {
     const auth = useAuth();
     const { t } = useTranslation();
     const qc = useQueryClient();
@@ -96,7 +98,7 @@ export function ToiletInteractions({ toiletId, averageRating }: Props) {
                     {averageRating !== null && (
                         <Typography variant="body2" sx={{ color: "primary.main", fontWeight: 600 }}>
                             ★ {averageRating.toFixed(1)}
-                            {(commentsQuery.data?.length ?? 0) > 0 && ` (${commentsQuery.data!.length})`}
+                            {ratingCount > 0 && ` (${t("interactions.ratingCount", { count: ratingCount })})`}
                         </Typography>
                     )}
                 </Stack>

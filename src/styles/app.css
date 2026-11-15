@@ -198,4 +198,5 @@ a.activity-row:hover, a.activity-row:active { background: var(--color-paper-2); 
 .vote:disabled { cursor: default; border-color: var(--color-rule); color: var(--color-muted); background: transparent; }
 .vote-tally { display: inline-flex; align-items: center; gap: var(--space-2xs); min-height: 36px; font: 500 var(--text-sm)/1 var(--font-body); color: var(--color-muted); }
 @media (prefers-reduced-motion: reduce) { .vote { transition: none; } }
-@media (max-width: 420px) { .rec-why { padding-left: var(--space-md); } }
+/* 좁은 폭(40rem 이하)에선 행의 첫 칸이 4.25rem, 여백이 sm 이라 이름 칸 시작점도 따라 옮긴다 */
+@media (max-width: 40rem) { .rec-why { padding-inline: var(--space-sm); padding-left: calc(var(--space-sm) + 4.25rem + var(--space-sm)); } }

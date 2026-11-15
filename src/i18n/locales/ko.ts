@@ -239,6 +239,8 @@ export const ko = {
         title: "평점과 댓글",
         loginRequired: "평점과 댓글은 로그인하면 남길 수 있어요.",
         myRating: "내 평점",
+        ratingCount_one: "{{count}}명",
+        ratingCount_other: "{{count}}명",
         rated: "등록됨",
         comment: "댓글",
         commentPlaceholder: "이 화장실에 대한 정보를 공유해 주세요",

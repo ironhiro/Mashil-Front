@@ -143,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const applyResponse = useCallback(async (res: AuthResponse, extra: Partial<AuthUser>) => {
+        sessionGen++; // 진행 중이던 앞 세션의 토큰 갱신 결과는 버린다
         const me = res.email === undefined ? await fetchMe(res.token) : null;
         if (res.refreshToken) localStorage.setItem(REFRESH_KEY, res.refreshToken);
         else localStorage.removeItem(REFRESH_KEY);
@@ -182,6 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [applyResponse]);
 
     const logout = useCallback(() => {
+        sessionGen++; // 진행 중인 토큰 갱신이 끝나도 세션을 되살리지 않게
         const refreshToken = localStorage.getItem(REFRESH_KEY);
         localStorage.removeItem(REFRESH_KEY);
         if (refreshToken && !USE_MOCK) {
@@ -226,6 +228,9 @@ const EXPIRED_EVENT = "mashil:auth-expired";
 
 let refreshing: Promise<string | null> | null = null;
 
+/** 로그인·로그아웃마다 올라가는 세션 번호. 갱신 응답이 왔을 때 번호가 바뀌었으면 그 응답은 버린다. */
+let sessionGen = 0;
+
 /**
  * 액세스 토큰(30분)이 만료됐을 때 refresh token 으로 새 쌍을 받는다.
  * 서버는 refresh token 을 회전시키고, 이미 쓴 토큰을 다시 보내면 세션을 끊으므로 **한 번에 하나만** 보낸다
@@ -233,9 +238,13 @@ let refreshing: Promise<string | null> | null = null;
  * 새 액세스 토큰을 돌려준다. 서버가 거절하면(세션 끝) 로컬 로그인 정보를 지우고 null.
  * 네트워크 오류면 로그인 정보는 그대로 두고 null.
  */
-export function refreshAccessToken(): Promise<string | null> {
+export function refreshAccessToken(staleToken?: string | null): Promise<string | null> {
     if (USE_MOCK) return Promise.resolve(null);
+    // 401 을 받은 토큰이 이미 다른 요청의 갱신으로 바뀌었으면, 또 회전시키지 않고 지금 토큰으로 다시 보낸다
+    const current = localStorage.getItem(TOKEN_KEY);
+    if (!refreshing && staleToken && current && current !== staleToken) return Promise.resolve(current);
     refreshing ??= (async () => {
+        const gen = sessionGen;
         const refreshToken = localStorage.getItem(REFRESH_KEY);
         if (!refreshToken) return null;
         let res: Response;
@@ -249,6 +258,7 @@ export function refreshAccessToken(): Promise<string | null> {
             return null;
         }
         if (!res.ok) {
+            if (gen !== sessionGen) return null; // 기다리는 사이 로그아웃했거나 다른 계정으로 들어왔다
             if (res.status === 400 || res.status === 401) {
                 localStorage.removeItem(REFRESH_KEY);
                 localStorage.removeItem(TOKEN_KEY);
@@ -257,7 +267,24 @@ export function refreshAccessToken(): Promise<string | null> {
             }
             return null;
         }
-        const body = (await res.json()) as AuthResponse;
+        let body: AuthResponse;
+        try {
+            body = (await res.json()) as AuthResponse;
+        } catch {
+            return null; // 응답 본문이 깨졌으면 갱신 실패로 보고 로그인 정보는 그대로
+        }
+        // 기다리는 사이 로그아웃했거나 다른 계정으로 들어왔으면 이 응답은 버린다
+        if (gen !== sessionGen || !body.token) {
+            // 버리는 응답에 새 refresh token 이 왔으면 서버에서도 폐기 (안 하면 만료까지 살아 있음)
+            if (body.refreshToken) {
+                void fetch("/api/auth/logout", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ refreshToken: body.refreshToken }),
+                }).catch(() => undefined);
+            }
+            return null;
+        }
         localStorage.setItem(TOKEN_KEY, body.token);
         if (body.refreshToken) localStorage.setItem(REFRESH_KEY, body.refreshToken);
         window.dispatchEvent(new CustomEvent<string>(TOKEN_EVENT, { detail: body.token }));

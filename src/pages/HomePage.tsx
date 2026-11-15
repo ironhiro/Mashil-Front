@@ -417,6 +417,7 @@ export function HomePage() {
                 <ToiletInteractions
                     toiletId={selectedToilet.id}
                     averageRating={selectedToilet.averageRating}
+                    ratingCount={selectedToilet.ratingCount}
                 />
             )}
 

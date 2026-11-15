@@ -9,7 +9,7 @@ import rawToilets from "./toilets.json";
 import type { ChangeRequestRow, CommentRow, MyChangeRequest, MyComment, RecommendedToilet, ToiletDetail, ToiletNear, VoteResult } from "../api";
 import type { ChangeRequestKind, ChangeRequestStatus, UserRole } from "../lib/enums";
 
-type ToiletSeed = Omit<ToiletNear, "distanceM" | "averageRating" | "commentCount"> & { managementNo: string };
+type ToiletSeed = Omit<ToiletNear, "distanceM" | "averageRating" | "ratingCount" | "commentCount"> & { managementNo: string };
 
 const toilets = rawToilets as ToiletSeed[];
 
@@ -161,6 +161,7 @@ function summarize(t: ToiletSeed, distanceM: number): ToiletNear {
         ...rest,
         distanceM,
         averageRating: scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null,
+        ratingCount: scores.length,
         commentCount: comments.filter((c) => c.toiletId === t.id && !c.hidden).length,
     };
 }
