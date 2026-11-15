@@ -146,10 +146,12 @@ export function HomePage() {
         return recQuery.data.filter((r) => allowed.has(r.toilet.id));
     }, [recQuery.data, filter]);
 
+    // 지도 가운데가 내 위치인가 (거리를 "내 위치에서"로 말할 수 있는가)
+    const centeredOnMe = sameLatLng(userLocation, center);
+
     /** 상세 화면으로 — 거리 계산 기준점과 그 기준이 "내 위치"인지 함께 넘긴다 */
     const openDetail = (toilet: ToiletNear) => {
-        const fromMe = !!userLocation && !!center && userLocation.lat === center.lat && userLocation.lng === center.lng;
-        navigate(`/toilets/${toilet.id}`, { state: { origin: center, fromMe } });
+        navigate(`/toilets/${toilet.id}`, { state: { origin: center, fromMe: centeredOnMe } });
     };
     const activeFilters = activeFilterCount(filter);
 
@@ -295,12 +297,9 @@ export function HomePage() {
                             <dd>{toiletKindLabel(t, selectedToilet.kind)}</dd>
                             <dt>{t("home.factDistance")}</dt>
                             <dd>
-                                {t(
-                                    userLocation && center && userLocation.lat === center.lat && userLocation.lng === center.lng
-                                        ? "home.fromMe"
-                                        : "home.fromMapCenter",
-                                    { distance: formatDistance(selectedToilet.distanceM) },
-                                )}
+                                {t(centeredOnMe ? "home.fromMe" : "home.fromMapCenter", {
+                                    distance: formatDistance(selectedToilet.distanceM),
+                                })}
                             </dd>
                             {(selectedToilet.roadAddress || selectedToilet.lotAddress) && (
                                 <>
