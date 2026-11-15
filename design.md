@@ -24,7 +24,8 @@ The spacing scale, the type scale, the easings and the durations are the scaffol
 
 Project roles on top of the theme:
 - Status in four kinds, never by colour alone: `--color-live` (cobalt fill, open now and 24 hours), `--color-soon` (amber fill under ink, closes within 30 min), `--color-closed` (paper with a 2px ink border), `--color-unknown` (grey paper, hairline).
-- `--color-band` is the ink band for the plates and the board's head row; it stays dark in the night colourway so amber only ever sits on ink. Board distances are ink on paper, never amber.
+- One surface for everything: the board, the map card and the plates sit on `--color-paper-3` inside a 2px ink border with ink figures. Only the status plate fills with its status colour. `--color-band` is now just the board's head row; it stays dark in the night colourway. Amber appears only as the closing-soon fill.
+- The map card's head row is the board row itself (shared `BoardRowContent`), so a place reads the same in the list and on the map.
 - Brand values that are not the theme: the Kakao, Google and Apple sign-in buttons (their own guides) and the app icon's open door (`--color-door-*`).
 - MUI cannot compute OKLCH or CSS variables, so `src/design/tokens.ts` keeps hex copies for MUI only. Screen code uses the CSS variables.
 

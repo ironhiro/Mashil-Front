@@ -1,10 +1,6 @@
 import { useTranslation } from "react-i18next";
 import type { ToiletNear } from "../api";
-import { stateClass, tileStateOf } from "../design/statusTile";
-import { formatDistance } from "../i18n";
-import { facilityChipLabels } from "../lib/facilityChips";
-import { statusOf } from "../lib/openStatus";
-import { openStatusLabel } from "./OpenStatusBadge";
+import { BoardRowContent } from "./BoardRow";
 
 interface Props {
     toilets: ToiletNear[];
@@ -36,35 +32,18 @@ export function ToiletList({ toilets, totalBeforeFilter, selectedId, onSelect }:
                 <p className="board-empty">{t("list.empty")}</p>
             ) : (
                 <ol style={{ listStyle: "none", margin: 0, padding: 0 }}>
-                    {toilets.map((toilet) => {
-                        const status = statusOf(toilet);
-                        const facilities = facilityChipLabels(t, toilet, "compact");
-                        return (
-                            <li key={toilet.id}>
-                                <button
-                                    type="button"
-                                    className="board-row"
-                                    aria-current={toilet.id === selectedId ? "true" : undefined}
-                                    onClick={() => onSelect(toilet)}
-                                >
-                                    <span className="board-dist">{formatDistance(toilet.distanceM, true)}</span>
-                                    <span style={{ minWidth: 0 }}>
-                                        <span className="board-name">{toilet.name}</span>
-                                        {facilities.length > 0 && (
-                                            <span className="board-meta">
-                                                {facilities.map((f) => (
-                                                    <span key={f}>{f}</span>
-                                                ))}
-                                            </span>
-                                        )}
-                                    </span>
-                                    <span className={`board-state ${stateClass(tileStateOf(status))}`}>
-                                        {openStatusLabel(t, status, "short")}
-                                    </span>
-                                </button>
-                            </li>
-                        );
-                    })}
+                    {toilets.map((toilet) => (
+                        <li key={toilet.id}>
+                            <button
+                                type="button"
+                                className="board-row"
+                                aria-current={toilet.id === selectedId ? "true" : undefined}
+                                onClick={() => onSelect(toilet)}
+                            >
+                                <BoardRowContent toilet={toilet} />
+                            </button>
+                        </li>
+                    ))}
                 </ol>
             )}
         </section>

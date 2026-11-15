@@ -7,8 +7,9 @@ import {
     Box,
     Button,
     Card,
-    CardActions,
     CardContent,
+    IconButton,
+    Link,
     Stack,
     ToggleButton,
     ToggleButtonGroup,
@@ -18,7 +19,8 @@ import { useQuery } from "@tanstack/react-query";
 import { computeStraightRoute, fetchNearbyToilets } from "../api";
 import type { LatLng, ToiletNear } from "../api";
 import { MapView } from "../components/MapView";
-import { StatusTile } from "../components/OpenStatusBadge";
+import { BoardRowContent } from "../components/BoardRow";
+import CloseIcon from "@mui/icons-material/Close";
 import { ToiletInteractions } from "../components/ToiletInteractions";
 import { ToiletList } from "../components/ToiletList";
 import { ChangeRequestKind, DEFAULT_SEARCH_RADIUS, SearchRadius, ViewMode } from "../lib/enums";
@@ -31,7 +33,7 @@ import { MOCK_USER_LOCATION, USE_MOCK } from "../mock/flag";
 import { getCurrentPosition, isApp, LocationError, openDirectionsInApp } from "../lib/nativeBridge";
 import { friendlyError } from "../lib/friendlyError";
 import { formatDistance } from "../i18n";
-import { facilityChipLabels, toiletKindLabel } from "../lib/facilityChips";
+import { toiletKindLabel } from "../lib/facilityChips";
 import type { LocationFailure } from "../lib/nativeBridge";
 
 const SEOUL_CITY_HALL: LatLng = { lat: 37.5666, lng: 126.9784 };
@@ -209,53 +211,58 @@ export function HomePage() {
             {/* === 선택 화장실 카드 === */}
             {selectedToilet && (
                 <Card variant="outlined" ref={cardRef} sx={{ scrollMarginTop: "var(--space-md)" }}>
-                    <CardContent sx={{ pb: 1 }}>
-                        {/* 정보 위계: 거리 숫자, 이름, 상태, 시설. 거리 판과 상태 판을 나란히 */}
-                        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1, mb: 2 }}>
-                            <div className="plate">
-                                <span className="figure">{formatDistance(selectedToilet.distanceM, true)}</span>
-                                <span className="unit">
-                                    {t(
-                                        userLocation && center && userLocation.lat === center.lat && userLocation.lng === center.lng
-                                            ? "home.distanceFromMe"
-                                            : "home.distanceFromCenter",
-                                    )}
-                                </span>
-                            </div>
-                            <StatusTile toilet={selectedToilet} />
-                        </Box>
-                        <Typography component="h2" variant="h6">
-                            {selectedToilet.name}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                            {toiletKindLabel(t, selectedToilet.kind)}
-                        </Typography>
-                        {(selectedToilet.roadAddress || selectedToilet.lotAddress) && (
-                            <Typography variant="body2" sx={{ mb: 0.5 }}>
-                                {selectedToilet.roadAddress ?? selectedToilet.lotAddress}
-                            </Typography>
-                        )}
-
-                        <Stack direction="row" spacing={0.5} sx={{ mt: 1 }} useFlexGap flexWrap="wrap" alignItems="center">
-                            {facilityChipLabels(t, selectedToilet, "detailed").map((label) => (
-                                <span key={label} className="amenity">{label}</span>
-                            ))}
+                    <CardContent sx={{ pt: 1, pb: 2 }}>
+                        {/* 머리 줄은 목록의 안내판 행과 같은 모양: 거리, 이름과 시설, 오른쪽 끝 상태 */}
+                        <Stack direction="row" alignItems="flex-start" spacing={1}>
+                            <Box className="board-row is-static" sx={{ flex: 1, minWidth: 0 }}>
+                                <BoardRowContent toilet={selectedToilet} facilities="detailed" />
+                            </Box>
+                            <IconButton
+                                aria-label={t("common.close")}
+                                onClick={() => {
+                                    setSelectedToilet(null);
+                                    setRouting(false);
+                                }}
+                                sx={{ width: 44, height: 44, flexShrink: 0, mt: 1 }}
+                            >
+                                <CloseIcon />
+                            </IconButton>
                         </Stack>
 
-                        {(selectedToilet.openHours || selectedToilet.openHoursDetail) && (
-                            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
-                                {t("home.listedHours", {
-                                    hours: [selectedToilet.openHours, selectedToilet.openHoursDetail]
-                                        .filter(Boolean)
-                                        .join(", "),
-                                })}
-                            </Typography>
-                        )}
-                        {selectedToilet.phone && (
-                            <Typography variant="body2">
-                                <b>{t("home.phone")}</b> <a href={`tel:${selectedToilet.phone}`}>{selectedToilet.phone}</a>
-                            </Typography>
-                        )}
+                        {/* 사실 목록: 머리카락 선으로 나눈 2열 */}
+                        <Box component="dl" className="facts" sx={{ mt: 1 }}>
+                            <dt>{t("home.factKind")}</dt>
+                            <dd>{toiletKindLabel(t, selectedToilet.kind)}</dd>
+                            <dt>{t("home.factDistance")}</dt>
+                            <dd>
+                                {t(
+                                    userLocation && center && userLocation.lat === center.lat && userLocation.lng === center.lng
+                                        ? "home.fromMe"
+                                        : "home.fromMapCenter",
+                                    { distance: formatDistance(selectedToilet.distanceM) },
+                                )}
+                            </dd>
+                            {(selectedToilet.roadAddress || selectedToilet.lotAddress) && (
+                                <>
+                                    <dt>{t("home.factAddress")}</dt>
+                                    <dd>{selectedToilet.roadAddress ?? selectedToilet.lotAddress}</dd>
+                                </>
+                            )}
+                            {(selectedToilet.openHours || selectedToilet.openHoursDetail) && (
+                                <>
+                                    <dt>{t("home.factHours")}</dt>
+                                    <dd>{[selectedToilet.openHours, selectedToilet.openHoursDetail].filter(Boolean).join(", ")}</dd>
+                                </>
+                            )}
+                            {selectedToilet.phone && (
+                                <>
+                                    <dt>{t("home.phone")}</dt>
+                                    <dd>
+                                        <a href={`tel:${selectedToilet.phone}`}>{selectedToilet.phone}</a>
+                                    </dd>
+                                </>
+                            )}
+                        </Box>
 
                         {route && (
                             <Alert severity="success" sx={{ mt: 1.5 }} icon={false}>
@@ -273,94 +280,77 @@ export function HomePage() {
                                 </Stack>
                             </Alert>
                         )}
-                    </CardContent>
-                    <CardActions
-                        disableSpacing
-                        // disableSpacing: MUI 기본 selector 비활성화.
-                        //   기본은 `& > :not(:first-of-type) { ml: 1 }` 인데, "카카오맵에서 길찾기"
-                        //   버튼이 `component="a"` 로 <a> 가 되면서 다른 <button> 들과 element type 이
-                        //   섞여 first-of-type 평가가 종류별로 따로 일어나 간격이 어긋남.
-                        // 대신 flex `gap` 으로 element type 무관 균일 간격.
-                        sx={{
-                            gap: 1,
-                            flexWrap: "wrap",
-                            flexDirection: { xs: "column", sm: "row" },
-                            alignItems: { xs: "stretch", sm: "center" },
-                        }}
-                    >
-                        {userLocation ? (
-                            <Button size="small" color="secondary" onClick={() => setRouting((v) => !v)}>
-                                {routing ? t("home.hideDistance") : t("home.showDistance")}
-                            </Button>
-                        ) : (
-                            <Typography variant="caption" color="text.secondary" sx={{ pl: 1 }}>
-                                {t("home.distanceNeedsLocation")}
-                            </Typography>
-                        )}
-                        <Button size="small" color="secondary" variant="outlined" onClick={() => openDetail(selectedToilet)}>
-                            {t("detail.more")}
-                        </Button>
-                        {selectedToilet.latitude != null && selectedToilet.longitude != null && (
-                            <Button
-                                size="small"
-                                variant="contained"
-                                color="primary"
-                                component="a"
-                                href={buildKakaoMapRouteUrl(selectedToilet, userLocation, t("home.myLocation"))}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e: React.MouseEvent) => {
-                                    // 앱 웹뷰는 target=_blank 를 열지 못함 → 브리지로 카카오맵 앱(없으면 웹) 길찾기
-                                    const t = selectedToilet;
-                                    if (!isApp() || t.latitude == null || t.longitude == null) return;
-                                    e.preventDefault();
-                                    void openDirectionsInApp(t.latitude, t.longitude, t.name);
-                                }}
-                            >
-                                {t("home.kakaoDirections")}
-                            </Button>
-                        )}
-                        {auth.user && (
-                            <>
+                        {/* 행동은 세 층: 주 행동(길찾기) 하나, 보조 두 칸, 글자 링크 */}
+                        <Stack spacing={1} sx={{ mt: 2 }}>
+                            {selectedToilet.latitude != null && selectedToilet.longitude != null && (
                                 <Button
-                                    size="small"
-                                    color="secondary"
-                                    onClick={() => navigate("/change-requests/new", {
+                                    variant="contained"
+                                    size="large"
+                                    fullWidth
+                                    component="a"
+                                    href={buildKakaoMapRouteUrl(selectedToilet, userLocation, t("home.myLocation"))}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e: React.MouseEvent) => {
+                                        // 앱 웹뷰는 target=_blank 를 열지 못함 → 브리지로 카카오맵 앱(없으면 웹) 길찾기
+                                        const t = selectedToilet;
+                                        if (!isApp() || t.latitude == null || t.longitude == null) return;
+                                        e.preventDefault();
+                                        void openDirectionsInApp(t.latitude, t.longitude, t.name);
+                                    }}
+                                >
+                                    {t("home.kakaoDirections")}
+                                </Button>
+                            )}
+                            <Box sx={{ display: "grid", gridTemplateColumns: userLocation ? "repeat(2, minmax(0, 1fr))" : "minmax(0, 1fr)", gap: 1 }}>
+                                <Button variant="outlined" onClick={() => openDetail(selectedToilet)}>
+                                    {t("detail.more")}
+                                </Button>
+                                {userLocation && (
+                                    <Button variant="outlined" aria-pressed={routing} onClick={() => setRouting((v) => !v)}>
+                                        {routing ? t("home.hideDistance") : t("home.showDistance")}
+                                    </Button>
+                                )}
+                            </Box>
+                            {!userLocation && (
+                                <Typography variant="body2" color="text.secondary">
+                                    {t("home.distanceNeedsLocation")}
+                                </Typography>
+                            )}
+                            {auth.user && (
+                                <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" sx={{ pt: 0.5 }}>
+                                    <Link
+                                        component="button"
+                                        type="button"
+                                        variant="body2"
+                                        onClick={() => navigate("/change-requests/new", {
                                         state: {
                                             kind: ChangeRequestKind.Update,
                                             targetToiletId: selectedToilet.id,
                                             targetName: selectedToilet.name,
                                         },
                                     })}
-                                >
-                                    {t("home.fixInfo")}
-                                </Button>
-                                <Button
-                                    size="small"
-                                    color="secondary"
-                                    onClick={() => navigate("/change-requests/new", {
+                                    >
+                                        {t("home.fixInfo")}
+                                    </Link>
+                                    <Link
+                                        component="button"
+                                        type="button"
+                                        variant="body2"
+                                        onClick={() => navigate("/change-requests/new", {
                                         state: {
                                             kind: ChangeRequestKind.Delete,
                                             targetToiletId: selectedToilet.id,
                                             targetName: selectedToilet.name,
                                         },
                                     })}
-                                >
-                                    {t("home.reportGone")}
-                                </Button>
-                            </>
-                        )}
-                        <Button
-                            size="small"
-                            color="secondary"
-                            onClick={() => {
-                                setSelectedToilet(null);
-                                setRouting(false);
-                            }}
-                        >
-                            {t("common.close")}
-                        </Button>
-                    </CardActions>
+                                    >
+                                        {t("home.reportGone")}
+                                    </Link>
+                                </Stack>
+                            )}
+                        </Stack>
+                    </CardContent>
                 </Card>
             )}
 
