@@ -61,6 +61,11 @@ export function MapView({
     const radiusCircleRef = useRef<kakao.maps.Circle | null>(null);
     const routeLineRef = useRef<kakao.maps.Polyline | null>(null);
     const meRef = useRef<kakao.maps.CustomOverlay | null>(null);
+    // 부모가 매 렌더마다 새 화살표 함수를 넘겨도 마커를 다시 그리지 않도록 최신 콜백은 ref 로 읽는다
+    const onSelectRef = useRef(onSelectToilet);
+    useEffect(() => {
+        onSelectRef.current = onSelectToilet;
+    }, [onSelectToilet]);
 
     const { t } = useTranslation();
     // Kakao 의 원·선은 SVG 속성이라 CSS 변수를 못 받는다 → 현재 모드의 실제 색값을 넘긴다.
@@ -195,7 +200,7 @@ export function MapView({
             const label = openStatusLabel(t, status, "short");
             const el = createPinElement(label, stateClass(tileStateOf(status)), toilet.averageRating);
             el.setAttribute("aria-label", `${toilet.name}, ${openStatusLabel(t, status, "full")}`);
-            el.addEventListener("click", () => onSelectToilet(toilet));
+            el.addEventListener("click", () => onSelectRef.current(toilet));
             const overlay = new maps.CustomOverlay({
                 position: new maps.LatLng(toilet.latitude, toilet.longitude),
                 content: el,
@@ -208,7 +213,7 @@ export function MapView({
             next.push({ overlay, el, toiletId: toilet.id });
         }
         pinsRef.current = next;
-    }, [ready, toilets, onSelectToilet, t]);
+    }, [ready, toilets, t]);
 
     // 3b) 선택된 마커: 먹색 외곽선 + 위로 (선택은 색이 아니라 외곽선으로 표시)
     useEffect(() => {
