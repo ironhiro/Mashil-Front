@@ -56,6 +56,7 @@ export function AdminChangeRequestsPage() {
         onSuccess: () => {
             void qc.invalidateQueries({ queryKey: ["admin", "change-requests"] });
             void qc.invalidateQueries({ queryKey: ["toilets"] }); // 승인하면 지도·목록에 바로 반영되므로
+            void qc.invalidateQueries({ queryKey: ["toilet"] }); // 상세 화면도 (대상 이름·영업시간이 바뀜)
         },
     });
 

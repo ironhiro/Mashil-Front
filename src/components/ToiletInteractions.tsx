@@ -55,6 +55,7 @@ export function ToiletInteractions({ toiletId, averageRating }: Props) {
             setError(null);
             // 평균 평점은 /near 응답에 실려 오므로 그 쿼리를 다시 받아야 상단 ★ 와 지도 배지가 갱신됨.
             qc.invalidateQueries({ queryKey: ["toilets", "near"] });
+            qc.invalidateQueries({ queryKey: ["toilets", "recommended"] }); // 추천 점수의 절반이 평점
         },
         onError: (e: Error) => setError(friendlyError(e, t("interactions.ratingFailed"))),
     });
@@ -80,6 +81,7 @@ export function ToiletInteractions({ toiletId, averageRating }: Props) {
             setError(null);
             qc.invalidateQueries({ queryKey: ["toilet-comments", toiletId] });
             qc.invalidateQueries({ queryKey: ["toilets", "near"] }); // 지도 배지의 댓글 수
+            qc.invalidateQueries({ queryKey: ["me", "comments"] }); // 내 정보의 댓글 목록
         },
         onError: (e: Error) => setError(friendlyError(e, t("interactions.commentFailed"))),
     });

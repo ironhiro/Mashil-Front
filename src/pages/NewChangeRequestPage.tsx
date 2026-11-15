@@ -13,7 +13,7 @@ import {
 } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../auth/AuthContext";
 import { fetchToilet, submitChangeRequest } from "../api";
 import { getCurrentPosition, LocationError } from "../lib/nativeBridge";
@@ -81,10 +81,13 @@ export function NewChangeRequestPage() {
     const targetIdNum = Number(targetId);
     const targetIdValid = requiresTargetId && targetId !== "" && !isNaN(targetIdNum);
 
+    const qc = useQueryClient();
+
     // Update 시 대상 toilet 현재값을 fetch — fields 에 prefill, 제출 시 diff 비교 기준.
+    // 키는 상세 화면·관리자 화면과 같은 ["toilet", id] (같은 fetchToilet 응답, 승인 시 함께 무효화)
     const detailQuery = useQuery({
         enabled: kind === ChangeRequestKind.Update && targetIdValid,
-        queryKey: ["toilet-detail", targetIdNum],
+        queryKey: ["toilet", targetIdNum],
         queryFn: () => fetchToilet(targetIdNum),
     });
 
@@ -174,6 +177,7 @@ export function NewChangeRequestPage() {
                 payloadJson: JSON.stringify(payload),
             });
             setDoneId(result.id);
+            void qc.invalidateQueries({ queryKey: ["me", "change-requests"] }); // 내 정보의 제보 목록
         } catch (err) {
             setError(friendlyError(err, t("report.errorSubmit")));
         } finally {
