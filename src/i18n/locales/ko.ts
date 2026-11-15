@@ -57,6 +57,7 @@ export const ko = {
         placeholder: "이름이나 주소로 찾기",
         loading: "찾는 중",
         total: "찾은 곳 {{count}}",
+        more: "더 보기 ({{shown}}/{{total}})",
         empty: "맞는 곳이 없어요. 다른 말로 찾아 보세요.",
         failed: "찾지 못했어요. 잠시 후 다시 시도해 주세요.",
         noLocation: "지도 위치 확인 중",
