@@ -61,7 +61,9 @@ export const en: Messages = {
         reportGone: "It's gone",
     },
     map: {
-        loading: "Loading map…",
+        loading: "Loading the map",
+        locating: "Finding your location",
+        findingPlaces: "Finding restrooms nearby",
         searchHere: "Search this area",
         loadFailed: "Couldn't load the map. Check your internet connection and try again.",
     },

@@ -65,7 +65,9 @@ export const ko = {
         reportGone: "없어졌어요",
     },
     map: {
-        loading: "지도 로딩 중…",
+        loading: "지도를 불러오고 있어요",
+        locating: "내 위치를 찾고 있어요",
+        findingPlaces: "주변 화장실을 찾고 있어요",
         searchHere: "이 지역에서 다시 검색",
         loadFailed: "지도를 불러오지 못했어요. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.",
     },

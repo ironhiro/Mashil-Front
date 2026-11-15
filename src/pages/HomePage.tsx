@@ -174,9 +174,10 @@ export function HomePage() {
             />
 
             {/* === 지도 또는 목록 === */}
-            {center && viewMode === ViewMode.Map && (
+            {viewMode === ViewMode.Map && (
                 <MapView
                     center={center}
+                    loadingPlaces={query.isLoading}
                     radiusM={radiusM}
                     toilets={filteredToilets}
                     selectedId={selectedToilet?.id ?? null}
