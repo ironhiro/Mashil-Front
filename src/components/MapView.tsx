@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Alert, Box, Button, CircularProgress, Stack, useMediaQuery } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { stateClass, tileStateOf } from "../design/statusTile";
@@ -29,9 +29,14 @@ interface Pin {
     toiletId: number;
 }
 
+/** 지도 아래에 남겨 둘 여백 (px). 화면 아래 가장자리와 지도 테두리 사이 */
+const MAP_BOTTOM_GAP = 16;
+/** 이보다 작게는 줄이지 않는다 (가로 화면, 아주 작은 창) */
+const MAP_MIN_HEIGHT = 320;
+
 /**
- * Kakao 지도 + 검색 반경 원 + 상태 타일 마커 (docs/07-ui-design.md "C. 타일").
- * 마커는 핀 이미지 대신 상태를 적은 작은 타일("24시간", "20:30까지", "종료")이고, 배경이 상태 4단계를 따른다.
+ * Kakao 지도 + 검색 반경 원 + 상태 안내판 조각 마커 (docs/07-ui-design.md, Wayfind).
+ * 지도 칸은 화면 높이에 맞춘다: 지도가 시작하는 위치부터 화면 아래까지. "이 지역에서 다시 검색"은 지도 위 아래쪽에 띄운다.
  */
 export function MapView({
     center,
@@ -57,6 +62,33 @@ export function MapView({
     const tokens = dark ? darkMirror : lightMirror;
     const [error, setError] = useState<string | null>(null);
     const [ready, setReady] = useState(false);
+    const [height, setHeight] = useState<number>(MAP_MIN_HEIGHT);
+
+    // 0) 지도 칸 높이 = 화면 높이 - 지도가 문서에서 시작하는 위치 - 아래 여백. 창 크기·회전이 바뀌면 다시 잰다
+    useLayoutEffect(() => {
+        const measure = () => {
+            const el = containerRef.current;
+            if (!el) return;
+            const top = el.getBoundingClientRect().top + window.scrollY;
+            const viewport = window.visualViewport?.height ?? window.innerHeight;
+            setHeight(Math.max(MAP_MIN_HEIGHT, Math.round(viewport - top - MAP_BOTTOM_GAP)));
+        };
+        measure();
+        window.addEventListener("resize", measure);
+        window.visualViewport?.addEventListener("resize", measure);
+        return () => {
+            window.removeEventListener("resize", measure);
+            window.visualViewport?.removeEventListener("resize", measure);
+        };
+    }, []);
+
+    // 0b) 칸 크기가 바뀌면 Kakao 지도에 알려 다시 그리게 한다 (안 하면 빈 타일이 남는다)
+    useEffect(() => {
+        if (!ready || !mapRef.current) return;
+        mapRef.current.relayout();
+        mapRef.current.setCenter(new window.kakao.maps.LatLng(center.lat, center.lng));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [ready, height]);
 
     // 1) SDK 로드 + 지도/반경원 초기화 (마운트 시 1회)
     useEffect(() => {
@@ -191,34 +223,47 @@ export function MapView({
 
     return (
         <Stack spacing={1}>
-            <Box
-                ref={containerRef}
-                sx={{
-                    width: "100%",
-                    height: { xs: "max(360px, calc(100dvh - 330px))", sm: 480 },
-                    overflow: "hidden",
-                    border: "var(--rule-bar) solid var(--color-ink)",
-                    bgcolor: "var(--color-paper-2)",
-                }}
-            />
-            {error && <Alert severity="error">{error}</Alert>}
-            {!ready && !error && (
-                <Stack direction="row" spacing={1} alignItems="center">
-                    <CircularProgress size={18} />
-                    <span>{t("map.loading")}</span>
-                </Stack>
-            )}
-            {ready && (
-                <Button
-                    variant="outlined"
-                    onClick={() => {
-                        const c = mapRef.current!.getCenter();
-                        onSearchAtCenter({ lat: c.getLat(), lng: c.getLng() });
+            <Box sx={{ position: "relative" }}>
+                <Box
+                    ref={containerRef}
+                    sx={{
+                        width: "100%",
+                        height,
+                        overflow: "hidden",
+                        border: "var(--rule-bar) solid var(--color-ink)",
+                        bgcolor: "var(--color-paper-2)",
                     }}
-                >
-                    {t("map.searchHere")}
-                </Button>
-            )}
+                />
+                {!ready && !error && (
+                    <Stack direction="row" spacing={1} alignItems="center" role="status" sx={{ position: "absolute", top: 16, left: 16 }}>
+                        <CircularProgress size={18} color="inherit" />
+                        <span>{t("map.loading")}</span>
+                    </Stack>
+                )}
+                {ready && (
+                    // 지도 위 아래쪽에 띄워 지도가 화면 높이를 다 쓰게 한다
+                    <Button
+                        variant="outlined"
+                        onClick={() => {
+                            const c = mapRef.current!.getCenter();
+                            onSearchAtCenter({ lat: c.getLat(), lng: c.getLng() });
+                        }}
+                        sx={{
+                            position: "absolute",
+                            left: "50%",
+                            bottom: 16,
+                            transform: "translateX(-50%)",
+                            zIndex: 2,
+                            bgcolor: "var(--color-paper-3)",
+                            "&:hover": { bgcolor: "var(--color-paper-2)" },
+                            "&:active": { transform: "translateX(-50%) translateY(1px)" },
+                        }}
+                    >
+                        {t("map.searchHere")}
+                    </Button>
+                )}
+            </Box>
+            {error && <Alert severity="error">{error}</Alert>}
         </Stack>
     );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
@@ -44,6 +44,9 @@ export function HomePage() {
     const [userLocation, setUserLocation] = useState<LatLng | null>(null);
     // 클릭 시점의 스냅샷 — 표시용 값은 아래에서 최신 /near 응답으로 다시 풀어 씀 (평점 등록 후 평균 갱신).
     const [pickedToilet, setSelectedToilet] = useState<ToiletNear | null>(null);
+    const cardRef = useRef<HTMLDivElement | null>(null);
+    // 지도에서 마커를 누르면 그 장소의 카드로 스크롤 (목록에서는 바로 상세로 가므로 해당 없음)
+    const scrollToCard = useRef(false);
     const [routing, setRouting] = useState(false);
     // 위치를 못 받았을 때 이유 — 문장은 렌더 시 번역 (언어를 바꿔도 따라감)
     const [geoFailure, setGeoFailure] = useState<LocationFailure | null>(null);
@@ -99,6 +102,14 @@ export function HomePage() {
         navigate(`/toilets/${toilet.id}`, { state: { origin: center, fromMe } });
     };
     const activeFilters = activeFilterCount(filter);
+
+    // 카드가 그려진 뒤 스크롤. 동작 줄이기 설정이면 부드러운 스크롤 없이 바로
+    useEffect(() => {
+        if (!scrollToCard.current || !pickedToilet) return;
+        scrollToCard.current = false;
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        cardRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    }, [pickedToilet]);
 
     const route = useMemo(() => {
         if (!routing || !userLocation || !selectedToilet) return null;
@@ -173,7 +184,10 @@ export function HomePage() {
                         setSelectedToilet(null);
                         setRouting(false);
                     }}
-                    onSelectToilet={(t) => setSelectedToilet(t)}
+                    onSelectToilet={(t) => {
+                        scrollToCard.current = true;
+                        setSelectedToilet(t);
+                    }}
                     userLocation={userLocation}
                     routeFrom={route ? userLocation : null}
                     routeTo={
@@ -194,7 +208,7 @@ export function HomePage() {
 
             {/* === 선택 화장실 카드 === */}
             {selectedToilet && (
-                <Card variant="outlined">
+                <Card variant="outlined" ref={cardRef} sx={{ scrollMarginTop: "var(--space-md)" }}>
                     <CardContent sx={{ pb: 1 }}>
                         {/* 정보 위계: 거리 숫자, 이름, 상태, 시설. 거리 판과 상태 판을 나란히 */}
                         <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1, mb: 2 }}>

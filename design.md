@@ -7,7 +7,7 @@ The locked system. Every Hallmark run reads this first and pages share it. Chang
 - Shape of the first page: app screen (map and nearby board, detail, filter sheet, login, consent, report, admin)
 - Theme: Wayfind (catalog), colourway `platform`, `night` in dark mode
 - Axes: light/mono/cool · posture: committed
-- Signature: the nearby board, restrooms as departure rows with the distance in amber on ink and the status at the right edge
+- Signature: the nearby board, restrooms as departure rows (distance, name and facilities, status at the right edge) on the same paper as the rest of the app, inside a 2px ink border with an ink head row
 
 ## Tokens
 `src/styles/tokens.css` is the source of truth. The roles:
@@ -24,7 +24,7 @@ The spacing scale, the type scale, the easings and the durations are the scaffol
 
 Project roles on top of the theme:
 - Status in four kinds, never by colour alone: `--color-live` (cobalt fill, open now and 24 hours), `--color-soon` (amber fill under ink, closes within 30 min), `--color-closed` (paper with a 2px ink border), `--color-unknown` (grey paper, hairline).
-- `--color-band` is the ink band for the board and the plates; it stays dark in the night colourway so amber only ever sits on ink.
+- `--color-band` is the ink band for the plates and the board's head row; it stays dark in the night colourway so amber only ever sits on ink. Board distances are ink on paper, never amber.
 - Brand values that are not the theme: the Kakao, Google and Apple sign-in buttons (their own guides) and the app icon's open door (`--color-door-*`).
 - MUI cannot compute OKLCH or CSS variables, so `src/design/tokens.ts` keeps hex copies for MUI only. Screen code uses the CSS variables.
 
