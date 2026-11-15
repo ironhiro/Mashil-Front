@@ -5,12 +5,13 @@
   --text-display-s: 1.44rem; --text-display: 1.728rem; --text-section: 1.2rem; --text-title: 1rem; --text-lead: 1rem;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-in: cubic-bezier(0.7, 0, 0.84, 0); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --dur-micro: 120ms; --dur-short: 220ms; --dur-long: 420ms;
-  --color-error: oklch(52% 0.2 29.6); --color-success: oklch(50% 0.12 150);
+  --color-error: oklch(49.7% 0.172 23.4); --color-success: oklch(50% 0.12 150);
   --container: 1440px; --gutter: 64px; --gap-columns: 32px; --section-gap-s: 120px; --section-gap: 144px; --section-gap-l: 176px;
   --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300; --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
-  --color-paper: oklch(95.5% 0.006 250); --color-paper-2: oklch(91% 0.009 250); --color-paper-3: oklch(99.5% 0.005 250);
-  --color-ink: oklch(16% 0.014 262); --color-ink-2: oklch(29% 0.014 262); --color-muted: oklch(47% 0.016 260);
-  --color-rule: oklch(80% 0.011 250); --color-ink-rule: oklch(34% 0.014 262);
+  /* 마실 팬톤 배색 (전체). 종이 656 C, 쉬는 칸 538 C, 면 흰색, 잉크 282 C (남색), 보조 잉크 2767 C, 흐린 글자 7545 C, 선 537 C. 값은 Pantone 이 공개한 sRGB 근사값 */
+  --color-paper: oklch(91.8% 0.014 248); --color-paper-2: oklch(85% 0.019 250.6); --color-paper-3: oklch(100% 0 0);
+  --color-ink: oklch(24% 0.076 257.2); --color-ink-2: oklch(28.3% 0.069 258.9); --color-muted: oklch(43.9% 0.033 240.4);
+  --color-rule: oklch(82.5% 0.025 254); --color-ink-rule: oklch(28.3% 0.069 258.9);
   /* 마실 배색: 남녀 화장실의 파랑과 빨강을 섞지 않고 역할로 나눈다. 파랑 = 주 색 (Pantone 286 C #0033A0), 빨강 = 신호 하나 (Pantone 485 C #DA291C) */
   --color-accent: oklch(37.8% 0.182 262.5); --color-accent-2: oklch(57.5% 0.213 29.6); --color-accent-ink: oklch(99.5% 0.003 250); --color-focus: oklch(37.8% 0.182 262.5);
   --font-display: "Chivo Mono", "Nanum Gothic Coding", ui-monospace, monospace; --font-body: var(--font-display); --font-outlier: var(--font-body);
@@ -22,31 +23,35 @@
   --color-soon: var(--color-accent-2); --color-soon-ink: var(--color-accent-ink);
   --color-closed: var(--color-paper-3); --color-closed-ink: var(--color-ink-2);
   --color-unknown: var(--color-paper-2); --color-unknown-ink: var(--color-muted);
-  --color-scrim: oklch(16% 0.014 262 / 0.5);
+  --color-scrim: oklch(24% 0.076 257.2 / 0.5);
+  /* 알림 띠 (읽기 전용 점검): 705 C 옅은 분홍 위 잉크 글자. 485 C 빨강 채움은 "곧 닫힘"에만 */
+  --color-notice: oklch(91.2% 0.031 5.1); --color-notice-ink: var(--color-ink);
   /* 잉크 띠: 안내판과 판(plate). 다크 모드에서도 어두운 채로 */
   --color-band: var(--color-ink); --color-on-band: var(--color-paper); --color-band-muted: var(--color-paper-2);
-  --color-band-rule: var(--color-ink-rule); --color-band-hover: var(--color-ink-2);
+  --color-band-rule: oklch(43.9% 0.033 240.4); --color-band-hover: var(--color-ink-2);
   /* 로그인 버튼: 각 사 브랜드 가이드의 값 (테마 색이 아님) */
   --color-kakao: #fee500; --color-kakao-ink: oklch(0% 0 0 / 0.85);
   --color-google: oklch(99.5% 0.003 250); --color-google-ink: #1f1f1f; --color-google-rule: #747775;
   --color-apple: oklch(10% 0.003 262); --color-apple-ink: oklch(99.5% 0.003 250);
   /* 앱 아이콘 "열린 문": 파랑 바탕, 흰 문짝, 빨강 손잡이 (app/tool/make_icons.py 와 같은 값) */
-  --color-door-bg: var(--color-accent); --color-door-light: oklch(80.8% 0.075 265.5); --color-door-leaf: oklch(99.5% 0.003 250); --color-door-handle: var(--color-accent-2);
+  --color-door-bg: var(--color-accent); --color-door-light: oklch(81.7% 0.065 254.3); --color-door-leaf: oklch(99.5% 0.003 250); --color-door-handle: var(--color-accent-2);
 }
 
 /* night colourway (Wayfind): 기기가 다크 모드일 때 */
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --color-paper: oklch(15% 0.012 262); --color-paper-2: oklch(20% 0.013 262); --color-paper-3: oklch(18% 0.012 262);
-    --color-ink: oklch(96% 0.005 250); --color-ink-2: oklch(86% 0.008 250); --color-muted: oklch(72% 0.012 255);
-    --color-rule: oklch(31% 0.014 262); --color-ink-rule: oklch(80% 0.011 250);
-    /* 286 C 는 밤 바탕에 너무 어두워 밝혀 쓴다 (흰 글자 5.7:1). 485 C 는 그대로 (밤 바탕 4:1, 흰 글자 4.9:1) */
-    --color-accent: oklch(52% 0.183 263.8); --color-focus: oklch(67.8% 0.144 266.3); --color-accent-ink: oklch(99.5% 0.003 250);
+    /* 밤: 종이 Black 6 C, 면과 쉬는 칸 433 C, 선 432 C, 잉크 656 C, 보조 538 C, 흐린 글자 7543 C (433 C 위 6.1:1) */
+    --color-paper: oklch(20.5% 0.02 248.8); --color-paper-2: oklch(26% 0.019 248.6); --color-paper-3: oklch(26% 0.019 248.6);
+    --color-ink: oklch(91.8% 0.014 248); --color-ink-2: oklch(85% 0.019 250.6); --color-muted: oklch(71.2% 0.02 243.1);
+    --color-rule: oklch(36.1% 0.022 240.7); --color-ink-rule: oklch(71.2% 0.02 243.1);
+    /* 286 C 는 밤 바탕에 너무 어두워 2726 C 로 (흰 글자 5.8:1, 바탕 3.1:1). 포커스 2717 C. 485 C 는 그대로 (흰 글자 4.9:1) */
+    --color-accent: oklch(51.9% 0.167 271.4); --color-focus: oklch(81.7% 0.065 254.3); --color-accent-ink: oklch(99.5% 0.003 250);
     --color-door-bg: oklch(37.8% 0.182 262.5);
-    --color-error: oklch(68% 0.17 27);
+    --color-error: oklch(66% 0.211 18.4);
+    --color-notice: oklch(35.2% 0.104 6.5);
     --color-scrim: oklch(5% 0.01 262 / 0.7);
-    --color-band: oklch(22% 0.014 262); --color-on-band: oklch(96% 0.005 250); --color-band-muted: oklch(80% 0.01 250);
-    --color-band-rule: oklch(36% 0.014 262); --color-band-hover: oklch(27% 0.014 262);
+    --color-band: oklch(26% 0.019 248.6); --color-on-band: oklch(91.8% 0.014 248); --color-band-muted: oklch(71.2% 0.02 243.1);
+    --color-band-rule: oklch(36.1% 0.022 240.7); --color-band-hover: oklch(36.1% 0.022 240.7);
   }
 }

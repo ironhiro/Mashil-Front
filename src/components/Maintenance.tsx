@@ -61,7 +61,7 @@ export function MaintenanceScreen({ status, onRetry, retrying }: { status: AppSt
     );
 }
 
-/** 읽기 전용 점검 띠: 안내판의 "늦음" 행처럼 빨강 바탕 위 흰 글자 + 반쯤 닫힌 문. */
+/** 읽기 전용 점검 띠: 안내판의 "늦음" 행처럼 옅은 분홍(705 C) 위 잉크 글자 + 반쯤 닫힌 문. */
 export function ReadOnlyBanner({ status }: { status: AppStatus }) {
     const { t } = useTranslation();
     return (

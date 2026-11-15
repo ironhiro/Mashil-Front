@@ -20,32 +20,32 @@ export interface MuiMirror {
 
 /** platform 색 (라이트) */
 export const lightMirror: MuiMirror = {
-    paper: "#edf0f4",
-    paper2: "#dde2e7",
-    paper3: "#fbfeff",
-    ink: "#0a0d13",
-    ink2: "#282b32",
-    muted: "#565b64",
-    rule: "#b9bec5",
+    paper: "#dde5ed", // Pantone 656 C
+    paper2: "#c5cfda", // 538 C
+    paper3: "#ffffff",
+    ink: "#041e42", // 282 C
+    ink2: "#13294b", // 2767 C
+    muted: "#425563", // 7545 C
+    rule: "#bbc7d6", // 537 C
     accent: "#0033a0", // Pantone 286 C
     accent2: "#da291c", // Pantone 485 C
     accentInk: "#fcfeff",
-    error: "#b9221c",
+    error: "#af272f", // 1805 C
 };
 
 /** night 색 (다크) */
 export const darkMirror: MuiMirror = {
-    paper: "#080b10",
-    paper2: "#13161c",
-    paper3: "#0f1217",
-    ink: "#eff2f5",
-    ink2: "#cdd1d6",
-    muted: "#a0a5ac",
-    rule: "#2c3038",
-    accent: "#2f5fd0",
+    paper: "#101820", // Pantone Black 6 C
+    paper2: "#1d252d", // 433 C
+    paper3: "#1d252d", // 433 C
+    ink: "#dde5ed", // 656 C
+    ink2: "#c5cfda", // 538 C
+    muted: "#98a4ae", // 7543 C
+    rule: "#333f48", // 432 C
+    accent: "#485cc7", // 2726 C
     accent2: "#da291c",
     accentInk: "#fcfeff",
-    error: "#f0675a",
+    error: "#f8485e", // 1785 C
 };
 
 /** CSS 변수 이름 — 화면 코드에서 `cssVar.ink` 처럼 쓴다 */
