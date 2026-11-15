@@ -112,7 +112,6 @@ export const en: Messages = {
         closedDay: "Closed",
         noInfo: "No info",
         allDay: "24 hours",
-        today: "Today",
         rawHours: "Original listing: {{raw}}",
         schedule: {
             Irregular: "Opening hours are irregular.",

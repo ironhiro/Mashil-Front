@@ -116,7 +116,6 @@ export const ko = {
         closedDay: "휴무",
         noInfo: "정보없음",
         allDay: "24시간",
-        today: "오늘",
         rawHours: "원문: {{raw}}",
         schedule: {
             Irregular: "개방 시간이 일정하지 않아요.",

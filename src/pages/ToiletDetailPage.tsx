@@ -286,10 +286,8 @@ function HoursSection({ toilet }: { toilet: ToiletDetail }) {
                     const isToday = d === today;
                     return (
                         <li key={d} aria-current={isToday ? "date" : undefined} className={isToday ? "is-today" : kind === "hours" ? undefined : "is-off"}>
-                            <span className="cell-day">
-                                {t(`days.${d}`)}
-                                {isToday && <span className="cell-today">{t("detail.today")}</span>}
-                            </span>
+                            {/* 오늘은 잉크 칸으로만 표시 (화면 낭독기는 aria-current 로 안다) */}
+                            <span className="cell-day">{t(`days.${d}`)}</span>
                             <span className="cell-hours" style={{ display: "block" }}>
                                 {text}
                             </span>

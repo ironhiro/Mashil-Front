@@ -98,7 +98,6 @@ button:disabled, [aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
 .cells .is-today { background: var(--color-ink); color: var(--color-paper); }
 .cells .is-off { color: var(--color-muted); background: var(--color-paper-2); }
 .cell-day { font: 800 var(--text-sm)/1.2 var(--font-body); display: flex; justify-content: space-between; gap: var(--space-2xs); }
-.cell-today { font-weight: 500; }
 .cell-hours { font: 500 var(--text-sm)/1.35 var(--font-body); white-space: pre-line; margin-top: var(--space-2xs); }
 .cell-figure { font: 800 var(--text-2xl)/1 var(--font-body); margin-top: var(--space-xs); }
 
