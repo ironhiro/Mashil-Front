@@ -38,12 +38,35 @@ import type { LocationFailure } from "../lib/nativeBridge";
 
 const SEOUL_CITY_HALL: LatLng = { lat: 37.5666, lng: 126.9784 };
 
+/**
+ * 탭을 옮기거나 상세에서 돌아와도 홈을 처음부터 다시 시작하지 않도록, 이 세션 동안의 홈 상태를 기억한다
+ * (위치, 반경, 조건, 지도/목록). 위치는 LOCATION_FRESH_MS 가 지나면 뒤에서 조용히 다시 잰다.
+ */
+const LOCATION_FRESH_MS = 2 * 60_000;
+const homeMemory: {
+    center: LatLng | null;
+    userLocation: LatLng | null;
+    locatedAt: number;
+    geoFailure: LocationFailure | null;
+    radiusM: SearchRadius;
+    filter: ToiletFilter;
+    viewMode: ViewMode;
+} = {
+    center: null,
+    userLocation: null,
+    locatedAt: 0,
+    geoFailure: null,
+    radiusM: DEFAULT_SEARCH_RADIUS,
+    filter: EMPTY_FILTER,
+    viewMode: ViewMode.Map,
+};
+
 export function HomePage() {
     const auth = useAuth();
     const navigate = useNavigate();
     const { t } = useTranslation();
-    const [center, setCenter] = useState<LatLng | null>(null);
-    const [userLocation, setUserLocation] = useState<LatLng | null>(null);
+    const [center, setCenter] = useState<LatLng | null>(homeMemory.center);
+    const [userLocation, setUserLocation] = useState<LatLng | null>(homeMemory.userLocation);
     // 클릭 시점의 스냅샷 — 표시용 값은 아래에서 최신 /near 응답으로 다시 풀어 씀 (평점 등록 후 평균 갱신).
     const [pickedToilet, setSelectedToilet] = useState<ToiletNear | null>(null);
     const cardRef = useRef<HTMLDivElement | null>(null);
@@ -51,12 +74,17 @@ export function HomePage() {
     const scrollToCard = useRef(false);
     const [routing, setRouting] = useState(false);
     // 위치를 못 받았을 때 이유 — 문장은 렌더 시 번역 (언어를 바꿔도 따라감)
-    const [geoFailure, setGeoFailure] = useState<LocationFailure | null>(null);
+    const [geoFailure, setGeoFailure] = useState<LocationFailure | null>(homeMemory.geoFailure);
 
-    const [radiusM, setRadiusM] = useState<SearchRadius>(DEFAULT_SEARCH_RADIUS);
-    const [filter, setFilter] = useState<ToiletFilter>(EMPTY_FILTER);
+    const [radiusM, setRadiusM] = useState<SearchRadius>(homeMemory.radiusM);
+    const [filter, setFilter] = useState<ToiletFilter>(homeMemory.filter);
     const [sheetOpen, setSheetOpen] = useState(false);
-    const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.Map);
+    const [viewMode, setViewMode] = useState<ViewMode>(homeMemory.viewMode);
+
+    // 바뀔 때마다 기억 (다음에 홈으로 돌아왔을 때 그대로 시작)
+    useEffect(() => {
+        Object.assign(homeMemory, { center, userLocation, geoFailure, radiusM, filter, viewMode });
+    }, [center, userLocation, geoFailure, radiusM, filter, viewMode]);
 
     useEffect(() => {
         if (USE_MOCK) {
@@ -64,17 +92,24 @@ export function HomePage() {
             setUserLocation(MOCK_USER_LOCATION);
             return;
         }
+        // 이 세션에서 이미 잰 위치가 아직 새것이면 다시 재지 않는다
+        if (homeMemory.center && Date.now() - homeMemory.locatedAt < LOCATION_FRESH_MS) return;
+        const hadCenter = homeMemory.center !== null;
         // 앱이면 브리지로 네이티브 GPS (권한 요청 포함), 브라우저면 navigator.geolocation
         let cancelled = false;
         getCurrentPosition({ enableHighAccuracy: false, timeout: 5_000, maximumAge: 60_000 })
             .then(({ lat, lng }) => {
                 if (cancelled) return;
                 const here = { lat, lng };
-                setCenter(here);
+                homeMemory.locatedAt = Date.now();
+                setGeoFailure(null);
+                // 다시 잰 경우: 사용자가 지도를 다른 곳으로 옮겨 검색했으면 그 중심은 그대로 둔다
+                setCenter((c) => (!c || !hadCenter || sameLatLng(c, homeMemory.userLocation) ? here : c));
                 setUserLocation(here);
             })
             .catch((err: unknown) => {
                 if (cancelled) return;
+                if (hadCenter) return; // 다시 재기 실패: 보고 있던 화면을 그대로 둔다
                 setCenter(SEOUL_CITY_HALL);
                 setGeoFailure(err instanceof LocationError ? err.reason : "failed");
             });
@@ -389,4 +424,8 @@ function buildKakaoMapRouteUrl(
         return `https://map.kakao.com/link/from/${sName},${user.lat},${user.lng}/to/${eName},${eLat},${eLng}`;
     }
     return `https://map.kakao.com/link/to/${eName},${eLat},${eLng}`;
+}
+
+function sameLatLng(a: LatLng | null, b: LatLng | null) {
+    return !!a && !!b && a.lat === b.lat && a.lng === b.lng;
 }

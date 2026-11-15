@@ -3,6 +3,7 @@
  * axes: light/mono/cool · posture: committed · contrast: pass · v2.0.0 */
 /* Hallmark · pre-emit critique: P4 H5 E4 S4 R4 V4 · weakest: P, the board could read as a transit costume; kept the voice plain (거리, 이름, 상태) and the map as the second view, not a theme prop */
 /* Hallmark · dropped onSelectToilet={(t) => setSelectedToilet(t)} · the marker handler still selects the place and now also scrolls to its card, as the user asked for the map tab */
+/* Hallmark · dropped onClick={() => setNavOpen(true)}, onClick={() => { auth.logout(); closeNav(); navigate("/"); }}, onClick={() => { closeNav(); navigate("/"); }}, onClick={() => { closeNav(); navigate("/admin/change-requests"); }}, onClick={() => { closeNav(); navigate("/change-requests/new"); }}, onClick={() => { closeNav(); navigate("/login"); }}, onClose={closeNav} · the left drawer became the bottom tabs at the user's request: find, report and me are NavLinks; review, login, logout and language live on /me (MePage) */
 @import url("./tokens.css");
 @import url("./base.css");
 
@@ -112,3 +113,29 @@ button:disabled, [aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
   .pin, .pin:active { transform: translateY(-4px); transition: none; }
   .board-row { transition: none; }
 }
+
+/* ── 하단 탭: 찾기 / 제보 / 내 정보 ───────────────────────────────
+   선택 묶음과 같은 규칙: 2px 테두리를 공유하는 칸, 고른 칸은 잉크 채움 (파랑은 선택에 쓰지 않는다) */
+.has-bottom-nav { --bottom-nav-h: 64px; padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom)); }
+.bottom-nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-sticky-nav);
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  background: var(--color-paper-3); border-top: var(--rule-bar) solid var(--color-ink);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.bottom-nav-tab {
+  height: var(--bottom-nav-h, 64px); min-width: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-3xs);
+  color: var(--color-ink); text-decoration: none;
+  font: 500 var(--text-sm)/1.2 var(--font-body);
+  transition: background-color var(--dur-micro) steps(1), color var(--dur-micro) steps(1);
+  -webkit-tap-highlight-color: transparent;
+}
+.bottom-nav-tab + .bottom-nav-tab { border-left: var(--rule-bar) solid var(--color-ink); }
+.bottom-nav-tab:hover { background: var(--color-paper-2); }
+.bottom-nav-tab:active { background: var(--color-paper-2); }
+.bottom-nav-tab:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -4px; }
+.bottom-nav-tab.active { background: var(--color-ink); color: var(--color-paper); font-weight: 800; }
+.bottom-nav-tab.active:hover { background: var(--color-ink-2); }
+.bottom-nav-tab svg { font-size: 1.5rem; }
+@media (prefers-reduced-motion: reduce) { .bottom-nav-tab { transition: none; } }

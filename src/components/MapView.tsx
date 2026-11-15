@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { bottomNavHeight } from "./BottomNav";
 import { Alert, Box, Button, Stack, useMediaQuery } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { stateClass, tileStateOf } from "../design/statusTile";
@@ -77,7 +78,8 @@ export function MapView({
             if (!el) return;
             const top = el.getBoundingClientRect().top + window.scrollY;
             const viewport = window.visualViewport?.height ?? window.innerHeight;
-            setHeight(Math.max(MAP_MIN_HEIGHT, Math.round(viewport - top - MAP_BOTTOM_GAP)));
+            // 하단 탭이 있으면 그 높이만큼 뺀다 (지도가 탭 아래로 들어가지 않게)
+            setHeight(Math.max(MAP_MIN_HEIGHT, Math.round(viewport - top - MAP_BOTTOM_GAP - bottomNavHeight())));
         };
         measure();
         window.addEventListener("resize", measure);
