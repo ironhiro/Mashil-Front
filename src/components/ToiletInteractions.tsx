@@ -187,7 +187,10 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
                     return (
                         <article key={c.id} className="comment">
                             <div className="comment-meta">
-                                {c.authorName && <b>{c.isMine ? t("interactions.me") : c.authorName}</b>}
+                                {/* 탈퇴한 작성자는 서버가 한국어 이름을 주므로 플래그로 현재 언어 문구를 쓴다 */}
+                                {(c.authorName || c.authorDeleted) && (
+                                    <b>{c.isMine ? t("interactions.me") : c.authorDeleted ? t("interactions.deletedUser") : c.authorName}</b>
+                                )}
                                 <span>{formatRelativeOrDate(c.createdAt)}</span>
                             </div>
                             <p className="comment-text">{c.text}</p>
