@@ -299,7 +299,7 @@ export const ko = {
         sharedBody: "공유받은 화장실은 마실 앱에서 볼 수 있어요. 앱을 설치한 뒤 다시 열어 주세요.",
         googlePlay: "Google Play에서 받기",
         appStore: "App Store에서 받기",
-        comingSoon: "앱은 곧 스토어에 나와요.",
+        comingSoon: "출시 준비 중이에요.",
     },
     maintenance: {
         title: "문이 잠시 닫혔어요",

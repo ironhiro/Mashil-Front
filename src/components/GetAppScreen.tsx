@@ -23,21 +23,30 @@ export function GetAppScreen() {
                     {sharedToilet ? t("getApp.sharedBody") : t("getApp.body")}
                 </Typography>
                 <Stack spacing={1}>
-                    {PLAY_URL && (
-                        <Button variant="contained" size="large" href={PLAY_URL}>
-                            {t("getApp.googlePlay")}
-                        </Button>
-                    )}
-                    {APP_STORE_URL && (
-                        <Button variant="contained" size="large" href={APP_STORE_URL}>
-                            {t("getApp.appStore")}
-                        </Button>
-                    )}
-                    {!PLAY_URL && !APP_STORE_URL && (
-                        <Typography variant="body2" color="text.secondary">
+                    {/* 스토어 주소가 없으면(출시 전) 단추는 보이되 누를 수 없다 */}
+                    {(!PLAY_URL || !APP_STORE_URL) && (
+                        <Typography variant="body2" color="text.secondary" id="get-app-soon">
                             {t("getApp.comingSoon")}
                         </Typography>
                     )}
+                    <Button
+                        variant="contained"
+                        size="large"
+                        href={PLAY_URL || undefined}
+                        disabled={!PLAY_URL}
+                        aria-describedby={PLAY_URL ? undefined : "get-app-soon"}
+                    >
+                        {t("getApp.googlePlay")}
+                    </Button>
+                    <Button
+                        variant="contained"
+                        size="large"
+                        href={APP_STORE_URL || undefined}
+                        disabled={!APP_STORE_URL}
+                        aria-describedby={APP_STORE_URL ? undefined : "get-app-soon"}
+                    >
+                        {t("getApp.appStore")}
+                    </Button>
                     <Button variant="outlined" size="large" href="https://map.kakao.com/?q=%ED%99%94%EC%9E%A5%EC%8B%A4">
                         {t("maintenance.openKakaoMap")}
                     </Button>

@@ -295,7 +295,7 @@ export const en: Messages = {
         sharedBody: "You can see this shared restroom in the Mashil app. Install it, then open the link again.",
         googlePlay: "Get it on Google Play",
         appStore: "Download on the App Store",
-        comingSoon: "The app is coming to the stores soon.",
+        comingSoon: "Coming soon to the stores.",
     },
     maintenance: {
         title: "We're closed for a moment",
