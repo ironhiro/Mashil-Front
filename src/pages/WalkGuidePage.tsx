@@ -5,8 +5,8 @@ import MyLocationIcon from "@mui/icons-material/MyLocation";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { fetchToilet } from "../api";
-import type { LatLng } from "../api";
+import { fetchToilet, fetchWalkRoute } from "../api";
+import type { LatLng, WalkRoute, WalkRouteError } from "../api";
 import { openStatusLabel } from "../components/OpenStatusBadge";
 import { tileStateOf } from "../design/statusTile";
 import type { TileState } from "../design/statusTile";
@@ -17,7 +17,19 @@ import { loadKakaoMaps } from "../lib/kakaoMap";
 import { isApp, openAppSettings, openDirectionsInApp, watchPosition } from "../lib/nativeBridge";
 import type { LocationFailure, WatchedPosition } from "../lib/nativeBridge";
 import { statusOf } from "../lib/openStatus";
-import { WEAK_ACCURACY_M, appendTrail, bearingDeg, direction8, estimate, hasArrived } from "../lib/walkGuide";
+import {
+    OFF_ROUTE_FIXES,
+    OFF_ROUTE_M,
+    REROUTE_MIN_INTERVAL_MS,
+    WEAK_ACCURACY_M,
+    appendTrail,
+    bearingDeg,
+    direction8,
+    estimate,
+    hasArrived,
+    projectOnPath,
+    remainingOnRoute,
+} from "../lib/walkGuide";
 import type { WalkGuideState } from "../lib/walkGuide";
 
 /**
@@ -105,6 +117,38 @@ function GuideBody({
 
     const est = useMemo(() => (me ? estimate(me, dest) : null), [me, dest]);
 
+    // 실제 도보 경로 (서버, OpenStreetMap). 못 받으면 직선 안내 그대로
+    const [route, setRoute] = useState<WalkRoute | null>(null);
+    const routeReq = useRef({ inFlight: false, lastAt: 0, offCount: 0, failures: 0, gaveUp: false });
+    useEffect(() => {
+        if (!me || arrived) return;
+        const r = routeReq.current;
+        if (r.inFlight || r.gaveUp) return;
+        // 위치가 너무 부정확하면 엉뚱한 길에 붙으므로 기다린다
+        if (me.accuracy != null && me.accuracy > 80) return;
+        if (route) {
+            r.offCount = projectOnPath(me, route.points).offM > OFF_ROUTE_M ? r.offCount + 1 : 0;
+            if (r.offCount < OFF_ROUTE_FIXES) return; // 아직 경로 위
+        }
+        if (Date.now() - r.lastAt < REROUTE_MIN_INTERVAL_MS) return; // 요청 사이 최소 간격
+        r.inFlight = true;
+        r.lastAt = Date.now();
+        fetchWalkRoute({ lat: me.lat, lng: me.lng }, dest)
+            .then((next) => {
+                r.offCount = 0;
+                r.failures = 0;
+                setRoute(next);
+            })
+            .catch((e: { code?: WalkRouteError }) => {
+                // 다시 물어도 같은 답일 이유면 그만 묻는다 (꺼짐, 범위 밖, 너무 멂). 나머지는 몇 번까지만
+                if (e.code === "routing_disabled" || e.code === "out_of_area" || e.code === "too_far" || ++r.failures >= 3) r.gaveUp = true;
+            })
+            .finally(() => {
+                r.inFlight = false;
+            });
+    }, [me, arrived, route, dest]);
+    const onRoute = route && me ? remainingOnRoute(me, route.points, route.minutes) : null;
+
     // 1) 위치 따라가기. 도착하면 멈춘다 (GPS 절약)
     useEffect(() => {
         if (arrived) return;
@@ -155,9 +199,11 @@ function GuideBody({
     // 화면 낭독기에는 50m 단위로만 알린다 (위치가 올 때마다 읽으면 시끄럽다)
     const spoken = arrived
         ? t("guide.arrivedTitle")
-        : est
-          ? t("guide.spoken", { distance: formatDistance(Math.ceil(est.straightM / 50) * 50) })
-          : "";
+        : onRoute
+          ? t("guide.spokenRoute", { distance: formatDistance(Math.ceil(onRoute.remainingM / 50) * 50) })
+          : est
+            ? t("guide.spoken", { distance: formatDistance(Math.ceil(est.straightM / 50) * 50) })
+            : "";
 
     return (
         <Box
@@ -175,6 +221,8 @@ function GuideBody({
                     dest={dest}
                     me={me}
                     trail={trail}
+                    route={route?.points ?? null}
+                    attribution={route?.attribution ?? null}
                     pin={pin}
                     follow={follow}
                     onUserMove={() => setFollow(false)}
@@ -246,20 +294,31 @@ function GuideBody({
                         <>
                             <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1 }}>
                                 <div className="plate">
-                                    <span className="figure">{t("guide.minutes", { count: est.minutes })}</span>
-                                    <span className="unit">{t("guide.minutesUnit")}</span>
+                                    <span className="figure">{t("guide.minutes", { count: onRoute?.minutes ?? est.minutes })}</span>
+                                    <span className="unit">{t(onRoute ? "guide.minutesRouteUnit" : "guide.minutesUnit")}</span>
                                 </div>
                                 <div className="plate">
-                                    <span className="figure">{formatDistance(est.straightM, true)}</span>
-                                    <span className="unit">
-                                        {t("guide.straightUnit", { dir: t(`guide.dir.${direction8(bearingDeg(me, dest))}`) })}
-                                    </span>
+                                    {onRoute ? (
+                                        <>
+                                            <span className="figure">{formatDistance(onRoute.remainingM, true)}</span>
+                                            <span className="unit">{t("guide.routeUnit")}</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="figure">{formatDistance(est.straightM, true)}</span>
+                                            <span className="unit">
+                                                {t("guide.straightUnit", { dir: t(`guide.dir.${direction8(bearingDeg(me, dest))}`) })}
+                                            </span>
+                                        </>
+                                    )}
                                 </div>
                             </Box>
                             <Typography variant="caption" color="text.secondary">
                                 {me.accuracy != null && me.accuracy > WEAK_ACCURACY_M
                                     ? t("guide.weakAccuracy", { meters: Math.round(me.accuracy) })
-                                    : t("guide.note")}
+                                    : route
+                                      ? t(route.steps > 0 ? "guide.routeNoteSteps" : "guide.routeNote")
+                                      : t("guide.note")}
                             </Typography>
                         </>
                     ) : (
@@ -312,11 +371,13 @@ const overlayButtonSx = {
     "&:hover": { bgcolor: "var(--color-paper-2)" },
 } as const;
 
-/** 지도: 화장실 마커, 내 위치 점과 오차 원, 직선(점선), 지나온 길(실선). */
+/** 지도: 화장실 마커, 내 위치 점과 오차 원, 실제 경로(굵은 실선, 있을 때), 직선 또는 경로까지 잇는 점선, 지나온 길. */
 function GuideMap({
     dest,
     me,
     trail,
+    route,
+    attribution,
     pin,
     follow,
     onUserMove,
@@ -324,6 +385,10 @@ function GuideMap({
     dest: LatLng;
     me: WatchedPosition | null;
     trail: LatLng[];
+    /** 서버가 찾은 도보 경로. 없으면 직선 안내 */
+    route: LatLng[] | null;
+    /** 경로 데이터 출처 (서버가 준 문구: OSM, 서울 도보 네트워크를 지났으면 서울시도) */
+    attribution: string | null;
     pin: { label: string; state: TileState } | null;
     follow: boolean;
     onUserMove: () => void;
@@ -338,6 +403,7 @@ function GuideMap({
         dest: kakao.maps.CustomOverlay;
         destEl: HTMLDivElement;
         guide: kakao.maps.Polyline;
+        route: kakao.maps.Polyline;
         trail: kakao.maps.Polyline;
         me: kakao.maps.CustomOverlay;
         accuracy: kakao.maps.Circle;
@@ -364,6 +430,8 @@ function GuideMap({
                 destOverlay.setMap(map);
                 const trailLine = new maps.Polyline({ path: [], strokeWeight: 5, strokeColor: tokens.muted, strokeOpacity: 0.55, strokeStyle: "solid" });
                 trailLine.setMap(map);
+                const routeLine = new maps.Polyline({ path: [], strokeWeight: 7, strokeColor: tokens.accent, strokeOpacity: 0.85, strokeStyle: "solid" });
+                routeLine.setMap(map);
                 const guide = new maps.Polyline({ path: [], strokeWeight: 4, strokeColor: tokens.accent, strokeOpacity: 0.95, strokeStyle: "shortdash" });
                 guide.setMap(map);
                 const accuracy = new maps.Circle({
@@ -381,7 +449,7 @@ function GuideMap({
                 const meOverlay = new maps.CustomOverlay({ position: destPos, content: dot, xAnchor: 0.5, yAnchor: 0.5, zIndex: 20 });
                 // 손으로 끌 때만 (setBounds 같은 코드의 이동에는 dragstart 가 오지 않는다)
                 maps.event.addListener(map, "dragstart", () => onUserMoveRef.current());
-                objs.current = { map, dest: destOverlay, destEl, guide, trail: trailLine, me: meOverlay, accuracy, fitted: false };
+                objs.current = { map, dest: destOverlay, destEl, guide, route: routeLine, trail: trailLine, me: meOverlay, accuracy, fitted: false };
                 setReadyTick((n) => n + 1);
             })
             .catch(() => !cancelled && setError(true));
@@ -407,20 +475,29 @@ function GuideMap({
         o.accuracy.setOptions({ strokeColor: tokens.accent, fillColor: tokens.accent });
     }, [readyTick, tokens.accent]);
 
-    // 내 위치, 직선, 오차 원
+    // 실제 경로
+    useEffect(() => {
+        const o = objs.current;
+        if (!o) return;
+        const maps = window.kakao.maps;
+        o.route.setPath((route ?? []).map((p) => new maps.LatLng(p.lat, p.lng)));
+    }, [readyTick, route]);
+
+    // 내 위치, 점선(경로가 있으면 경로 위 가장 가까운 점까지, 없으면 화장실까지 일직선), 오차 원
     useEffect(() => {
         const o = objs.current;
         if (!o || !me) return;
         const maps = window.kakao.maps;
         const here = new maps.LatLng(me.lat, me.lng);
-        const there = new maps.LatLng(dest.lat, dest.lng);
+        const target = route ? projectOnPath(me, route).point : dest;
+        const there = new maps.LatLng(target.lat, target.lng);
         o.me.setPosition(here);
         o.me.setMap(o.map);
         o.guide.setPath([here, there]);
         o.accuracy.setPosition(here);
         o.accuracy.setRadius(me.accuracy ?? 0);
         o.accuracy.setMap(me.accuracy != null && me.accuracy > 10 ? o.map : null);
-    }, [readyTick, me, dest.lat, dest.lng]);
+    }, [readyTick, me, route, dest.lat, dest.lng]);
 
     // 지나온 길
     useEffect(() => {
@@ -431,7 +508,9 @@ function GuideMap({
     }, [readyTick, trail]);
 
     // 나와 화장실이 함께 보이게. 처음 한 번, 따라가기를 다시 켰을 때, 그리고 둘 중 하나가 화면 밖으로 나가면 다시
+    // 경로를 새로 받으면(처음, 다시 찾기) 경로 전체가 보이게 다시 맞춘다
     const wasFollowing = useRef(follow);
+    const fittedRoute = useRef<LatLng[] | null>(null);
     useEffect(() => {
         const o = objs.current;
         const refollow = follow && !wasFollowing.current;
@@ -441,13 +520,16 @@ function GuideMap({
         const here = new maps.LatLng(me.lat, me.lng);
         const there = new maps.LatLng(dest.lat, dest.lng);
         const view = o.map.getBounds();
-        if (o.fitted && !refollow && view.contain(here) && view.contain(there)) return;
+        const newRoute = route !== fittedRoute.current;
+        if (o.fitted && !refollow && !newRoute && view.contain(here) && view.contain(there)) return;
         const b = new maps.LatLngBounds();
         b.extend(here);
         b.extend(there);
+        for (const p of route ?? []) b.extend(new maps.LatLng(p.lat, p.lng));
         o.map.setBounds(b, 72, 48, 48, 48);
         o.fitted = true;
-    }, [readyTick, me, follow, dest.lat, dest.lng]);
+        fittedRoute.current = route;
+    }, [readyTick, me, follow, route, dest.lat, dest.lng]);
 
     return (
         <>
@@ -460,6 +542,31 @@ function GuideMap({
                 <Alert severity="error" sx={{ position: "absolute", top: 68, left: 12, right: 12, zIndex: 2 }}>
                     {t("map.loadFailed")}
                 </Alert>
+            )}
+            {/* 경로 데이터 출처 (OSM ODbL, 서울시 공공누리 1유형 모두 출처 표시가 조건) */}
+            {route && (
+                <Box
+                    component="a"
+                    href="https://www.openstreetmap.org/copyright"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    // 오른쪽 위: 아래에는 카카오 로고(가리면 안 됨)와 축척, "나와 화장실 보기"가 있다
+                    sx={{
+                        position: "absolute",
+                        right: 8,
+                        top: 8,
+                        maxWidth: "calc(100% - 80px)",
+                        textAlign: "right",
+                        zIndex: 2,
+                        px: 0.75,
+                        py: 0.25,
+                        font: "500 var(--text-xs)/1.4 var(--font-body)",
+                        color: "var(--color-ink)",
+                        bgcolor: "color-mix(in srgb, var(--color-paper-3) 80%, transparent)",
+                    }}
+                >
+                    {attribution ?? t("guide.osmAttribution")}
+                </Box>
             )}
         </>
     );
