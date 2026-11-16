@@ -229,6 +229,7 @@ export const en: Messages = {
         show_one: "Show {{count}} place",
         show_other: "Show {{count}} places",
         counting: "Counting…",
+        accessibleOnly: "Accessible restrooms only",
     },
     detail: {
         back: "Back",
@@ -356,6 +357,9 @@ export const en: Messages = {
         title: "Ratings and comments",
         loginRequired: "Log in to rate or comment.",
         myRating: "My rating",
+        starLabel_one: "{{count}} star",
+        starLabel_other: "{{count}} stars",
+        noRating: "No rating",
         ratingCount_one: "{{count}} rating",
         ratingCount_other: "{{count}} ratings",
         rated: "Saved",
