@@ -19,7 +19,7 @@ const PREVIEW_ROWS = 3;
 
 /**
  * 하단 탭 "내 정보".
- * 회원: 회원 카드(이름과 설정, 탈퇴) → 내 제보 → 내 댓글 → 광고 제거·후원 → 관리자 메뉴.
+ * 회원: 회원 카드(누르면 설정 화면) → 내 제보 → 내 댓글 → 광고 제거·후원 → 관리자 메뉴.
  * 비회원: 로그인 안내 → 언어.
  */
 export function MePage() {
@@ -39,7 +39,7 @@ export function MePage() {
             </Typography>
 
             {auth.user ? (
-                // 회원: 이름과 설정(이름 바꾸기, 언어, 로그아웃, 탈퇴)을 한 카드에
+                // 회원: 이름 카드. 누르면 설정 화면 (이름 바꾸기, 언어, 로그아웃, 탈퇴)
                 <MemberCard user={auth.user} />
             ) : (
                 <Box className="plate">
