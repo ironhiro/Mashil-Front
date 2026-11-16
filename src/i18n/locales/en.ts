@@ -145,6 +145,13 @@ export const en: Messages = {
         byRecommend: "Recommended",
         recommendNote: "Open places with good ratings and short distance first. Closed places go last.",
     },
+    directions: {
+        title: "Directions in KakaoMap",
+        walk: "Walking directions",
+        walkNote: "The way on foot",
+        car: "Driving directions",
+        carNote: "Live traffic and voice guidance (KakaoMap)",
+    },
     guide: {
         title: "Direction guide",
         start: "Direction guide",

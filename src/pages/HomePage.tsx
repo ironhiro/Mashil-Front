@@ -42,7 +42,8 @@ import type { ToiletFilter } from "../lib/toiletFilter";
 import TuneIcon from "@mui/icons-material/Tune";
 
 import { MOCK_USER_LOCATION, USE_MOCK } from "../mock/flag";
-import { getCurrentPosition, isApp, LocationError, openAppSettings, openDirectionsInApp } from "../lib/nativeBridge";
+import { getCurrentPosition, isApp, LocationError, openAppSettings } from "../lib/nativeBridge";
+import { KakaoDirectionsButton } from "../components/KakaoDirections";
 import { friendlyError } from "../lib/friendlyError";
 import { formatDistance } from "../i18n";
 import { toiletKindLabel } from "../lib/facilityChips";
@@ -498,24 +499,16 @@ export function HomePage() {
                     {/* 행동은 세 층: 주 행동(길찾기) 하나, 보조 두 칸, 글자 링크 */}
                     <Stack spacing={1} sx={{ mt: 2 }}>
                         {selectedToilet.latitude != null && selectedToilet.longitude != null && (
-                            <Button
+                            // 누르면 도보 / 차 고르기
+                            <KakaoDirectionsButton
                                 variant="contained"
                                 size="large"
                                 fullWidth
-                                component="a"
-                                href={buildKakaoMapRouteUrl(selectedToilet, userLocation, t("home.myLocation"))}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e: React.MouseEvent) => {
-                                    // 앱 웹뷰는 target=_blank 를 열지 못함 → 브리지로 카카오맵 앱(없으면 웹) 길찾기
-                                    const t = selectedToilet;
-                                    if (!isApp() || t.latitude == null || t.longitude == null) return;
-                                    e.preventDefault();
-                                    void openDirectionsInApp(t.latitude, t.longitude, t.name);
-                                }}
+                                dest={{ name: selectedToilet.name, lat: selectedToilet.latitude, lng: selectedToilet.longitude }}
+                                from={userLocation}
                             >
                                 {t("home.kakaoDirections")}
-                            </Button>
+                            </KakaoDirectionsButton>
                         )}
                         {selectedToilet.latitude != null && selectedToilet.longitude != null && (
                             // 앱 안에서 일직선 방향과 남은 거리를 따라가며 보여 준다 (실제 길은 카카오맵)
@@ -651,22 +644,6 @@ export function HomePage() {
             {debug}
         </Stack>
     );
-}
-
-function buildKakaoMapRouteUrl(
-    toilet: { name: string; latitude: number | null; longitude: number | null },
-    user: LatLng | null,
-    myLocationLabel: string,
-): string {
-    if (toilet.latitude == null || toilet.longitude == null) return "https://map.kakao.com/";
-    const eName = encodeURIComponent(toilet.name);
-    const eLat = toilet.latitude;
-    const eLng = toilet.longitude;
-    if (user) {
-        const sName = encodeURIComponent(myLocationLabel);
-        return `https://map.kakao.com/link/from/${sName},${user.lat},${user.lng}/to/${eName},${eLat},${eLng}`;
-    }
-    return `https://map.kakao.com/link/to/${eName},${eLat},${eLng}`;
 }
 
 function sameLatLng(a: LatLng | null, b: LatLng | null) {

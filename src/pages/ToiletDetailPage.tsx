@@ -23,7 +23,7 @@ import { formatDistance } from "../i18n";
 import { ChangeRequestKind } from "../lib/enums";
 import { toiletKindLabel } from "../lib/facilityChips";
 import { friendlyError } from "../lib/friendlyError";
-import { isApp, openDirectionsInApp } from "../lib/nativeBridge";
+import { KakaoDirectionsButton } from "../components/KakaoDirections";
 import { statusOf, todayKst } from "../lib/openStatus";
 import { walkGuidePath } from "../lib/walkGuide";
 import type { WalkGuideState } from "../lib/walkGuide";
@@ -222,22 +222,16 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                     </Button>
                 )}
                 {hasCoords && (
-                    <Button
+                    // 누르면 도보 / 차 고르기. 홈에서 내 위치로 왔으면 그 위치를 출발점으로
+                    <KakaoDirectionsButton
                         variant="contained"
                         fullWidth
                         size="large"
-                        component="a"
-                        href={`https://map.kakao.com/link/to/${encodeURIComponent(toilet.name)},${toilet.latitude},${toilet.longitude}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e: React.MouseEvent) => {
-                            if (!isApp()) return;
-                            e.preventDefault();
-                            void openDirectionsInApp(toilet.latitude!, toilet.longitude!, toilet.name);
-                        }}
+                        dest={{ name: toilet.name, lat: toilet.latitude!, lng: toilet.longitude! }}
+                        from={nav.fromMe ? (nav.origin ?? null) : null}
                     >
                         {t("home.kakaoDirections")}
-                    </Button>
+                    </KakaoDirectionsButton>
                 )}
             </Box>
 
