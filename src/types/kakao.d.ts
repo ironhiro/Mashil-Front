@@ -12,6 +12,13 @@ declare namespace kakao.maps {
 
     class Point {
         constructor(x: number, y: number);
+        readonly x: number;
+        readonly y: number;
+    }
+
+    interface MapProjection {
+        /** 지도 칸 왼쪽 위 기준 화면 좌표 (px) */
+        containerPointFromCoords(latlng: LatLng): Point;
     }
 
     class MarkerImage {
@@ -19,7 +26,9 @@ declare namespace kakao.maps {
     }
 
     class LatLngBounds {
+        constructor(sw?: LatLng, ne?: LatLng);
         contain(latlng: LatLng): boolean;
+        extend(latlng: LatLng): void;
     }
 
     class Map {
@@ -27,6 +36,9 @@ declare namespace kakao.maps {
         setCenter(latlng: LatLng): void;
         panTo(latlng: LatLng): void;
         getBounds(): LatLngBounds;
+        getProjection(): MapProjection;
+        /** 범위가 다 보이게 중심과 확대 수준을 맞춘다. 여백은 px */
+        setBounds(bounds: LatLngBounds, paddingTop?: number, paddingRight?: number, paddingBottom?: number, paddingLeft?: number): void;
         getCenter(): LatLng;
         getLevel(): number;
         setLevel(level: number): void;

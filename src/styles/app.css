@@ -38,6 +38,8 @@ button:disabled, [aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
 .pin:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 .pin[aria-pressed="true"] { outline: 3px solid var(--color-ink); outline-offset: 2px; }
 .pin:active { transform: translateY(-3px); }
+/* 겹친 마커 묶음 "n곳": 상태 색이 아니라 잉크 바탕 (누르면 목록) */
+.pin.cluster { background: var(--color-ink); color: var(--color-paper); border: var(--rule-bar) solid var(--color-paper-3); padding: 0 var(--space-xs); }
 .me-dot { width: 18px; height: 18px; border-radius: var(--radius-pill); background: var(--color-paper-3); border: 4px solid var(--color-accent); box-sizing: border-box; }
 
 /* ── 근처 안내판 (시그니처): 잉크 띠 위의 출발 안내판처럼 ─────────────── */

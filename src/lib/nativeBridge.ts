@@ -3,6 +3,7 @@
  *
  * - 웹 → 앱: window.MashilBridge.postMessage(JSON.stringify({ requestId, method, params }))
  * - 앱 → 웹: window.__mashilBridgeReply(requestId, result)
+ * - 앱 → 웹 이벤트 (요청 없이 앱이 먼저): window.__mashilBridgeEvent(name, data) — watchLocation 의 위치 등
  *
  * 앱은 페이지 로드 전에 채널을 붙이므로 `isApp()` 은 첫 렌더부터 정확하다.
  * 브라우저에서는 모든 호출이 reject 되고, 아래 헬퍼들은 웹 API 로 폴백한다.
@@ -18,6 +19,7 @@ export type SocialProvider = "kakao" | "google" | "apple";
 interface MashilWindow {
     MashilBridge?: { postMessage: (msg: string) => void };
     __mashilBridgeReply?: (requestId: string, result: BridgeReply) => void;
+    __mashilBridgeEvent?: (name: string, data: Record<string, unknown>) => void;
 }
 
 const w = window as unknown as MashilWindow;
@@ -29,6 +31,21 @@ w.__mashilBridgeReply = (id, result) => {
     pending.delete(id);
     resolve(result);
 };
+
+type BridgeEventListener = (data: Record<string, unknown>) => void;
+const eventListeners = new Map<string, Set<BridgeEventListener>>();
+
+w.__mashilBridgeEvent = (name, data) => {
+    eventListeners.get(name)?.forEach((fn) => fn(data));
+};
+
+/** 앱이 보내는 이벤트 구독. 반환값을 부르면 끊는다. */
+function onBridgeEvent(name: string, fn: BridgeEventListener): () => void {
+    let set = eventListeners.get(name);
+    if (!set) eventListeners.set(name, (set = new Set()));
+    set.add(fn);
+    return () => set.delete(fn);
+}
 
 export function isApp(): boolean {
     return typeof w.MashilBridge?.postMessage === "function";
@@ -109,6 +126,102 @@ export async function getCurrentPosition(
             opts,
         );
     });
+}
+
+export interface WatchedPosition extends Position {
+    /** 진행 방향 (도, 북쪽 0 시계방향). 움직이지 않거나 모르면 없음 */
+    heading?: number;
+}
+
+/** watchLocation 이 없는 예전 앱에서는 이 간격으로 getLocation 을 다시 부른다 */
+const LEGACY_POLL_MS = 3_000;
+
+/**
+ * 위치가 바뀔 때마다 알려 준다 (방향 안내). 앱이면 네이티브 GPS 스트림(권한 요청 포함), 브라우저면
+ * navigator.geolocation.watchPosition. 반환값을 부르면 멈춘다. 앱의 구독은 하나뿐이라 동시에 한 화면에서만 쓴다.
+ * onError 가 불리면 그 뒤로는 위치가 오지 않는다.
+ */
+export function watchPosition(
+    onPosition: (p: WatchedPosition) => void,
+    onError: (e: LocationError) => void,
+    opts: { distanceFilterM?: number } = {},
+): () => void {
+    let stopped = false;
+    const fail = (reason: unknown) => {
+        if (stopped) return;
+        stop();
+        const r = reason as LocationFailure;
+        onError(new LocationError(LOCATION_FAILURES.includes(r) ? r : "failed"));
+    };
+    let cleanup: () => void = () => undefined;
+    const stop = () => {
+        if (stopped) return;
+        stopped = true;
+        cleanup();
+    };
+
+    if (isApp()) {
+        const offLocation = onBridgeEvent("location", (d) => {
+            if (stopped) return;
+            onPosition({
+                lat: Number(d.lat),
+                lng: Number(d.lng),
+                accuracy: d.accuracy == null ? undefined : Number(d.accuracy),
+                heading: d.heading == null ? undefined : Number(d.heading),
+            });
+        });
+        const offError = onBridgeEvent("locationError", (d) => fail(d.reason));
+        let poll: ReturnType<typeof setTimeout> | undefined;
+        cleanup = () => {
+            offLocation();
+            offError();
+            clearTimeout(poll);
+            callNative("stopWatchLocation", {}, 10_000).catch(() => undefined);
+        };
+        callNative("watchLocation", { highAccuracy: true, distanceFilterM: opts.distanceFilterM ?? 3 }, 30_000)
+            .then((r) => {
+                if (stopped || r.ok) return;
+                if (r.reason !== "unknownMethod") return fail(r.reason);
+                // 예전 앱: 한 번씩 재기를 되풀이한다
+                const tick = () =>
+                    getCurrentPosition({ enableHighAccuracy: true, timeout: 10_000, maximumAge: 0 })
+                        .then((p) => !stopped && onPosition(p))
+                        .catch((e: unknown) => {
+                            if (e instanceof LocationError && e.reason !== "timeout") fail(e.reason);
+                        })
+                        .finally(() => {
+                            if (!stopped) poll = setTimeout(tick, LEGACY_POLL_MS);
+                        });
+                void tick();
+            })
+            .catch(() => fail("failed"));
+        return stop;
+    }
+
+    if (!navigator.geolocation) {
+        queueMicrotask(() => fail("unsupported"));
+        return stop;
+    }
+    const id = navigator.geolocation.watchPosition(
+        (pos) => {
+            if (stopped) return;
+            const h = pos.coords.heading;
+            onPosition({
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                accuracy: pos.coords.accuracy,
+                heading: h != null && !Number.isNaN(h) && (pos.coords.speed ?? 0) > 0.3 ? h : undefined,
+            });
+        },
+        (err) => {
+            // 시간 초과는 다음 위치를 기다리면 된다. 권한 거부만 끝낸다
+            if (err.code === err.PERMISSION_DENIED) fail("denied");
+            else if (err.code === err.POSITION_UNAVAILABLE) fail("failed");
+        },
+        { enableHighAccuracy: true, maximumAge: 2_000, timeout: 20_000 },
+    );
+    cleanup = () => navigator.geolocation.clearWatch(id);
+    return stop;
 }
 
 /** 앱의 설정 화면 열기 (deniedForever 일 때). */

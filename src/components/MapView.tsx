@@ -5,6 +5,8 @@ import { useTranslation } from "react-i18next";
 import { stateClass, tileStateOf } from "../design/statusTile";
 import { darkMirror, lightMirror } from "../design/tokens";
 import { loadKakaoMaps } from "../lib/kakaoMap";
+import { groupOverlapping } from "../lib/mapCluster";
+import type { PinBox } from "../lib/mapCluster";
 import { statusOf } from "../lib/openStatus";
 import type { LatLng as Coord, ToiletNear } from "../api";
 import { openStatusLabel } from "./OpenStatusBadge";
@@ -19,6 +21,8 @@ interface Props {
     selectedId: number | null;
     onSearchAtCenter: (center: Coord) => void;
     onSelectToilet: (t: ToiletNear) => void;
+    /** 겹쳐서 하나로 묶인 마커를 눌렀을 때 (묶인 화장실들) */
+    onSelectCluster?: (toilets: ToiletNear[]) => void;
     /** 내 위치 (있으면 점으로 표시) */
     userLocation?: Coord | null;
     /** 거리 표시선의 출발점. null 이면 선을 그리지 않음. */
@@ -31,7 +35,13 @@ interface Pin {
     overlay: kakao.maps.CustomOverlay;
     el: HTMLButtonElement;
     toiletId: number;
+    toilet: ToiletNear;
+    /** 화면에 그려진 크기 (px). 묶여 숨겨져 있으면 잴 수 없으니 처음 잰 값을 둔다 */
+    size: { width: number; height: number } | null;
 }
+
+/** 아직 못 잰 마커의 크기 어림 (상태 글자 + 평점) */
+const PIN_FALLBACK = { width: 84, height: 26 };
 
 /** 지도 아래에 남겨 둘 여백 (px). 하단 탭(없으면 화면 아래)과 지도 테두리 사이.
  *  App 의 Container 아래 여백(py: 3 = 24px, --space-lg)과 같아야 페이지가 화면보다 길어지지 않는다 */
@@ -50,6 +60,7 @@ export function MapView({
     selectedId,
     onSearchAtCenter,
     onSelectToilet,
+    onSelectCluster,
     userLocation,
     routeFrom,
     routeTo,
@@ -61,6 +72,13 @@ export function MapView({
     const radiusCircleRef = useRef<kakao.maps.Circle | null>(null);
     const routeLineRef = useRef<kakao.maps.Polyline | null>(null);
     const meRef = useRef<kakao.maps.CustomOverlay | null>(null);
+    const clusterOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
+    const selectedIdRef = useRef(selectedId);
+    selectedIdRef.current = selectedId;
+    const onSelectClusterRef = useRef(onSelectCluster);
+    useEffect(() => {
+        onSelectClusterRef.current = onSelectCluster;
+    }, [onSelectCluster]);
     // 부모가 매 렌더마다 새 화살표 함수를 넘겨도 마커를 다시 그리지 않도록 최신 콜백은 ref 로 읽는다
     const onSelectRef = useRef(onSelectToilet);
     useEffect(() => {
@@ -135,6 +153,8 @@ export function MapView({
                 });
                 radiusCircleRef.current.setMap(map);
                 maps.event.addListener(map, "tilesloaded", () => setTilesLoaded(true));
+                // 줌·이동이 멈출 때마다 겹친 마커를 다시 묶는다
+                maps.event.addListener(map, "idle", () => regroupRef.current());
                 setReady(true);
             })
             .catch((e: Error) => !cancelled && setError(e.message));
@@ -211,10 +231,58 @@ export function MapView({
                 clickable: true,
             });
             overlay.setMap(map);
-            next.push({ overlay, el, toiletId: toilet.id });
+            next.push({ overlay, el, toiletId: toilet.id, toilet, size: null });
         }
         pinsRef.current = next;
+        regroupRef.current();
     }, [ready, toilets, t]);
+
+    // 3a) 겹친 마커 묶기. 고른 화장실은 묶지 않고 늘 따로 보인다
+    const regroupRef = useRef<() => void>(() => undefined);
+    regroupRef.current = () => {
+        const map = mapRef.current;
+        if (!ready || !map) return;
+        const maps = window.kakao.maps;
+        clusterOverlaysRef.current.forEach((o) => o.setMap(null));
+        clusterOverlaysRef.current = [];
+
+        const projection = map.getProjection();
+        const pins = pinsRef.current;
+        const free: Pin[] = [];
+        for (const p of pins) {
+            if (p.toiletId === selectedIdRef.current) p.overlay.setMap(map);
+            else free.push(p);
+        }
+        const boxes: PinBox[] = free.map((p) => {
+            if (!p.size && p.el.offsetWidth > 0) p.size = { width: p.el.offsetWidth, height: p.el.offsetHeight };
+            const pt = projection.containerPointFromCoords(p.overlay.getPosition());
+            return { x: pt.x, y: pt.y, ...(p.size ?? PIN_FALLBACK) };
+        });
+        for (const group of groupOverlapping(boxes)) {
+            const members = group.map((i) => free[i]);
+            if (members.length === 1) {
+                members[0].overlay.setMap(map);
+                continue;
+            }
+            members.forEach((m) => m.overlay.setMap(null));
+            const lat = members.reduce((s, m) => s + m.overlay.getPosition().getLat(), 0) / members.length;
+            const lng = members.reduce((s, m) => s + m.overlay.getPosition().getLng(), 0) / members.length;
+            const toiletsInGroup = members.map((m) => m.toilet);
+            const el = createClusterElement(t("cluster.pin", { count: members.length }));
+            el.setAttribute("aria-label", t("cluster.pinAria", { count: members.length }));
+            el.addEventListener("click", () => onSelectClusterRef.current?.(toiletsInGroup));
+            const overlay = new maps.CustomOverlay({
+                position: new maps.LatLng(lat, lng),
+                content: el,
+                xAnchor: 0.5,
+                yAnchor: 1,
+                zIndex: 20,
+                clickable: true,
+            });
+            overlay.setMap(map);
+            clusterOverlaysRef.current.push(overlay);
+        }
+    };
 
     // 3b) 선택된 마커: 먹색 외곽선 + 위로 (선택은 색이 아니라 외곽선으로 표시)
     useEffect(() => {
@@ -227,6 +295,7 @@ export function MapView({
             const map = mapRef.current;
             if (selected && map && !map.getBounds().contain(overlay.getPosition())) map.panTo(overlay.getPosition());
         }
+        regroupRef.current();
     }, [ready, selectedId, toilets]);
 
     // 4) 거리 표시선 — routeFrom + routeTo 둘 다 있을 때만
@@ -325,6 +394,15 @@ function createPinElement(label: string, stateCls: string, rating: number | null
         r.textContent = `★${rating.toFixed(1)}`;
         el.appendChild(r);
     }
+    return el;
+}
+
+/** 겹친 마커 묶음: 잉크 바탕 안내판 조각에 "n곳". 스타일은 app.css 의 .pin.cluster */
+function createClusterElement(label: string): HTMLButtonElement {
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = "pin cluster";
+    el.textContent = label;
     return el;
 }
 

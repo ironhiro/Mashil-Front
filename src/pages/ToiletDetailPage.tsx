@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { CopyButton } from "../components/CopyButton";
-import { copyText } from "../lib/copyText";
-import { Alert, Box, Button, CircularProgress, IconButton, Link, Snackbar, Stack, Typography } from "@mui/material";
+import { ShareSheet } from "../components/ShareSheet";
+import { toiletShareUrl } from "../lib/share";
+import { Alert, Box, Button, CircularProgress, IconButton, Link, Stack, Typography } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import IosShareIcon from "@mui/icons-material/IosShare";
 import PhoneIcon from "@mui/icons-material/Phone";
+import NavigationIcon from "@mui/icons-material/NavigationOutlined";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -23,6 +25,8 @@ import { toiletKindLabel } from "../lib/facilityChips";
 import { friendlyError } from "../lib/friendlyError";
 import { isApp, openDirectionsInApp } from "../lib/nativeBridge";
 import { statusOf, todayKst } from "../lib/openStatus";
+import { walkGuidePath } from "../lib/walkGuide";
+import type { WalkGuideState } from "../lib/walkGuide";
 
 const DAYS: ScheduleDay[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Holiday"];
 
@@ -75,7 +79,7 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
     const { t, i18n } = useTranslation();
     const navigate = useNavigate();
     const auth = useAuth();
-    const [copied, setCopied] = useState(false);
+    const [shareOpen, setShareOpen] = useState(false);
     const status = statusOf(toilet);
 
     const distanceM = useMemo(() => {
@@ -83,18 +87,6 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
         return computeStraightRoute(nav.origin, { lat: toilet.latitude, lng: toilet.longitude }).distanceM;
     }, [nav.origin, toilet.latitude, toilet.longitude]);
 
-    const share = async () => {
-        const url = window.location.href;
-        try {
-            if (navigator.share) {
-                await navigator.share({ title: toilet.name, url });
-                return;
-            }
-            setCopied(await copyText(url));
-        } catch {
-            /* 사용자가 공유 창을 닫음 */
-        }
-    };
 
     const requestFix = () => {
         const state = { kind: ChangeRequestKind.Edit, targetToiletId: toilet.id, targetName: toilet.name };
@@ -117,7 +109,7 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                     <OverlayButton label={t("detail.back")} onClick={onBack}>
                         <ArrowBackIcon fontSize="small" />
                     </OverlayButton>
-                    <OverlayButton label={t("detail.share")} onClick={() => void share()}>
+                    <OverlayButton label={t("detail.share")} onClick={() => setShareOpen(true)}>
                         <IosShareIcon fontSize="small" />
                     </OverlayButton>
                 </Stack>
@@ -214,6 +206,22 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                     </IconButton>
                 )}
                 {hasCoords && (
+                    // 앱 안 방향 안내 (일직선과 남은 거리). 주 행동은 그대로 카카오맵 길찾기
+                    <Button
+                        variant="outlined"
+                        size="large"
+                        startIcon={<NavigationIcon />}
+                        onClick={() =>
+                            navigate(walkGuidePath(toilet.id), {
+                                state: { name: toilet.name, lat: toilet.latitude!, lng: toilet.longitude! } satisfies WalkGuideState,
+                            })
+                        }
+                        sx={{ flexShrink: 0, whiteSpace: "nowrap" }}
+                    >
+                        {t("guide.start")}
+                    </Button>
+                )}
+                {hasCoords && (
                     <Button
                         variant="contained"
                         fullWidth
@@ -233,7 +241,16 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                 )}
             </Box>
 
-            <Snackbar open={copied} autoHideDuration={2000} onClose={() => setCopied(false)} message={t("detail.copied")} />
+            <ShareSheet
+                open={shareOpen}
+                onClose={() => setShareOpen(false)}
+                payload={{
+                    title: toilet.name,
+                    url: toiletShareUrl(toilet.id),
+                    description: toiletKindLabel(t, toilet.kind),
+                    address: toilet.roadAddress ?? toilet.lotAddress ?? undefined,
+                }}
+            />
         </Box>
     );
 }
