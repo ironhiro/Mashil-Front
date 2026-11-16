@@ -242,6 +242,8 @@ export const en: Messages = {
         varies: "Varies by day",
         closedDay: "Closed",
         noInfo: "No info",
+        holidayAsDay: "Same as that weekday",
+        holidayAsDayShort: "As weekday",
         allDay: "24 hours",
         rawHours: "Original listing: {{raw}}",
         schedule: {
