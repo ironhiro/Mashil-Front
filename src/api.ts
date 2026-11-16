@@ -94,7 +94,9 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
     }
     onHeaders?.(res.headers);
     if (res.status === 204) return undefined as T;
-    return res.json();
+    // 201 처럼 본문 없이 성공하는 응답도 있다 (댓글 신고)
+    const text = await res.text();
+    return (text ? JSON.parse(text) : undefined) as T;
 }
 
 /** 단건 화장실 상세 — 변경 요청(수정/삭제) 작성 시 prefill 용. */
@@ -205,6 +207,35 @@ export interface VoteResult {
 /** 댓글 도움돼요(1) / 아니에요(-1) / 취소(0). 자기 댓글은 400 */
 export function voteComment(commentId: number, value: 1 | -1 | 0): Promise<VoteResult> {
     return apiFetch<VoteResult>(`/api/comments/${commentId}/vote`, { method: "PUT", body: { value }, auth: true });
+}
+
+/** 신고 사유 (서버 ReportReason) */
+export type ReportReason = "Spam" | "Abuse" | "False" | "Other";
+export const REPORT_REASONS: ReportReason[] = ["Spam", "Abuse", "False", "Other"];
+
+/** 댓글 신고. 같은 댓글은 한 번만 (409 already_reported), 내 댓글은 400 own_comment */
+export function reportComment(commentId: number, reason: ReportReason, detail?: string): Promise<void> {
+    return apiFetch<void>(`/api/comments/${commentId}/reports`, { method: "POST", body: { reason, detail: detail || null }, auth: true });
+}
+
+/** 차단한 사용자 */
+export interface BlockedUser {
+    userId: string;
+    displayName: string;
+    blockedAt: string;
+}
+
+/** 사용자 차단: 그 사람의 댓글이 내 화면에서 빠진다. 이미 차단했어도 204 */
+export function blockUser(userId: string): Promise<void> {
+    return apiFetch<void>(`/api/users/${userId}/block`, { method: "POST", auth: true });
+}
+
+export function unblockUser(userId: string): Promise<void> {
+    return apiFetch<void>(`/api/users/${userId}/block`, { method: "DELETE", auth: true });
+}
+
+export function fetchBlockedUsers(): Promise<BlockedUser[]> {
+    return apiFetch<BlockedUser[]>("/api/users/me/blocks", { auth: true });
 }
 
 /** 추천 한 건: 근처 목록과 같은 화장실 + 점수와 근거 */

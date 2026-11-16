@@ -7,7 +7,11 @@ import {
     CardContent,
     CircularProgress,
     Divider,
+    IconButton,
+    Menu,
+    MenuItem,
     Rating,
+    Snackbar,
     Stack,
     TextField,
     Typography,
@@ -15,6 +19,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import ThumbDownOutlinedIcon from "@mui/icons-material/ThumbDownOutlined";
 import ThumbUpOutlinedIcon from "@mui/icons-material/ThumbUpOutlined";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { fetchComments, postComment, postRating, voteComment } from "../api";
 import type { CommentRow } from "../api";
 import { useAuth } from "../auth/AuthContext";
@@ -22,6 +27,7 @@ import { useTranslation } from "react-i18next";
 import { formatRelativeOrDate } from "../i18n";
 import { friendlyError } from "../lib/friendlyError";
 import { useAppStatus } from "../lib/appStatus";
+import { ReportSheet } from "./ReportSheet";
 
 interface Props {
     toiletId: number;
@@ -45,6 +51,10 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
     const [pendingScore, setPendingScore] = useState<number | null>(null);
     const [comment, setComment] = useState("");
     const [error, setError] = useState<string | null>(null);
+    // 댓글 ⋮ 메뉴 → 신고 시트
+    const [menu, setMenu] = useState<{ anchor: HTMLElement; comment: CommentRow } | null>(null);
+    const [reporting, setReporting] = useState<CommentRow | null>(null);
+    const [snack, setSnack] = useState<string | null>(null);
 
     const commentsQuery = useQuery({
         queryKey: ["toilet-comments", toiletId],
@@ -186,9 +196,23 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
                     const busy = voteMut.isPending && voteMut.variables?.id === c.id;
                     return (
                         <article key={c.id} className="comment">
-                            <div className="comment-meta">
-                                {c.authorName && <b>{c.isMine ? t("interactions.me") : c.authorName}</b>}
-                                <span>{formatRelativeOrDate(c.createdAt)}</span>
+                            <div className="comment-head">
+                                <div className="comment-meta">
+                                    {c.authorName && <b>{c.isMine ? t("interactions.me") : c.authorName}</b>}
+                                    <span>{formatRelativeOrDate(c.createdAt)}</span>
+                                </div>
+                                {/* 남의 댓글만 신고할 수 있다 (탈퇴한 사용자 댓글도 신고는 된다) */}
+                                {!c.isMine && !readOnly && (
+                                    <IconButton
+                                        size="small"
+                                        className="comment-more"
+                                        aria-label={t("commentReport.menu")}
+                                        aria-haspopup="menu"
+                                        onClick={(e) => setMenu({ anchor: e.currentTarget, comment: c })}
+                                    >
+                                        <MoreVertIcon fontSize="small" />
+                                    </IconButton>
+                                )}
                             </div>
                             <p className="comment-text">{c.text}</p>
                             {c.isMine ? (
@@ -237,6 +261,31 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
                     );
                 })}
             </CardContent>
+
+            <Menu anchorEl={menu?.anchor} open={menu !== null} onClose={() => setMenu(null)}>
+                <MenuItem
+                    onClick={() => {
+                        const c = menu!.comment;
+                        setMenu(null);
+                        if (!auth.user) setError(t("commentReport.loginRequired"));
+                        else setReporting(c);
+                    }}
+                >
+                    {t("commentReport.action")}
+                </MenuItem>
+            </Menu>
+            <ReportSheet
+                comment={reporting}
+                onClose={() => setReporting(null)}
+                onDone={({ blocked }) => {
+                    setReporting(null);
+                    setError(null);
+                    setSnack(blocked ? t("commentReport.doneBlocked") : t("commentReport.done"));
+                    // 차단했으면 그 사람 댓글이 목록에서 빠진다
+                    if (blocked) qc.invalidateQueries({ queryKey: ["toilet-comments"] });
+                }}
+            />
+            <Snackbar open={snack !== null} autoHideDuration={3000} onClose={() => setSnack(null)} message={snack} />
         </Card>
     );
 }
