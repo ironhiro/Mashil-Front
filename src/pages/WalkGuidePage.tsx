@@ -222,6 +222,7 @@ function GuideBody({
                     me={me}
                     trail={trail}
                     route={route?.points ?? null}
+                    attribution={route?.attribution ?? null}
                     pin={pin}
                     follow={follow}
                     onUserMove={() => setFollow(false)}
@@ -376,6 +377,7 @@ function GuideMap({
     me,
     trail,
     route,
+    attribution,
     pin,
     follow,
     onUserMove,
@@ -385,6 +387,8 @@ function GuideMap({
     trail: LatLng[];
     /** 서버가 찾은 도보 경로. 없으면 직선 안내 */
     route: LatLng[] | null;
+    /** 경로 데이터 출처 (서버가 준 문구: OSM, 서울 도보 네트워크를 지났으면 서울시도) */
+    attribution: string | null;
     pin: { label: string; state: TileState } | null;
     follow: boolean;
     onUserMove: () => void;
@@ -539,17 +543,20 @@ function GuideMap({
                     {t("map.loadFailed")}
                 </Alert>
             )}
-            {/* 경로 데이터 출처 (ODbL 은 출처 표시가 조건) */}
+            {/* 경로 데이터 출처 (OSM ODbL, 서울시 공공누리 1유형 모두 출처 표시가 조건) */}
             {route && (
                 <Box
                     component="a"
                     href="https://www.openstreetmap.org/copyright"
                     target="_blank"
                     rel="noopener noreferrer"
+                    // 오른쪽 위: 아래에는 카카오 로고(가리면 안 됨)와 축척, "나와 화장실 보기"가 있다
                     sx={{
                         position: "absolute",
                         right: 8,
-                        bottom: 8,
+                        top: 8,
+                        maxWidth: "calc(100% - 80px)",
+                        textAlign: "right",
                         zIndex: 2,
                         px: 0.75,
                         py: 0.25,
@@ -558,7 +565,7 @@ function GuideMap({
                         bgcolor: "color-mix(in srgb, var(--color-paper-3) 80%, transparent)",
                     }}
                 >
-                    {t("guide.osmAttribution")}
+                    {attribution ?? t("guide.osmAttribution")}
                 </Box>
             )}
         </>
