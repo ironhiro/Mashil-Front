@@ -228,7 +228,7 @@ export interface ToiletSearchResult {
 }
 
 /** 검색 한 번에 받는 수. 더 있으면 "더 보기" 로 이어 받는다 */
-export const SEARCH_PAGE = 30;
+export const SEARCH_PAGE = 20;
 
 export interface ToiletSearchPage {
     items: ToiletSearchResult[];
