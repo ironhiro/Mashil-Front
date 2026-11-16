@@ -28,6 +28,7 @@ import { SUPPORTED_LANGUAGES, currentLanguage } from "../i18n";
 import type { LanguageCode } from "../i18n";
 import { UserRole } from "../lib/enums";
 import { NativeSignInCancelled, isApp } from "../lib/nativeBridge";
+import { BlockedUsers } from "./BlockedUsers";
 
 /** 언어 고르기. 비회원은 내 정보에, 회원은 설정 화면에 */
 export function LanguagePicker() {
@@ -135,6 +136,8 @@ export function AccountSettings({ user }: { user: AuthUser }) {
             <Box component="section" className="plate">
                 <LanguagePicker />
             </Box>
+
+            <BlockedUsers />
 
             <Stack spacing={2}>
                 <Button
