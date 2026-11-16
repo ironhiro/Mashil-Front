@@ -138,8 +138,8 @@ export const en: Messages = {
     cluster: {
         pin: "{{count}} places",
         pinAria: "{{count}}: {{count}} overlapping restrooms, show the list",
-        title_one: "{{count}} place here",
-        title_other: "{{count}} places here",
+        title_one: "{{count}} place in total",
+        title_other: "{{count}} places in total",
         sortLabel: "Sort",
         byDistance: "Nearest",
         byRecommend: "Recommended",
