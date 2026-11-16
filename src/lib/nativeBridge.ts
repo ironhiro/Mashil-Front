@@ -248,9 +248,12 @@ export async function setAppLanguage(language: string): Promise<void> {
 // ── 길찾기 ──────────────────────────────────────────────────────────────
 
 /** 앱이면 카카오맵 앱(없으면 카카오맵 웹) 길찾기. 처리했으면 true, 브라우저면 false (링크 기본 동작에 맡김). */
-export async function openDirectionsInApp(lat: number, lng: number, name: string): Promise<boolean> {
+export type DirectionsMode = "walk" | "car";
+
+/** mode 를 모르는 예전 앱은 도보 길찾기를 연다. */
+export async function openDirectionsInApp(lat: number, lng: number, name: string, mode: DirectionsMode = "walk"): Promise<boolean> {
     if (!isApp()) return false;
-    const r = await callNative("openDirections", { lat, lng, name });
+    const r = await callNative("openDirections", { lat, lng, name, mode });
     return r.ok;
 }
 

@@ -149,6 +149,13 @@ export const ko = {
         byRecommend: "추천순",
         recommendNote: "열려 있는 곳 중 별점이 좋고 가까운 곳부터. 닫힌 곳은 뒤로 보내요.",
     },
+    directions: {
+        title: "카카오맵 길찾기",
+        walk: "도보로 길찾기",
+        walkNote: "걷는 길 안내",
+        car: "차로 길찾기",
+        carNote: "실시간 교통과 음성 안내 (카카오맵)",
+    },
     guide: {
         title: "방향 안내",
         start: "방향 안내",

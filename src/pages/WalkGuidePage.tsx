@@ -14,7 +14,8 @@ import { createMarkerElement } from "../lib/mapMarker";
 import { darkMirror, lightMirror } from "../design/tokens";
 import { formatDistance } from "../i18n";
 import { loadKakaoMaps } from "../lib/kakaoMap";
-import { isApp, openAppSettings, openDirectionsInApp, watchPosition } from "../lib/nativeBridge";
+import { isApp, openAppSettings, watchPosition } from "../lib/nativeBridge";
+import { KakaoDirectionsButton } from "../components/KakaoDirections";
 import type { LocationFailure, WatchedPosition } from "../lib/nativeBridge";
 import { statusOf } from "../lib/openStatus";
 import {
@@ -187,14 +188,6 @@ function GuideBody({
         };
     }, [arrived, failure]);
 
-    const openKakao = (e: React.MouseEvent) => {
-        if (!isApp()) return;
-        e.preventDefault();
-        void openDirectionsInApp(dest.lat, dest.lng, name);
-    };
-    const kakaoUrl = me
-        ? `https://map.kakao.com/link/from/${encodeURIComponent(t("home.myLocation"))},${me.lat},${me.lng}/to/${encodeURIComponent(name)},${dest.lat},${dest.lng}`
-        : `https://map.kakao.com/link/to/${encodeURIComponent(name)},${dest.lat},${dest.lng}`;
 
     // 화면 낭독기에는 50m 단위로만 알린다 (위치가 올 때마다 읽으면 시끄럽다)
     const spoken = arrived
@@ -343,16 +336,9 @@ function GuideBody({
                                 <Button variant="outlined" onClick={onExit}>
                                     {t("guide.end")}
                                 </Button>
-                                <Button
-                                    variant="outlined"
-                                    component="a"
-                                    href={kakaoUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={openKakao}
-                                >
+                                <KakaoDirectionsButton variant="outlined" dest={{ name, lat: dest.lat, lng: dest.lng }} from={me}>
                                     {t("guide.kakao")}
-                                </Button>
+                                </KakaoDirectionsButton>
                             </>
                         )}
                     </Box>
