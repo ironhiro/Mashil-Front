@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CopyButton } from "../components/CopyButton";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import {
@@ -11,6 +11,7 @@ import {
     CardContent,
     IconButton,
     Link,
+    Snackbar,
     Stack,
     ToggleButton,
     ToggleButtonGroup,
@@ -98,6 +99,9 @@ export function HomePage() {
     const clusterRef = useRef<HTMLElement | null>(null);
     const scrollToCluster = useRef(false);
     const [shareOpen, setShareOpen] = useState(false);
+    // 다른 화면이 넘겨 준 한 번짜리 안내 (예: 회원 탈퇴 뒤)
+    const routerLocation = useLocation();
+    const [notice, setNotice] = useState<string | null>((routerLocation.state as { notice?: string } | null)?.notice ?? null);
     // 위치를 못 받았을 때 이유 — 문장은 렌더 시 번역 (언어를 바꿔도 따라감)
     const [geoFailure, setGeoFailure] = useState<LocationFailure | null>(homeMemory.geoFailure);
 
@@ -271,6 +275,7 @@ export function HomePage() {
         )}
 
         <SearchField onSearch={setSearchTerm} />
+        <Snackbar open={notice !== null} autoHideDuration={4000} onClose={() => setNotice(null)} message={notice} />
 
         {/* === 필터 버튼 + 지도/목록 전환 === */}
         <Stack direction="row" spacing={1} alignItems="center">
@@ -281,11 +286,14 @@ export function HomePage() {
                 startIcon={<TuneIcon />}
                 sx={{ minHeight: 40 }}
             >
-                {t("filter.button")}
-                {activeFilters > 0 && ` ${activeFilters}`}
-                <Box component="span" sx={{ ml: 1, fontWeight: 500 }}>
-                    {formatDistance(radiusM, true)}
-                </Box>
+                {/* 글자 "필터"는 아이콘이 대신한다. 화면 낭독기에는 "필터 500m" 로 읽힌다 */}
+                <span className="visually-hidden">{t("filter.button")} </span>
+                {formatDistance(radiusM, true)}
+                {activeFilters > 0 && (
+                    <Box component="span" sx={{ ml: 1 }}>
+                        {t("filter.activeCount", { count: activeFilters })}
+                    </Box>
+                )}
             </Button>
             <Box sx={{ flexGrow: 1 }} />
             <ToggleButtonGroup

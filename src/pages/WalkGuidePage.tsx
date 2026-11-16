@@ -8,7 +8,9 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { fetchToilet } from "../api";
 import type { LatLng } from "../api";
 import { openStatusLabel } from "../components/OpenStatusBadge";
-import { stateClass, tileStateOf } from "../design/statusTile";
+import { tileStateOf } from "../design/statusTile";
+import type { TileState } from "../design/statusTile";
+import { createMarkerElement } from "../lib/mapMarker";
 import { darkMirror, lightMirror } from "../design/tokens";
 import { formatDistance } from "../i18n";
 import { loadKakaoMaps } from "../lib/kakaoMap";
@@ -71,7 +73,7 @@ export function WalkGuidePage() {
 
     const pin = toilet ? (() => {
         const status = statusOf(toilet);
-        return { label: openStatusLabel(t, status, "short"), className: stateClass(tileStateOf(status)) };
+        return { label: openStatusLabel(t, status, "short"), state: tileStateOf(status) };
     })() : null;
 
     return <GuideBody toiletId={toiletId} name={name} dest={dest} pin={pin} onExit={exit} />;
@@ -87,7 +89,7 @@ function GuideBody({
     toiletId: number;
     name: string;
     dest: LatLng;
-    pin: { label: string; className: string } | null;
+    pin: { label: string; state: TileState } | null;
     onExit: () => void;
 }) {
     const { t } = useTranslation();
@@ -322,7 +324,7 @@ function GuideMap({
     dest: LatLng;
     me: WatchedPosition | null;
     trail: LatLng[];
-    pin: { label: string; className: string } | null;
+    pin: { label: string; state: TileState } | null;
     follow: boolean;
     onUserMove: () => void;
 }) {
@@ -358,7 +360,6 @@ function GuideMap({
                 const map = new maps.Map(ref.current, { center: destPos, level: 3 });
                 const destEl = document.createElement("div");
                 destEl.setAttribute("aria-hidden", "true");
-                destEl.style.cursor = "default";
                 const destOverlay = new maps.CustomOverlay({ position: destPos, content: destEl, xAnchor: 0.5, yAnchor: 1, zIndex: 10 });
                 destOverlay.setMap(map);
                 const trailLine = new maps.Polyline({ path: [], strokeWeight: 5, strokeColor: tokens.muted, strokeOpacity: 0.55, strokeStyle: "solid" });
@@ -390,14 +391,14 @@ function GuideMap({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // 화장실 마커 (상태를 받으면 상태 색 안내판 조각, 그 전에는 이름 없이 빈 조각)
+    // 화장실 핀 (상태 모양)
     useEffect(() => {
         const o = objs.current;
         if (!o) return;
-        o.destEl.className = `pin ${pin?.className ?? ""}`.trim();
-        o.destEl.textContent = pin?.label ?? t("guide.destPin");
+        // 상태를 받기 전에는 "모름" 핀
+        o.destEl.replaceChildren(createMarkerElement(pin?.state ?? "unknown"));
         o.dest.setPosition(new window.kakao.maps.LatLng(dest.lat, dest.lng));
-    }, [readyTick, pin?.label, pin?.className, dest.lat, dest.lng, t]);
+    }, [readyTick, pin?.state, dest.lat, dest.lng]);
 
     // 라이트·다크 전환
     useEffect(() => {

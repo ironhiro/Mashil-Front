@@ -125,7 +125,7 @@ export function LoginPage() {
 
     return (
         <Box sx={{ maxWidth: 420, mx: "auto" }}>
-            {/* 아이콘 · 로고 · 슬로건 · 로그인으로 할 수 있는 일 (줄눈 격자 바탕) */}
+            {/* 아이콘 · 이름 · 슬로건 (줄눈 격자 바탕). 소개 문구는 버튼 아래 */}
             <Stack
                 alignItems="center"
                 spacing={1.25}
@@ -146,9 +146,6 @@ export function LoginPage() {
                 <Typography variant="body2" color="text.secondary">
                     {t("app.tagline")}
                 </Typography>
-                <Typography variant="body1" sx={{ pt: 1, maxWidth: "32ch" }}>
-                    {t("login.intro")}
-                </Typography>
             </Stack>
 
             {socialError && (
@@ -158,14 +155,9 @@ export function LoginPage() {
             )}
             <SocialLoginButtons onError={setSocialError} />
 
-            <Stack alignItems="center" spacing={0.5} sx={{ mb: 3 }}>
-                <Button component={RouterLink} to="/" color="secondary" sx={{ textDecoration: "underline", textUnderlineOffset: 3 }}>
-                    {t("login.browseWithout")}
-                </Button>
-                <Typography variant="caption" color="text.secondary" sx={{ textAlign: "center" }}>
-                    {t("login.consentNote")}
-                </Typography>
-            </Stack>
+            <Typography variant="caption" color="text.secondary" component="p" sx={{ textAlign: "center", mb: 3 }}>
+                {t("login.consentNote")}
+            </Typography>
 
 
             <Tabs
@@ -211,6 +203,16 @@ export function LoginPage() {
                     </Button>
                 </Stack>
             </form>
+
+            {/* 맨 아래: 로그인으로 할 수 있는 일과 로그인 없이 둘러보기 (로그인 버튼이 화면 위쪽에 오게) */}
+            <Stack alignItems="center" spacing={1} sx={{ mt: 4, textAlign: "center" }}>
+                <Typography variant="body2" color="text.secondary">
+                    {t("login.intro")}
+                </Typography>
+                <Button component={RouterLink} to="/" color="secondary" sx={{ textDecoration: "underline", textUnderlineOffset: 3 }}>
+                    {t("login.browseWithout")}
+                </Button>
+            </Stack>
         </Box>
     );
 }

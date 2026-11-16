@@ -1,7 +1,8 @@
 /**
  * 지도 마커 묶기와 묶음 목록 정렬.
  *
- * 묶기: 화면에서 안내판 조각(마커)끼리 실제로 겹치면 한 묶음. 겹침이 이어지면(A-B, B-C) 모두 한 묶음이다.
+ * 묶기: 화면에서 핀끼리 많이 겹쳐 따로 누르기 어려울 때만 한 묶음 (핀 크기의 절반 안쪽으로 붙은 것).
+ * 겹침을 이어 붙이지 않는다(A-B, B-C 라도 A 와 C 가 멀면 따로): 묶음 하나가 넓은 범위를 덮지 않게.
  * 줌을 바꿔 떨어지면 다시 풀린다. 같은 건물처럼 좌표가 같으면 끝까지 확대해도 묶여 있으므로, 묶음을 누르면 목록을 띄운다.
  */
 import type { ToiletNear } from "../api";
@@ -15,33 +16,35 @@ export interface PinBox {
     height: number;
 }
 
-/** 이만큼 떨어져 있어도 붙은 것으로 본다 (px). 테두리끼리 닿으면 눌러 고르기 어렵다 */
-const TOUCH_GAP_PX = 4;
+/** 두 핀의 끝점이 핀 크기의 이 비율 안으로 붙어 있으면 묶는다 (0.5 = 절반 넘게 겹침) */
+const CLUSTER_RATIO = 0.5;
 
-function overlaps(a: PinBox, b: PinBox): boolean {
-    const dx = Math.abs(a.x - b.x);
-    const ay = a.y - a.height;
-    const by = b.y - b.height;
-    return dx < (a.width + b.width) / 2 + TOUCH_GAP_PX && ay < b.y + TOUCH_GAP_PX && by < a.y + TOUCH_GAP_PX;
+function tooClose(a: PinBox, b: PinBox): boolean {
+    const w = Math.min(a.width, b.width);
+    const h = Math.min(a.height, b.height);
+    return Math.abs(a.x - b.x) < w * CLUSTER_RATIO && Math.abs(a.y - b.y) < h * CLUSTER_RATIO;
 }
 
-/** 겹치는 상자끼리 묶은 번호 묶음들 (입력 순서 유지, 하나짜리 묶음 포함). */
+/**
+ * 많이 겹친 핀끼리 묶은 번호 묶음들 (하나짜리 묶음 포함). 앞에서부터 아직 안 묶인 핀을 기준으로,
+ * 그 기준 핀과 많이 겹친 핀만 같은 묶음에 넣는다 (부르는 쪽이 가까운 순으로 주면 가까운 핀이 기준이 된다).
+ */
 export function groupOverlapping(boxes: PinBox[]): number[][] {
-    const parent = boxes.map((_, i) => i);
-    const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+    const taken = new Array<boolean>(boxes.length).fill(false);
+    const groups: number[][] = [];
     for (let i = 0; i < boxes.length; i++) {
+        if (taken[i]) continue;
+        taken[i] = true;
+        const group = [i];
         for (let j = i + 1; j < boxes.length; j++) {
-            if (overlaps(boxes[i], boxes[j])) parent[find(j)] = find(i);
+            if (!taken[j] && tooClose(boxes[i], boxes[j])) {
+                taken[j] = true;
+                group.push(j);
+            }
         }
+        groups.push(group);
     }
-    const groups = new Map<number, number[]>();
-    boxes.forEach((_, i) => {
-        const root = find(i);
-        const g = groups.get(root);
-        if (g) g.push(i);
-        else groups.set(root, [i]);
-    });
-    return [...groups.values()];
+    return groups;
 }
 
 export type ClusterSort = "distance" | "recommend";

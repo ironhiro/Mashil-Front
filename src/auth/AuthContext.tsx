@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { UserRole } from "../lib/enums";
 import { USE_MOCK } from "../mock/flag";
 import i18n from "../i18n";
+import { deleteMyAccount } from "../api";
 import { appPlatform, nativeSignIn, nativeSignOut } from "../lib/nativeBridge";
 import type { SocialProvider } from "../lib/nativeBridge";
 
@@ -37,6 +38,11 @@ interface AuthState {
     /** 표시 이름이 바뀌었을 때 (약관 동의 화면 등) 화면 상태만 갱신 */
     setDisplayName: (name: string) => void;
     logout: () => void;
+    /**
+     * 회원 탈퇴. 소셜 계정은 가입한 제공자로 다시 로그인(앱)하고, 이메일 계정은 password 로 확인한다.
+     * 성공하면 이 기기의 세션도 지운다. 재로그인을 취소하면 NativeSignInCancelled.
+     */
+    deleteAccount: (password?: string) => Promise<void>;
 }
 
 const TOKEN_KEY = "mashil_token";
@@ -199,13 +205,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
     }, [user]);
 
+    const deleteAccount = useCallback(async (password?: string) => {
+        const provider = user?.provider;
+        if (provider) {
+            const nonce = await fetchNonce();
+            const c = await nativeSignIn(provider, nonce);
+            await deleteMyAccount({
+                provider,
+                idToken: c.idToken,
+                accessToken: c.accessToken,
+                authorizationCode: c.authorizationCode,
+                nonce,
+            });
+        } else {
+            await deleteMyAccount({ password });
+        }
+        // 서버가 세션(refresh token)까지 지웠다. 이 기기의 흔적만 정리한다
+        sessionGen++;
+        localStorage.removeItem(REFRESH_KEY);
+        if (provider) void nativeSignOut(provider);
+        setToken(null);
+        setUser(null);
+    }, [user]);
+
     const setDisplayName = useCallback((name: string) => {
         setUser((u) => (u ? { ...u, displayName: name } : u));
     }, []);
 
     const value = useMemo<AuthState>(
-        () => ({ user, token, login, register, loginWithProvider, setDisplayName, logout }),
-        [user, token, login, register, loginWithProvider, setDisplayName, logout],
+        () => ({ user, token, login, register, loginWithProvider, setDisplayName, logout, deleteAccount }),
+        [user, token, login, register, loginWithProvider, setDisplayName, logout, deleteAccount],
     );
 
     return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
