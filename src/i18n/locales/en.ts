@@ -119,7 +119,7 @@ export const en: Messages = {
         kakaoDirections: "Directions in KakaoMap",
         myLocation: "My location",
         fixInfo: "Fix info",
-        selectedLabel: "Selected restroom",
+        selectedLabel: "Restroom info",
         reportGone: "It's gone",
     },
     share: {

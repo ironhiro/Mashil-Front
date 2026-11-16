@@ -390,7 +390,8 @@ export function deleteMyAccount(body: {
     nonce?: string;
     password?: string;
 }): Promise<void> {
-    return apiFetch<void>("/api/auth/me", { method: "DELETE", body, auth: true });
+    // DELETE 가 아니라 POST: 재인증 자격 증명이 본문에 있는데, DELETE 본문은 중간 장비가 버릴 수 있다
+    return apiFetch<void>("/api/auth/me/withdraw", { method: "POST", body, auth: true });
 }
 
 // --- 내 활동 (GET /api/me/comments, /api/me/change-requests) ---

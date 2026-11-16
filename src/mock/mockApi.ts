@@ -185,7 +185,7 @@ export async function mockFetch<T>(path: string, method: string, body: unknown):
     }
     if (method === "GET" && p === "/api/auth/me") return ME as T;
     if (method === "PATCH" && p === "/api/auth/me") return { ...ME, displayName: String(b.displayName ?? "").trim() } as T;
-    if (method === "DELETE" && p === "/api/auth/me") return undefined as T;
+    if (method === "POST" && p === "/api/auth/me/withdraw") return undefined as T;
 
     if (method === "GET" && p === "/api/toilets/near") {
         const lat = Number(q.get("lat")), lng = Number(q.get("lng"));

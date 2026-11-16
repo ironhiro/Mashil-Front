@@ -123,7 +123,7 @@ export const ko = {
         kakaoDirections: "카카오맵에서 길찾기",
         myLocation: "내 위치",
         fixInfo: "정보 고치기",
-        selectedLabel: "고른 화장실",
+        selectedLabel: "화장실 정보",
         reportGone: "없어졌어요",
     },
     share: {
