@@ -293,6 +293,14 @@ export const ko = {
         koreanOnly: "This document is available in Korean only for now.",
         version: "버전 {{version}}",
     },
+    getApp: {
+        title: "마실은 앱에서 써요",
+        body: "가까운 화장실 찾기, 걸어서 가는 길 안내, 평가와 댓글은 마실 앱에서 할 수 있어요.",
+        sharedBody: "공유받은 화장실은 마실 앱에서 볼 수 있어요. 앱을 설치한 뒤 다시 열어 주세요.",
+        googlePlay: "Google Play에서 받기",
+        appStore: "App Store에서 받기",
+        comingSoon: "앱은 곧 스토어에 나와요.",
+    },
     maintenance: {
         title: "문이 잠시 닫혔어요",
         body: "더 나은 마실을 위해 점검하고 있어요.",

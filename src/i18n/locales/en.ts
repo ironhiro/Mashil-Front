@@ -289,6 +289,14 @@ export const en: Messages = {
         koreanOnly: "This document is available in Korean only for now. The Korean text is authoritative.",
         version: "Version {{version}}",
     },
+    getApp: {
+        title: "Mashil works in the app",
+        body: "Find nearby restrooms, get walking directions, and leave ratings and comments in the Mashil app.",
+        sharedBody: "You can see this shared restroom in the Mashil app. Install it, then open the link again.",
+        googlePlay: "Get it on Google Play",
+        appStore: "Download on the App Store",
+        comingSoon: "The app is coming to the stores soon.",
+    },
     maintenance: {
         title: "We're closed for a moment",
         body: "We're doing some maintenance to make Mashil better.",
