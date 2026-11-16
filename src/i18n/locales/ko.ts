@@ -142,8 +142,8 @@ export const ko = {
     cluster: {
         pin: "{{count}}곳",
         pinAria: "{{count}}: 겹친 화장실 {{count}}곳, 목록 보기",
-        title_one: "이 자리 {{count}}곳",
-        title_other: "이 자리 {{count}}곳",
+        title_one: "총 {{count}}곳",
+        title_other: "총 {{count}}곳",
         sortLabel: "정렬",
         byDistance: "거리순",
         byRecommend: "추천순",
