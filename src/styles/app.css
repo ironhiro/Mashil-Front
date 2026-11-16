@@ -241,6 +241,35 @@ a.activity-row:hover, a.activity-row:active { background: var(--color-paper-2); 
 .activity-more:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -4px; }
 @media (prefers-reduced-motion: reduce) { .activity-row, .activity-more { transition: none; } }
 
+/* ── 검색 결과 쪽 넘기기: 좌우로 밀기 + 쪽 단추 ─────────────────── */
+/* 세로 스크롤은 브라우저에 맡기고 가로 움직임만 받는다 */
+.search-pages { overflow: hidden; touch-action: pan-y; }
+.search-page { list-style: none; margin: 0; padding: 0; transition: transform var(--dur-micro) ease-out, opacity var(--dur-micro) steps(1); }
+.search-page.is-loading { opacity: 0.55; }
+.search-page.enter-next { animation: search-enter-next 180ms ease-out; }
+.search-page.enter-prev { animation: search-enter-prev 180ms ease-out; }
+@keyframes search-enter-next { from { transform: translateX(24%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes search-enter-prev { from { transform: translateX(-24%); opacity: 0; } to { transform: none; opacity: 1; } }
+.search-pager {
+  display: grid; grid-template-columns: 48px minmax(0, 1fr) 48px; align-items: center;
+  border-top: var(--rule-hair) solid var(--color-rule);
+}
+.search-pager-btn {
+  display: grid; place-items: center; width: 48px; height: 48px; border: 0; background: transparent;
+  color: var(--color-ink); cursor: pointer; transition: background-color var(--dur-micro) steps(1);
+}
+.search-pager-btn:hover:not(:disabled), .search-pager-btn:active:not(:disabled) { background: var(--color-paper-2); }
+.search-pager-btn:disabled { color: var(--color-muted); opacity: 0.4; cursor: default; }
+.search-pager-btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -4px; }
+.search-pager-label { display: grid; justify-items: center; gap: 2px; font: 600 var(--text-sm)/1.2 var(--font-body); font-variant-numeric: tabular-nums; }
+.search-pager-hint { font: 400 var(--text-xs, 0.75rem)/1.2 var(--font-body); color: var(--color-muted); }
+/* 마우스만 있는 화면에서는 밀기 안내를 숨긴다 */
+@media (hover: hover) and (pointer: fine) { .search-pager-hint { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .search-page, .search-pager-btn { transition: none; }
+  .search-page.enter-next, .search-page.enter-prev { animation: none; }
+}
+
 /* ── 추천 안내판: 같은 행 + 왜 추천했는지 한 줄 ─────────────────── */
 .rec-intro { margin: 0; padding: var(--space-sm) var(--space-md); font: 400 var(--text-sm)/1.45 var(--font-body); color: var(--color-muted); border-bottom: var(--rule-hair) solid var(--color-rule); }
 .board li:has(.rec-why) .board-row { border-bottom: 0; padding-bottom: var(--space-2xs); }

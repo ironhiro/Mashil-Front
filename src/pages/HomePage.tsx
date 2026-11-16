@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CopyButton } from "../components/CopyButton";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
@@ -18,8 +18,8 @@ import {
     Typography,
     useMediaQuery,
 } from "@mui/material";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { computeStraightRoute, fetchNearbyToilets, fetchRecommendedToilets, haversineMeters, searchToilets } from "../api";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { computeStraightRoute, fetchNearbyToilets, fetchRecommendedToilets, haversineMeters, searchToilets, SEARCH_PAGE } from "../api";
 import { SearchResults } from "../components/SearchResults";
 import { SearchField } from "../components/SearchField";
 import type { LatLng, ToiletNear } from "../api";
@@ -111,21 +111,31 @@ export function HomePage() {
     // 이름·주소 검색 (MAP-06): 두 글자부터, 입력이 잠시 멈추면 찾는다. 검색 중에는 목록 자리에 결과가 나온다
     // 입력 중인 글자는 SearchField 안에만 있고, 여기에는 정해진 검색어만 온다 (타자마다 지도·목록을 다시 그리지 않게)
     const [searchTerm, setSearchTerm] = useState("");
-    const search = useInfiniteQuery({
-        // 위치는 검색어를 칠 때의 것만 쓴다 (지도를 움직일 때마다 다시 찾지 않게 키에는 넣지 않음)
-        queryKey: ["toilets", "search", searchTerm],
-        queryFn: ({ pageParam }) => searchToilets(searchTerm, userLocation ?? center, pageParam),
-        initialPageParam: 0,
-        // 받은 수가 전체보다 적으면 그다음부터 (한 번에 SEARCH_PAGE 건)
-        getNextPageParam: (last, pages) => {
-            const loaded = pages.reduce((n, p) => n + p.items.length, 0);
-            return last.items.length > 0 && loaded < last.total ? loaded : undefined;
-        },
+    // 결과는 SEARCH_PAGE(20)건씩 쪽으로 나눠 보여 준다. 좌우로 밀거나 쪽 단추로 넘긴다
+    const [searchPage, setSearchPage] = useState(0);
+    // 위치는 검색어를 칠 때의 것만 쓴다 — 쪽을 넘겨도 같은 기준으로 이어지게 (지도를 움직여도 다시 찾지 않음)
+    const [searchOrigin, setSearchOrigin] = useState<LatLng | null>(null);
+    // SearchField 는 onSearch 가 바뀌면 다시 부르므로 함수를 고정하고, 검색어가 실제로 바뀔 때만 첫 쪽으로 되돌린다
+    const searchOriginNow = useRef<LatLng | null>(null);
+    searchOriginNow.current = userLocation ?? center;
+    const lastTerm = useRef("");
+    const startSearch = useCallback((term: string) => {
+        if (term === lastTerm.current) return;
+        lastTerm.current = term;
+        setSearchTerm(term);
+        setSearchPage(0);
+        setSearchOrigin(searchOriginNow.current);
+    }, []);
+    const search = useQuery({
+        queryKey: ["toilets", "search", searchTerm, searchPage],
+        queryFn: () => searchToilets(searchTerm, searchOrigin, searchPage * SEARCH_PAGE),
         enabled: searchTerm !== "",
         staleTime: 60_000,
+        // 다음 쪽을 받는 동안 지금 쪽을 그대로 둔다 (목록이 비었다 차는 깜빡임 없이)
+        placeholderData: keepPreviousData,
     });
-    const searchItems = useMemo(() => search.data?.pages.flatMap((p) => p.items), [search.data]);
-    const searchTotal = search.data?.pages.at(-1)?.total;
+    const searchTotal = search.data?.total;
+    const searchPageCount = searchTotal != null ? Math.max(1, Math.ceil(searchTotal / SEARCH_PAGE)) : 1;
     const [sheetOpen, setSheetOpen] = useState(false);
     const [viewMode, setViewMode] = useState<ViewMode>(homeMemory.viewMode);
 
@@ -275,7 +285,7 @@ export function HomePage() {
             </Alert>
         )}
 
-        <SearchField onSearch={setSearchTerm} />
+        <SearchField onSearch={startSearch} />
         <Snackbar open={notice !== null} autoHideDuration={4000} onClose={() => setNotice(null)} message={notice} />
 
         {/* === 필터 버튼 + 지도/목록 전환 === */}
@@ -362,13 +372,14 @@ export function HomePage() {
     // 목록 또는 추천
     const results = searchTerm !== "" ? (
         <SearchResults
-            results={searchItems}
+            results={search.data?.items}
             total={searchTotal}
-            loading={search.isFetching && !search.isFetchingNextPage}
+            loading={search.isPending}
             failed={search.isError}
-            hasMore={search.hasNextPage}
-            loadingMore={search.isFetchingNextPage}
-            onMore={() => void search.fetchNextPage()}
+            page={searchPage}
+            pageCount={searchPageCount}
+            pageLoading={search.isPlaceholderData}
+            onPage={(p) => setSearchPage(Math.min(Math.max(p, 0), searchPageCount - 1))}
             origin={userLocation ?? center}
             onSelect={(r) => navigate(`/toilets/${r.id}`)}
         />
