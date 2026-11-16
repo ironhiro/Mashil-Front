@@ -390,6 +390,8 @@ function GuideMap({
         destEl: HTMLDivElement;
         guide: kakao.maps.Polyline;
         route: kakao.maps.Polyline;
+        /** 경로 끝에서 화장실까지 (경로는 길 위에서 끝나서 건물 안 화장실까지 비는 경우) */
+        tail: kakao.maps.Polyline;
         trail: kakao.maps.Polyline;
         me: kakao.maps.CustomOverlay;
         accuracy: kakao.maps.Circle;
@@ -420,6 +422,8 @@ function GuideMap({
                 routeLine.setMap(map);
                 const guide = new maps.Polyline({ path: [], strokeWeight: 4, strokeColor: tokens.accent, strokeOpacity: 0.95, strokeStyle: "shortdash" });
                 guide.setMap(map);
+                const tail = new maps.Polyline({ path: [], strokeWeight: 4, strokeColor: tokens.accent, strokeOpacity: 0.95, strokeStyle: "shortdash" });
+                tail.setMap(map);
                 const accuracy = new maps.Circle({
                     center: destPos,
                     radius: 0,
@@ -435,7 +439,7 @@ function GuideMap({
                 const meOverlay = new maps.CustomOverlay({ position: destPos, content: dot, xAnchor: 0.5, yAnchor: 0.5, zIndex: 20 });
                 // 손으로 끌 때만 (setBounds 같은 코드의 이동에는 dragstart 가 오지 않는다)
                 maps.event.addListener(map, "dragstart", () => onUserMoveRef.current());
-                objs.current = { map, dest: destOverlay, destEl, guide, route: routeLine, trail: trailLine, me: meOverlay, accuracy, fitted: false };
+                objs.current = { map, dest: destOverlay, destEl, guide, route: routeLine, tail, trail: trailLine, me: meOverlay, accuracy, fitted: false };
                 setReadyTick((n) => n + 1);
             })
             .catch(() => !cancelled && setError(true));
@@ -467,7 +471,12 @@ function GuideMap({
         if (!o) return;
         const maps = window.kakao.maps;
         o.route.setPath((route ?? []).map((p) => new maps.LatLng(p.lat, p.lng)));
-    }, [readyTick, route]);
+        // 경로 끝과 화장실 사이 점선 (짧으면 생략)
+        const end = route?.[route.length - 1];
+        o.tail.setPath(end && estimate(end, dest).straightM > 8
+            ? [new maps.LatLng(end.lat, end.lng), new maps.LatLng(dest.lat, dest.lng)]
+            : []);
+    }, [readyTick, route, dest.lat, dest.lng]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // 내 위치, 점선(경로가 있으면 경로 위 가장 가까운 점까지, 없으면 화장실까지 일직선), 오차 원
     useEffect(() => {
