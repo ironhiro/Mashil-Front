@@ -297,6 +297,8 @@ export const en: Messages = {
         openKakaoMap: "Find restrooms in KakaoMap",
         readOnly: "Search still works. Ratings, comments and reports are paused.",
         readOnlyUntil: "Search still works. Ratings, comments and reports are paused until {{time}}.",
+        untilShort: "until {{time}}",
+        loginOnly: "Full maintenance is on. Only admins can sign in and use the app right now.",
     },
     days: {
         Mon: "Mon",

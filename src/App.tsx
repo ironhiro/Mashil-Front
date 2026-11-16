@@ -91,8 +91,10 @@ export function App() {
     const isAdmin = useAuth().user?.role === UserRole.Admin;
     useRouteFocus(pathname);
 
-    // 전체 점검이면 다른 화면 대신 점검 화면 (OPS-05). 관리자는 점검을 끌 수 있어야 하므로 띠만 보고 그대로 쓴다
-    if (appStatus.data?.maintenance && !isAdmin) {
+    // 전체 점검이면 다른 화면 대신 점검 화면 (OPS-05). 관리자는 점검을 끌 수 있어야 하므로 띠만 보고 그대로 쓴다.
+    // 로그인 화면은 열어 둔다: 로그아웃된 관리자가 들어와 점검을 끌 수 있게 (서버도 점검 중 /api/auth 는 막지 않는다)
+    const loginDuringMaintenance = pathname === "/login" && !isAdmin;
+    if (appStatus.data?.maintenance && !isAdmin && !loginDuringMaintenance) {
         return <MaintenanceScreen status={appStatus.data} onRetry={() => void appStatus.refetch()} retrying={appStatus.isFetching} />;
     }
 
@@ -100,7 +102,7 @@ export function App() {
     return (
         <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }} className={withNav ? "app-root has-bottom-nav" : "app-root"}>
             {appStatus.data?.maintenance ? (
-                <ReadOnlyBanner status={appStatus.data} text="adminConsole.adminMaintenanceBanner" />
+                <ReadOnlyBanner status={appStatus.data} text={isAdmin ? "adminConsole.adminMaintenanceBanner" : "maintenance.loginOnly"} />
             ) : (
                 appStatus.data?.readOnly && <ReadOnlyBanner status={appStatus.data} />
             )}
