@@ -284,6 +284,68 @@ export interface RouteEstimate {
 const WALKING_SPEED_M_PER_MIN = 4_000 / 60; // 4 km/h ≈ 67 m/min
 const EARTH_RADIUS_M = 6_371_000;
 
+// --- 도보 경로 (POST /api/routes/walk, OpenStreetMap) ---
+
+/** 서버가 찾은 도보 경로. points 는 [위도, 경도] (스냅한 출발점 → 스냅한 도착점) */
+export interface WalkRoute {
+    points: LatLng[];
+    distanceM: number;
+    minutes: number;
+    steps: number;
+    attribution: string;
+}
+
+/** 경로가 없을 때의 이유 (서버 { error }). 웹은 어느 것이든 직선 안내로 돌아간다 */
+export type WalkRouteError =
+    | "routing_disabled"
+    | "out_of_area"
+    | "too_far"
+    | "far_from_road"
+    | "no_route"
+    | "too_complex"
+    | "route_timeout"
+    | "failed";
+
+/** 응답 상한: 이보다 점이 많으면 비정상 응답으로 보고 쓰지 않는다 */
+const MAX_ROUTE_POINTS = 20_000;
+
+/**
+ * 도보 경로 받기. 위치가 URL·접근 로그에 남지 않게 POST 본문으로 보낸다 (서버도 저장·기록하지 않음).
+ * 실패하면 이유를 담아 reject (UI 는 직선 안내로).
+ */
+export async function fetchWalkRoute(from: LatLng, to: LatLng): Promise<WalkRoute> {
+    let raw: { points?: unknown; distanceM?: unknown; minutes?: unknown; steps?: unknown; attribution?: unknown };
+    try {
+        raw = await apiFetch("/api/routes/walk", { method: "POST", body: { from, to } });
+    } catch (e) {
+        let code: WalkRouteError = "failed";
+        try {
+            code = ((JSON.parse((e as Error).message) as { error?: WalkRouteError }).error ?? "failed") as WalkRouteError;
+        } catch {
+            /* 본문이 JSON 이 아님 */
+        }
+        throw Object.assign(new Error(code), { code });
+    }
+    // 받은 값을 그대로 믿지 않는다: 숫자 쌍만, 한국 범위만, 개수 상한
+    const pts = Array.isArray(raw.points) ? raw.points : [];
+    const points: LatLng[] = [];
+    for (const p of pts.slice(0, MAX_ROUTE_POINTS + 1)) {
+        if (!Array.isArray(p) || p.length !== 2) continue;
+        const [lat, lng] = p as unknown[];
+        if (typeof lat !== "number" || typeof lng !== "number" || !Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+        if (lat < 32 || lat > 40 || lng < 123 || lng > 133) continue;
+        points.push({ lat, lng });
+    }
+    if (points.length < 2 || pts.length > MAX_ROUTE_POINTS) throw Object.assign(new Error("failed"), { code: "failed" as WalkRouteError });
+    return {
+        points,
+        distanceM: Number(raw.distanceM) || 0,
+        minutes: Math.max(1, Math.round(Number(raw.minutes) || 1)),
+        steps: Number(raw.steps) || 0,
+        attribution: typeof raw.attribution === "string" ? raw.attribution.slice(0, 80) : "© OpenStreetMap contributors",
+    };
+}
+
 export function computeStraightRoute(from: LatLng, to: LatLng): RouteEstimate {
     const distanceM = haversineMeters(from, to);
     const walkingMinutes = Math.max(1, Math.ceil(distanceM / WALKING_SPEED_M_PER_MIN));

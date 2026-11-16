@@ -77,3 +77,52 @@ const DIRS: Direction8[] = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
 export function direction8(deg: number): Direction8 {
     return DIRS[Math.round(deg / 45) % 8];
 }
+
+// ── 실제 경로 (OpenStreetMap) ──────────────────────────────────────────────
+
+/** 경로에서 이만큼 넘게 떨어진 위치가 OFF_ROUTE_FIXES 번 이어지면 다시 찾는다 */
+export const OFF_ROUTE_M = 35;
+export const OFF_ROUTE_FIXES = 3;
+/** 다시 찾기 사이 최소 간격 (서버 요청 제한·배터리) */
+export const REROUTE_MIN_INTERVAL_MS = 15_000;
+
+export interface PathProjection {
+    /** 경로까지의 거리 (m) */
+    offM: number;
+    /** 경로 시작에서 투영점까지 따라간 거리 (m) */
+    alongM: number;
+    /** 경로 전체 길이 (m) */
+    totalM: number;
+    /** 경로 위 가장 가까운 점 */
+    point: LatLng;
+}
+
+/** 위치를 꺾은선 경로에 투영한다 (수 km 범위라 평면 근사). */
+export function projectOnPath(p: LatLng, path: LatLng[]): PathProjection {
+    const kx = Math.cos((p.lat * Math.PI) / 180) * 111_320;
+    const ky = 110_574;
+    const px = p.lng * kx;
+    const py = p.lat * ky;
+    let along = 0;
+    let best: PathProjection = { offM: Infinity, alongM: 0, totalM: 0, point: path[0] };
+    for (let i = 0; i + 1 < path.length; i++) {
+        const ax = path[i].lng * kx, ay = path[i].lat * ky;
+        const bx = path[i + 1].lng * kx, by = path[i + 1].lat * ky;
+        const dx = bx - ax, dy = by - ay;
+        const seg = Math.hypot(dx, dy);
+        const t = seg === 0 ? 0 : Math.min(1, Math.max(0, ((px - ax) * dx + (py - ay) * dy) / (seg * seg)));
+        const qx = ax + t * dx, qy = ay + t * dy;
+        const off = Math.hypot(px - qx, py - qy);
+        if (off < best.offM) best = { offM: off, alongM: along + t * seg, totalM: 0, point: { lat: qy / ky, lng: qx / kx } };
+        along += seg;
+    }
+    return { ...best, totalM: along };
+}
+
+/** 경로를 따라 남은 거리와 시간 어림. 시간은 서버 값(계단 반영)을 남은 비율만큼 */
+export function remainingOnRoute(p: LatLng, path: LatLng[], routeMinutes: number): { remainingM: number; minutes: number; offM: number } {
+    const proj = projectOnPath(p, path);
+    const remainingM = Math.max(0, proj.totalM - proj.alongM) + proj.offM;
+    const ratio = proj.totalM > 0 ? remainingM / proj.totalM : 1;
+    return { remainingM, minutes: Math.max(1, Math.ceil(routeMinutes * ratio)), offM: proj.offM };
+}
