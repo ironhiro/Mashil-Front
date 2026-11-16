@@ -84,6 +84,11 @@ export const en: Messages = {
         clear: "Clear",
         close: "Close",
         backHome: "Back to home",
+        retry: "Try again",
+    },
+    notFound: {
+        title: "Page not found",
+        body: "The address may have changed, or this page doesn't exist.",
     },
     search: {
         label: "Find a restroom by name or address",

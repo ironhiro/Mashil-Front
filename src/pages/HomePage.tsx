@@ -280,7 +280,14 @@ export function HomePage() {
             </Alert>
         )}
         {query.isError && (
-            <Alert severity="error">
+            <Alert
+                severity="error"
+                action={
+                    <Button color="inherit" size="small" onClick={() => void query.refetch()} disabled={query.isFetching}>
+                        {t("common.retry")}
+                    </Button>
+                }
+            >
                 {friendlyError(query.error, t("home.loadFailed"))}
             </Alert>
         )}
@@ -385,7 +392,8 @@ export function HomePage() {
         />
     ) : (
         <>
-        {panelMode === ViewMode.List && (
+        {/* 불러오기에 실패했으면 "조건에 맞는 화장실이 없어요" 대신 위의 오류 안내만 (받아 둔 목록이 있으면 그대로) */}
+        {panelMode === ViewMode.List && !(query.isError && !query.data) && (
             <ToiletList
                 toilets={filteredToilets}
                 totalBeforeFilter={query.data?.length}

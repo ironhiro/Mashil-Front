@@ -26,6 +26,7 @@ const AdminImportsPage = page(() => import("./pages/AdminImportsPage"), "AdminIm
 const AdminIssuesPage = page(() => import("./pages/AdminIssuesPage"), "AdminIssuesPage");
 const AdminStatusPage = page(() => import("./pages/AdminStatusPage"), "AdminStatusPage");
 const AdminToiletPage = page(() => import("./pages/AdminToiletPage"), "AdminToiletPage");
+const NotFoundPage = page(() => import("./pages/NotFoundPage"), "NotFoundPage");
 import { MaintenanceScreen, ReadOnlyBanner } from "./components/Maintenance";
 import { useAppStatus } from "./lib/appStatus";
 import { useAuth } from "./auth/AuthContext";
@@ -121,6 +122,7 @@ export function App() {
                     {ADMIN_ROUTES.map((r) => (
                         <Route key={r.path} path={r.path} element={<RequireAdmin>{r.element}</RequireAdmin>} />
                     ))}
+                    <Route path="*" element={<NotFoundPage />} />
                 </Routes>
                 </Suspense>
             </Container>
