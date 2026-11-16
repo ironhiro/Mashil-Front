@@ -1,10 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { bottomNavHeight } from "./BottomNav";
-import { Alert, Box, Button, Stack, useMediaQuery } from "@mui/material";
+import { Alert, Box, Button, IconButton, Popover, Stack, Typography, useMediaQuery } from "@mui/material";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { useTranslation } from "react-i18next";
-import { stateClass, tileStateOf } from "../design/statusTile";
+import { tileStateOf } from "../design/statusTile";
+import { MARKER_SIZE, createClusterButton, createMarkerButton } from "../lib/mapMarker";
 import { darkMirror, lightMirror } from "../design/tokens";
 import { loadKakaoMaps } from "../lib/kakaoMap";
+import { groupOverlapping } from "../lib/mapCluster";
+import type { PinBox } from "../lib/mapCluster";
 import { statusOf } from "../lib/openStatus";
 import type { LatLng as Coord, ToiletNear } from "../api";
 import { openStatusLabel } from "./OpenStatusBadge";
@@ -19,6 +23,8 @@ interface Props {
     selectedId: number | null;
     onSearchAtCenter: (center: Coord) => void;
     onSelectToilet: (t: ToiletNear) => void;
+    /** 겹쳐서 하나로 묶인 마커를 눌렀을 때 (묶인 화장실들) */
+    onSelectCluster?: (toilets: ToiletNear[]) => void;
     /** 내 위치 (있으면 점으로 표시) */
     userLocation?: Coord | null;
     /** 거리 표시선의 출발점. null 이면 선을 그리지 않음. */
@@ -31,7 +37,13 @@ interface Pin {
     overlay: kakao.maps.CustomOverlay;
     el: HTMLButtonElement;
     toiletId: number;
+    toilet: ToiletNear;
+    /** 화면에 그려진 크기 (px). 묶여 숨겨져 있으면 잴 수 없으니 처음 잰 값을 둔다 */
+    size: { width: number; height: number } | null;
 }
+
+/** 아직 못 잰 마커의 크기 (핀 모양) */
+const PIN_FALLBACK = MARKER_SIZE;
 
 /** 지도 아래에 남겨 둘 여백 (px). 하단 탭(없으면 화면 아래)과 지도 테두리 사이.
  *  App 의 Container 아래 여백(py: 3 = 24px, --space-lg)과 같아야 페이지가 화면보다 길어지지 않는다 */
@@ -50,6 +62,7 @@ export function MapView({
     selectedId,
     onSearchAtCenter,
     onSelectToilet,
+    onSelectCluster,
     userLocation,
     routeFrom,
     routeTo,
@@ -61,6 +74,13 @@ export function MapView({
     const radiusCircleRef = useRef<kakao.maps.Circle | null>(null);
     const routeLineRef = useRef<kakao.maps.Polyline | null>(null);
     const meRef = useRef<kakao.maps.CustomOverlay | null>(null);
+    const clusterOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
+    const selectedIdRef = useRef(selectedId);
+    selectedIdRef.current = selectedId;
+    const onSelectClusterRef = useRef(onSelectCluster);
+    useEffect(() => {
+        onSelectClusterRef.current = onSelectCluster;
+    }, [onSelectCluster]);
     // 부모가 매 렌더마다 새 화살표 함수를 넘겨도 마커를 다시 그리지 않도록 최신 콜백은 ref 로 읽는다
     const onSelectRef = useRef(onSelectToilet);
     useEffect(() => {
@@ -135,6 +155,8 @@ export function MapView({
                 });
                 radiusCircleRef.current.setMap(map);
                 maps.event.addListener(map, "tilesloaded", () => setTilesLoaded(true));
+                // 줌·이동이 멈출 때마다 겹친 마커를 다시 묶는다
+                maps.event.addListener(map, "idle", () => regroupRef.current());
                 setReady(true);
             })
             .catch((e: Error) => !cancelled && setError(e.message));
@@ -197,10 +219,9 @@ export function MapView({
         for (const toilet of toilets) {
             if (toilet.latitude == null || toilet.longitude == null) continue;
             const status = statusOf(toilet);
-            const label = openStatusLabel(t, status, "short");
-            const el = createPinElement(label, stateClass(tileStateOf(status)), toilet.averageRating);
-            // 보이는 글자(상태, 평점)를 이름 맨 앞에 둔다: 음성 조작에서 "종료 누르기"처럼 보이는 대로 부를 수 있게 (WCAG 2.5.3, axe)
-            el.setAttribute("aria-label", `${el.textContent}, ${toilet.name}, ${openStatusLabel(t, status, "full")}`);
+            // 글자 없는 핀: 상태는 모양과 색으로, 이름과 상태는 화면 낭독기에
+            const el = createMarkerButton(tileStateOf(status));
+            el.setAttribute("aria-label", `${toilet.name}, ${openStatusLabel(t, status, "full")}`);
             el.addEventListener("click", () => onSelectRef.current(toilet));
             const overlay = new maps.CustomOverlay({
                 position: new maps.LatLng(toilet.latitude, toilet.longitude),
@@ -211,10 +232,58 @@ export function MapView({
                 clickable: true,
             });
             overlay.setMap(map);
-            next.push({ overlay, el, toiletId: toilet.id });
+            next.push({ overlay, el, toiletId: toilet.id, toilet, size: null });
         }
         pinsRef.current = next;
+        regroupRef.current();
     }, [ready, toilets, t]);
+
+    // 3a) 겹친 마커 묶기. 고른 화장실은 묶지 않고 늘 따로 보인다
+    const regroupRef = useRef<() => void>(() => undefined);
+    regroupRef.current = () => {
+        const map = mapRef.current;
+        if (!ready || !map) return;
+        const maps = window.kakao.maps;
+        clusterOverlaysRef.current.forEach((o) => o.setMap(null));
+        clusterOverlaysRef.current = [];
+
+        const projection = map.getProjection();
+        const pins = pinsRef.current;
+        const free: Pin[] = [];
+        for (const p of pins) {
+            if (p.toiletId === selectedIdRef.current) p.overlay.setMap(map);
+            else free.push(p);
+        }
+        const boxes: PinBox[] = free.map((p) => {
+            if (!p.size && p.el.offsetWidth > 0) p.size = { width: p.el.offsetWidth, height: p.el.offsetHeight };
+            const pt = projection.containerPointFromCoords(p.overlay.getPosition());
+            return { x: pt.x, y: pt.y, ...(p.size ?? PIN_FALLBACK) };
+        });
+        for (const group of groupOverlapping(boxes)) {
+            const members = group.map((i) => free[i]);
+            if (members.length === 1) {
+                members[0].overlay.setMap(map);
+                continue;
+            }
+            members.forEach((m) => m.overlay.setMap(null));
+            const lat = members.reduce((s, m) => s + m.overlay.getPosition().getLat(), 0) / members.length;
+            const lng = members.reduce((s, m) => s + m.overlay.getPosition().getLng(), 0) / members.length;
+            const toiletsInGroup = members.map((m) => m.toilet);
+            const el = createClusterButton(members.length);
+            el.setAttribute("aria-label", t("cluster.pinAria", { count: members.length }));
+            el.addEventListener("click", () => onSelectClusterRef.current?.(toiletsInGroup));
+            const overlay = new maps.CustomOverlay({
+                position: new maps.LatLng(lat, lng),
+                content: el,
+                xAnchor: 0.5,
+                yAnchor: 0.5,
+                zIndex: 20,
+                clickable: true,
+            });
+            overlay.setMap(map);
+            clusterOverlaysRef.current.push(overlay);
+        }
+    };
 
     // 3b) 선택된 마커: 먹색 외곽선 + 위로 (선택은 색이 아니라 외곽선으로 표시)
     useEffect(() => {
@@ -227,6 +296,7 @@ export function MapView({
             const map = mapRef.current;
             if (selected && map && !map.getBounds().contain(overlay.getPosition())) map.panTo(overlay.getPosition());
         }
+        regroupRef.current();
     }, [ready, selectedId, toilets]);
 
     // 4) 거리 표시선 — routeFrom + routeTo 둘 다 있을 때만
@@ -271,6 +341,8 @@ export function MapView({
                         <MapLoadingPlate label={t("map.findingPlaces")} />
                     </div>
                 )}
+                {/* 핀 모양 설명: 지도 왼쪽 위 "?" 단추를 누르면 펼친다 (늘 띄워 두면 지도를 가린다) */}
+                {ready && <MarkerHelp />}
                 {ready && (
                     // 지도 위 아래쪽에 띄워 지도가 화면 높이를 다 쓰게 한다
                     <Button
@@ -313,19 +385,86 @@ function MapLoadingPlate({ label }: { label: string }) {
     );
 }
 
-/** 상태 안내판 조각 마커 — 스타일은 app.css 의 .pin 과 .state--* . 평점이 있으면 오른쪽에 작게. */
-function createPinElement(label: string, stateCls: string, rating: number | null): HTMLButtonElement {
-    const el = document.createElement("button");
-    el.type = "button";
-    el.className = `pin ${stateCls}`;
-    el.textContent = label;
-    if (rating !== null && rating !== undefined) {
-        const r = document.createElement("span");
-        r.className = "pin-rating";
-        r.textContent = `★${rating.toFixed(1)}`;
-        el.appendChild(r);
-    }
-    return el;
+/** "?" 단추와 핀 모양 설명 */
+function MarkerHelp() {
+    const { t } = useTranslation();
+    const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
+    return (
+        <>
+            <IconButton
+                aria-label={t("map.legend.button")}
+                aria-expanded={anchor !== null}
+                aria-haspopup="dialog"
+                onClick={(e) => setAnchor(e.currentTarget)}
+                sx={{
+                    position: "absolute",
+                    top: 8,
+                    left: 8,
+                    zIndex: 2,
+                    width: 40,
+                    height: 40,
+                    // 반투명: 지도를 덜 가리게
+                    bgcolor: "color-mix(in srgb, var(--color-paper-3) 70%, transparent)",
+                    color: "var(--color-ink)",
+                    border: "var(--rule-bar) solid color-mix(in srgb, var(--color-ink) 60%, transparent)",
+                    backdropFilter: "blur(2px)",
+                    "&:hover": { bgcolor: "color-mix(in srgb, var(--color-paper-2) 85%, transparent)" },
+                }}
+            >
+                <HelpOutlineIcon fontSize="small" />
+            </IconButton>
+            <Popover
+                open={anchor !== null}
+                anchorEl={anchor}
+                onClose={() => setAnchor(null)}
+                anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+                transformOrigin={{ vertical: "top", horizontal: "left" }}
+                slotProps={{
+                    paper: {
+                        role: "dialog",
+                        "aria-labelledby": "marker-help-title",
+                        sx: { mt: 0.5, p: 1.5, border: "var(--rule-bar) solid var(--color-ink)", borderRadius: 0 },
+                    },
+                }}
+            >
+                <Typography id="marker-help-title" component="h2" sx={{ fontWeight: 800, mb: 1 }}>
+                    {t("map.legend.label")}
+                </Typography>
+                <MarkerLegend />
+            </Popover>
+        </>
+    );
+}
+
+/** 핀 모양 설명 목록: 글자 없는 핀이 무슨 뜻인지 */
+function MarkerLegend() {
+    const { t } = useTranslation();
+    const items = [
+        { state: "live", label: t("map.legend.open") },
+        { state: "soon", label: t("map.legend.soon") },
+        { state: "closed", label: t("map.legend.closed") },
+        { state: "unknown", label: t("map.legend.unknown") },
+    ] as const;
+    return (
+        <ul className="marker-legend">
+            {items.map((i) => (
+                <li key={i.state}>
+                    <span className={`marker marker--${i.state} is-static is-mini`} aria-hidden="true">
+                        <svg viewBox="0 0 28 36" width="14" height="18">
+                            <path d="M14 1C6.8 1 1 6.6 1 13.6 1 23.2 14 35 14 35s13-11.8 13-21.4C27 6.6 21.2 1 14 1z" className="marker-body" />
+                        </svg>
+                    </span>
+                    {i.label}
+                </li>
+            ))}
+            <li>
+                <span className="marker-cluster is-mini" aria-hidden="true">
+                    2
+                </span>
+                {t("map.legend.cluster")}
+            </li>
+        </ul>
+    );
 }
 
 /**

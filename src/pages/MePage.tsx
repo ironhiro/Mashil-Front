@@ -1,15 +1,16 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { Alert, Box, Button, Stack, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
+import { Alert, Box, Button, Stack, Typography } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { Link as RouterLink } from "react-router-dom";
 import { fetchMyChangeRequests, fetchMyComments } from "../api";
 import type { MyChangeRequest, MyComment } from "../api";
-import { useAuth, userLabel } from "../auth/AuthContext";
+import { useAuth } from "../auth/AuthContext";
 import { ChangeRequestStatusTag } from "../components/ChangeRequestStatusTag";
-import { SUPPORTED_LANGUAGES, currentLanguage, formatDateTime } from "../i18n";
-import type { LanguageCode } from "../i18n";
+import { LanguagePicker, MemberCard } from "../components/MemberCard";
+import { SupportCards } from "../components/SupportCards";
+import { formatDateTime } from "../i18n";
 import { ChangeRequestStatus, UserRole } from "../lib/enums";
 import { friendlyError } from "../lib/friendlyError";
 
@@ -17,13 +18,13 @@ import { friendlyError } from "../lib/friendlyError";
 const PREVIEW_ROWS = 3;
 
 /**
- * 하단 탭 "내 정보": 계정, 내 제보의 진행 상황, 내 댓글, 관리자 메뉴, 언어.
- * 내 활동을 먼저 둔다 (사용자가 이 탭에 오는 이유).
+ * 하단 탭 "내 정보".
+ * 회원: 회원 카드(누르면 설정 화면) → 내 제보 → 내 댓글 → 광고 제거·후원 → 관리자 메뉴.
+ * 비회원: 로그인 안내 → 언어.
  */
 export function MePage() {
     const auth = useAuth();
-    const navigate = useNavigate();
-    const { t, i18n } = useTranslation();
+    const { t } = useTranslation();
     const isAdmin = auth.user?.role === UserRole.Admin;
     const signedIn = !!auth.user;
 
@@ -37,23 +38,17 @@ export function MePage() {
                 {t("me.title")}
             </Typography>
 
-            <Box className="plate">
-                {auth.user ? (
-                    <>
-                        <Typography sx={{ fontWeight: 800, fontSize: "var(--text-xl)" }}>{userLabel(auth.user)}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            {isAdmin ? t("app.roleAdmin") : t("app.roleUser")}
-                        </Typography>
-                    </>
-                ) : (
-                    <>
-                        <Typography>{t("me.guest")}</Typography>
-                        <Button variant="contained" size="large" fullWidth component={RouterLink} to="/login" sx={{ mt: 2 }}>
-                            {t("nav.loginOrRegister")}
-                        </Button>
-                    </>
-                )}
-            </Box>
+            {auth.user ? (
+                // 회원: 이름 카드. 누르면 설정 화면 (이름 바꾸기, 언어, 로그아웃, 탈퇴)
+                <MemberCard user={auth.user} />
+            ) : (
+                <Box className="plate">
+                    <Typography>{t("me.guest")}</Typography>
+                    <Button variant="contained" size="large" fullWidth component={RouterLink} to="/login" sx={{ mt: 2 }}>
+                        {t("nav.loginOrRegister")}
+                    </Button>
+                </Box>
+            )}
 
             {signedIn && (
                 <ActivitySection
@@ -74,45 +69,17 @@ export function MePage() {
                 />
             )}
 
+            {/* 광고 제거·후원: 산 것은 계정에 묶이므로 회원만 */}
+            {signedIn && <SupportCards />}
+
             {isAdmin && (
                 <Button variant="outlined" size="large" component={RouterLink} to="/admin">
                     {t("adminConsole.hubTitle")}
                 </Button>
             )}
 
-            <Box>
-                <Typography variant="h6" component="h2" sx={{ mb: 1 }}>
-                    {/* 언어 이름은 번역하지 않고 각 언어로 표기 (내가 못 읽는 언어로 바뀌어도 돌아올 수 있게) */}
-                    {t("nav.language")}
-                    {currentLanguage() !== "en" && " / Language"}
-                </Typography>
-                <ToggleButtonGroup
-                    exclusive
-                    fullWidth
-                    value={currentLanguage()}
-                    onChange={(_, v: LanguageCode | null) => v && void i18n.changeLanguage(v)}
-                    aria-label={t("nav.language")}
-                >
-                    {SUPPORTED_LANGUAGES.map((l) => (
-                        <ToggleButton key={l.code} value={l.code} lang={l.code}>
-                            {l.label}
-                        </ToggleButton>
-                    ))}
-                </ToggleButtonGroup>
-            </Box>
-
-            {auth.user && (
-                <Button
-                    variant="outlined"
-                    size="large"
-                    onClick={() => {
-                        auth.logout();
-                        navigate("/");
-                    }}
-                >
-                    {t("nav.logout")}
-                </Button>
-            )}
+            {/* 비회원은 언어만 따로 (회원은 회원 카드 안에) */}
+            {!signedIn && <LanguagePicker />}
         </Stack>
     );
 }

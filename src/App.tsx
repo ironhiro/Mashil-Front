@@ -12,8 +12,10 @@ import { ToiletDetailPage } from "./pages/ToiletDetailPage";
 function page<K extends string>(load: () => Promise<Record<K, React.ComponentType>>, name: K) {
     return lazy(() => load().then((m) => ({ default: m[name] })));
 }
+const WalkGuidePage = page(() => import("./pages/WalkGuidePage"), "WalkGuidePage");
 const LoginPage = page(() => import("./pages/LoginPage"), "LoginPage");
 const MePage = page(() => import("./pages/MePage"), "MePage");
+const SettingsPage = page(() => import("./pages/SettingsPage"), "SettingsPage");
 const NewChangeRequestPage = page(() => import("./pages/NewChangeRequestPage"), "NewChangeRequestPage");
 const ConsentPage = page(() => import("./pages/ConsentPage"), "ConsentPage");
 const TermsPage = page(() => import("./pages/TermsPage"), "TermsPage");
@@ -109,10 +111,12 @@ export function App() {
                 <Routes>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/me" element={<MePage />} />
+                    <Route path="/me/settings" element={<SettingsPage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/consent" element={<ConsentPage />} />
                     <Route path="/terms/:docType" element={<TermsPage />} />
                     <Route path="/toilets/:id" element={<ToiletDetailPage />} />
+                    <Route path="/toilets/:id/guide" element={<WalkGuidePage />} />
                     <Route path="/change-requests/new" element={<NewChangeRequestPage />} />
                     {ADMIN_ROUTES.map((r) => (
                         <Route key={r.path} path={r.path} element={<RequireAdmin>{r.element}</RequireAdmin>} />

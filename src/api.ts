@@ -348,6 +348,52 @@ export async function submitChangeRequest(payload: SubmitChangeRequestPayload): 
     });
 }
 
+// --- 계정 (PATCH·DELETE /api/auth/me) ---
+
+/** 표시 이름 바꾸기. 서버가 공백을 정리하고 20자까지 받는다. 정리된 이름을 돌려준다 */
+export async function updateMyDisplayName(displayName: string): Promise<string | null> {
+    const me = await apiFetch<{ displayName: string | null }>("/api/auth/me", { method: "PATCH", body: { displayName }, auth: true });
+    return me?.displayName ?? null;
+}
+
+/** 탈퇴 오류 코드 (서버 { error }) */
+export type AccountErrorCode = "reauth_required" | "identity_mismatch" | "invalid_credential" | "provider_unknown" | "display_name_required";
+
+export class AccountError extends Error {
+    readonly code: AccountErrorCode | null;
+    constructor(code: AccountErrorCode | null, message: string) {
+        super(message);
+        this.code = code;
+    }
+}
+
+/** 서버 오류 본문 {"error":"..."} 에서 코드를 꺼낸다 */
+export function accountErrorCode(e: unknown): AccountErrorCode | null {
+    if (!(e instanceof Error)) return null;
+    try {
+        const code = (JSON.parse(e.message) as { error?: string }).error;
+        return (code as AccountErrorCode) ?? null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * 회원 탈퇴. 소셜 계정은 가입한 제공자로 다시 로그인해 받은 자격 증명을, 이메일 계정은 비밀번호를 보낸다.
+ * 서버는 개인정보를 바로 지우고 댓글·평점은 "탈퇴한 사용자"로 남긴다 (USR-03).
+ */
+export function deleteMyAccount(body: {
+    provider?: string;
+    idToken?: string;
+    accessToken?: string;
+    authorizationCode?: string;
+    nonce?: string;
+    password?: string;
+}): Promise<void> {
+    // DELETE 가 아니라 POST: 재인증 자격 증명이 본문에 있는데, DELETE 본문은 중간 장비가 버릴 수 있다
+    return apiFetch<void>("/api/auth/me/withdraw", { method: "POST", body, auth: true });
+}
+
 // --- 내 활동 (GET /api/me/comments, /api/me/change-requests) ---
 
 /** 내가 쓴 댓글. 신고로 가려졌으면 hidden. 화장실이 지워졌으면 toiletName = null. */

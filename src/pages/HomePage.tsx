@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CopyButton } from "../components/CopyButton";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import {
@@ -11,6 +11,7 @@ import {
     CardContent,
     IconButton,
     Link,
+    Snackbar,
     Stack,
     ToggleButton,
     ToggleButtonGroup,
@@ -25,9 +26,15 @@ import type { LatLng, ToiletNear } from "../api";
 import { MapView } from "../components/MapView";
 import { BoardRowContent } from "../components/BoardRow";
 import CloseIcon from "@mui/icons-material/Close";
+import IosShareIcon from "@mui/icons-material/IosShare";
+import { ShareSheet } from "../components/ShareSheet";
+import { toiletShareUrl } from "../lib/share";
+import NavigationIcon from "@mui/icons-material/NavigationOutlined";
 import { ToiletInteractions } from "../components/ToiletInteractions";
 import { ToiletList } from "../components/ToiletList";
 import { RecommendedList } from "../components/RecommendedList";
+import { ClusterList } from "../components/ClusterList";
+import type { ClusterSort } from "../lib/mapCluster";
 import { ChangeRequestKind, DEFAULT_SEARCH_RADIUS, SearchRadius, ViewMode } from "../lib/enums";
 import { FilterSheet } from "../components/FilterSheet";
 import { EMPTY_FILTER, activeFilterCount, applyFilter } from "../lib/toiletFilter";
@@ -40,6 +47,8 @@ import { friendlyError } from "../lib/friendlyError";
 import { formatDistance } from "../i18n";
 import { toiletKindLabel } from "../lib/facilityChips";
 import type { LocationFailure } from "../lib/nativeBridge";
+import { walkGuidePath } from "../lib/walkGuide";
+import type { WalkGuideState } from "../lib/walkGuide";
 
 const SEOUL_CITY_HALL: LatLng = { lat: 37.5666, lng: 126.9784 };
 
@@ -60,6 +69,7 @@ const homeMemory: {
     radiusM: SearchRadius;
     filter: ToiletFilter;
     viewMode: ViewMode;
+    clusterSort: ClusterSort;
 } = {
     center: null,
     userLocation: null,
@@ -68,6 +78,7 @@ const homeMemory: {
     radiusM: DEFAULT_SEARCH_RADIUS,
     filter: EMPTY_FILTER,
     viewMode: ViewMode.Map,
+    clusterSort: "distance",
 };
 
 export function HomePage() {
@@ -82,6 +93,15 @@ export function HomePage() {
     // 지도에서 마커를 누르면 그 장소의 카드로 스크롤 (목록에서는 바로 상세로 가므로 해당 없음)
     const scrollToCard = useRef(false);
     const [routing, setRouting] = useState(false);
+    // 지도에서 겹친 마커 묶음을 눌렀을 때의 목록
+    const [clusterItems, setClusterItems] = useState<ToiletNear[] | null>(null);
+    const [clusterSort, setClusterSort] = useState<ClusterSort>(homeMemory.clusterSort);
+    const clusterRef = useRef<HTMLElement | null>(null);
+    const scrollToCluster = useRef(false);
+    const [shareOpen, setShareOpen] = useState(false);
+    // 다른 화면이 넘겨 준 한 번짜리 안내 (예: 회원 탈퇴 뒤)
+    const routerLocation = useLocation();
+    const [notice, setNotice] = useState<string | null>((routerLocation.state as { notice?: string } | null)?.notice ?? null);
     // 위치를 못 받았을 때 이유 — 문장은 렌더 시 번역 (언어를 바꿔도 따라감)
     const [geoFailure, setGeoFailure] = useState<LocationFailure | null>(homeMemory.geoFailure);
 
@@ -110,8 +130,8 @@ export function HomePage() {
 
     // 바뀔 때마다 기억 (다음에 홈으로 돌아왔을 때 그대로 시작)
     useEffect(() => {
-        Object.assign(homeMemory, { center, userLocation, geoFailure, radiusM, filter, viewMode });
-    }, [center, userLocation, geoFailure, radiusM, filter, viewMode]);
+        Object.assign(homeMemory, { center, userLocation, geoFailure, radiusM, filter, viewMode, clusterSort });
+    }, [center, userLocation, geoFailure, radiusM, filter, viewMode, clusterSort]);
 
     useEffect(() => {
         if (USE_MOCK) {
@@ -204,6 +224,14 @@ export function HomePage() {
         setSelectedToilet(toilet);
     };
 
+    // 묶음 목록이 그려진 뒤 그리로 스크롤
+    useEffect(() => {
+        if (!scrollToCluster.current || !clusterItems) return;
+        scrollToCluster.current = false;
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        clusterRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    }, [clusterItems]);
+
     // 카드가 그려진 뒤 스크롤. 동작 줄이기 설정이면 부드러운 스크롤 없이 바로
     useEffect(() => {
         if (!scrollToCard.current || !pickedToilet) return;
@@ -247,6 +275,7 @@ export function HomePage() {
         )}
 
         <SearchField onSearch={setSearchTerm} />
+        <Snackbar open={notice !== null} autoHideDuration={4000} onClose={() => setNotice(null)} message={notice} />
 
         {/* === 필터 버튼 + 지도/목록 전환 === */}
         <Stack direction="row" spacing={1} alignItems="center">
@@ -257,11 +286,14 @@ export function HomePage() {
                 startIcon={<TuneIcon />}
                 sx={{ minHeight: 40 }}
             >
-                {t("filter.button")}
-                {activeFilters > 0 && ` ${activeFilters}`}
-                <Box component="span" sx={{ ml: 1, fontWeight: 500 }}>
-                    {formatDistance(radiusM, true)}
-                </Box>
+                {/* 글자 "필터"는 아이콘이 대신한다. 화면 낭독기에는 "필터 500m" 로 읽힌다 */}
+                <span className="visually-hidden">{t("filter.button")} </span>
+                {formatDistance(radiusM, true)}
+                {activeFilters > 0 && (
+                    <Box component="span" sx={{ ml: 1 }}>
+                        {t("filter.activeCount", { count: activeFilters })}
+                    </Box>
+                )}
             </Button>
             <Box sx={{ flexGrow: 1 }} />
             <ToggleButtonGroup
@@ -303,10 +335,18 @@ export function HomePage() {
                 // 새 영역으로 이동했으면 이전 선택은 컨텍스트가 어긋나므로 자동 해제
                 setSelectedToilet(null);
                 setRouting(false);
+                setClusterItems(null);
             }}
             onSelectToilet={(t) => {
                 scrollToCard.current = true;
+                setClusterItems(null);
                 setSelectedToilet(t);
+            }}
+            onSelectCluster={(items) => {
+                scrollToCluster.current = true;
+                setSelectedToilet(null);
+                setRouting(false);
+                setClusterItems(items);
             }}
             userLocation={userLocation}
             routeFrom={route ? userLocation : null}
@@ -358,26 +398,50 @@ export function HomePage() {
     // 고른 화장실 카드와 평점·댓글
     const selection = (
         <>
+        {/* === 겹친 마커 묶음 목록 === */}
+        {clusterItems && (
+            <ClusterList
+                ref={clusterRef}
+                items={clusterItems}
+                sort={clusterSort}
+                onSortChange={setClusterSort}
+                radiusM={radiusM}
+                onSelect={(t) => {
+                    scrollToCard.current = true;
+                    setClusterItems(null);
+                    setSelectedToilet(t);
+                }}
+                onClose={() => setClusterItems(null)}
+            />
+        )}
         {/* === 선택 화장실 카드 === */}
         {selectedToilet && (
             <Card variant="outlined" ref={cardRef} sx={{ scrollMarginTop: "var(--space-md)" }}>
                 <CardContent sx={{ pt: 1, pb: 2 }}>
                     {/* 머리 줄은 목록의 안내판 행과 같은 모양: 거리, 이름과 시설, 오른쪽 끝 상태 */}
-                    <Stack direction="row" alignItems="flex-start" spacing={1}>
-                        <Box className="board-row is-static" sx={{ flex: 1, minWidth: 0 }}>
-                            <BoardRowContent toilet={selectedToilet} facilities="detailed" />
-                        </Box>
+                    {/* 도구 줄: 왼쪽에 무엇을 보고 있는지, 오른쪽에 공유·닫기. 안내판 행은 그 아래 카드 폭 그대로
+                        (닫기를 행 옆에 두면 상태 칸이 가운데로 밀리고 아래 선이 닫기 앞에서 끊긴다) */}
+                    <Stack direction="row" alignItems="center" sx={{ mr: -1 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
+                            {t("home.selectedLabel")}
+                        </Typography>
+                        <IconButton aria-label={t("detail.share")} onClick={() => setShareOpen(true)} sx={{ width: 44, height: 44 }}>
+                            <IosShareIcon fontSize="small" />
+                        </IconButton>
                         <IconButton
                             aria-label={t("common.close")}
                             onClick={() => {
                                 setSelectedToilet(null);
                                 setRouting(false);
                             }}
-                            sx={{ width: 44, height: 44, flexShrink: 0, mt: 1 }}
+                            sx={{ width: 44, height: 44 }}
                         >
                             <CloseIcon />
                         </IconButton>
                     </Stack>
+                    <Box className="board-row is-static">
+                        <BoardRowContent toilet={selectedToilet} facilities="detailed" />
+                    </Box>
 
                     {/* 사실 목록: 머리카락 선으로 나눈 2열 */}
                     <Box component="dl" className="facts" sx={{ mt: 1 }}>
@@ -453,6 +517,25 @@ export function HomePage() {
                                 {t("home.kakaoDirections")}
                             </Button>
                         )}
+                        {selectedToilet.latitude != null && selectedToilet.longitude != null && (
+                            // 앱 안에서 일직선 방향과 남은 거리를 따라가며 보여 준다 (실제 길은 카카오맵)
+                            <Button
+                                variant="outlined"
+                                fullWidth
+                                startIcon={<NavigationIcon />}
+                                onClick={() =>
+                                    navigate(walkGuidePath(selectedToilet.id), {
+                                        state: {
+                                            name: selectedToilet.name,
+                                            lat: selectedToilet.latitude!,
+                                            lng: selectedToilet.longitude!,
+                                        } satisfies WalkGuideState,
+                                    })
+                                }
+                            >
+                                {t("guide.start")}
+                            </Button>
+                        )}
                         <Box sx={{ display: "grid", gridTemplateColumns: userLocation ? "repeat(2, minmax(0, 1fr))" : "minmax(0, 1fr)", gap: 1 }}>
                             <Button variant="outlined" onClick={() => openDetail(selectedToilet)}>
                                 {t("detail.more")}
@@ -503,6 +586,19 @@ export function HomePage() {
                     </Stack>
                 </CardContent>
             </Card>
+        )}
+
+        {selectedToilet && (
+            <ShareSheet
+                open={shareOpen}
+                onClose={() => setShareOpen(false)}
+                payload={{
+                    title: selectedToilet.name,
+                    url: toiletShareUrl(selectedToilet.id),
+                    description: toiletKindLabel(t, selectedToilet.kind),
+                    address: selectedToilet.roadAddress ?? selectedToilet.lotAddress ?? undefined,
+                }}
+            />
         )}
 
         {selectedToilet && (
