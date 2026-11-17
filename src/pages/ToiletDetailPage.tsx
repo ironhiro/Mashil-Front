@@ -140,11 +140,22 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                                 <CopyButton text={(toilet.roadAddress ?? toilet.lotAddress)!} what={t("copy.address")} />
                             </Typography>
                         )}
-                        {toilet.phone && (
+                        {toilet.phone ? (
                             <Typography variant="body1" sx={{ mt: 0.5 }}>
                                 {toilet.phone}
                                 <CopyButton text={toilet.phone} what={t("copy.phone")} />
                             </Typography>
+                        ) : (
+                            toilet.orgPhone && (
+                                // 화장실 번호가 아니라 관리기관 번호 — 그렇다고 밝힌다
+                                <Typography variant="body1" sx={{ mt: 0.5 }}>
+                                    {toilet.orgPhone}
+                                    <CopyButton text={toilet.orgPhone} what={t("copy.phone")} />
+                                    <Typography component="span" variant="body2" color="text.secondary" sx={{ display: "block" }}>
+                                        {t("detail.orgPhone", { org: toilet.managementOrg ?? "" })}
+                                    </Typography>
+                                </Typography>
+                            )
                         )}
                     </Box>
 
@@ -195,11 +206,11 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                     gap: 1,
                 }}
             >
-                {toilet.phone && (
+                {(toilet.phone || toilet.orgPhone) && (
                     <IconButton
                         component="a"
-                        href={`tel:${toilet.phone}`}
-                        aria-label={`${t("detail.call")} ${toilet.phone}`}
+                        href={`tel:${toilet.phone ?? toilet.orgPhone}`}
+                        aria-label={toilet.phone ? `${t("detail.call")} ${toilet.phone}` : `${t("detail.callOrg")} ${toilet.orgPhone}`}
                         sx={{ width: 52, height: 52, border: "var(--rule-bar) solid var(--color-ink)", color: "var(--color-ink)" }}
                     >
                         <PhoneIcon />

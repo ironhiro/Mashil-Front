@@ -244,6 +244,8 @@ export const ko = {
         back: "뒤로",
         share: "공유",
         copied: "링크를 복사했어요",
+        orgPhone: "관리기관 전화 · {{org}}",
+        callOrg: "관리기관에 전화",
         notFound: "화장실 정보를 찾지 못했어요.",
         hoursTitle: "개방 시간",
         weekdays: "월~금",
@@ -647,6 +649,8 @@ export const ko = {
             GeocodeNoMatch: "주소로 못 찾음",
             RegionMismatch: "시도가 다름",
             Ambiguous: "후보 여러 개",
+            PlaceNameMatch: "이름으로 찾음",
+            AddressChanged: "주소 바뀜, 좌표 유지",
         },
         issueStatus: {
             Open: "열림",
