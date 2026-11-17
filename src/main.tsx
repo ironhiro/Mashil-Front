@@ -17,6 +17,7 @@ import { theme } from "./theme";
 import { App } from "./App";
 import { BROWSER_BLOCKED } from "./lib/browserGate";
 import { GetAppScreen } from "./components/GetAppScreen";
+import { sentryEnvironment } from "./lib/sentryEnv";
 
 // 에러 모니터링 (NFR-10) — VITE_SENTRY_DSN 이 있는 빌드에서만 켠다. 별도 청크로 나중에 받아 첫 화면 번들에 넣지 않는다
 // (DSN 이 없는 빌드는 이 블록과 청크가 통째로 빠진다). 개인정보는 보내지 않고, URL 의 위치 쿼리는 지운다 (NFR-06).
@@ -25,7 +26,7 @@ if (import.meta.env.VITE_SENTRY_DSN) {
         const scrub = (url?: string) => url?.replace(/([?&](?:lat|lng|north|south|east|west)=)[^&#]*/gi, "$1[Filtered]");
         init({
             dsn: import.meta.env.VITE_SENTRY_DSN,
-            environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || import.meta.env.MODE,
+            environment: sentryEnvironment(),
             release: import.meta.env.VITE_RELEASE || undefined,
             // 통신에 끼어들지 않게: 오류만 모으고 추적(browserTracingIntegration)은 켜지 않으며, API·카카오·Google 요청에
             // sentry-trace·baggage 헤더를 붙이지 않는다. 그 헤더를 허용하지 않는 서버로 가는 요청이 CORS 사전 요청에서
