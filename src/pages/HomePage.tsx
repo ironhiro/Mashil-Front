@@ -35,11 +35,12 @@ import { ToiletList } from "../components/ToiletList";
 import { RecommendedList } from "../components/RecommendedList";
 import { ClusterList } from "../components/ClusterList";
 import type { ClusterSort } from "../lib/mapCluster";
-import { ChangeRequestKind, DEFAULT_SEARCH_RADIUS, SearchRadius, ViewMode } from "../lib/enums";
+import { ChangeRequestKind, DEFAULT_SEARCH_RADIUS, FacilityFilter, SearchRadius, ViewMode } from "../lib/enums";
 import { FilterSheet } from "../components/FilterSheet";
 import { EMPTY_FILTER, activeFilterCount, applyFilter } from "../lib/toiletFilter";
 import type { ToiletFilter } from "../lib/toiletFilter";
 import TuneIcon from "@mui/icons-material/Tune";
+import AccessibleIcon from "@mui/icons-material/Accessible";
 
 import { MOCK_USER_LOCATION, USE_MOCK } from "../mock/flag";
 import { getCurrentPosition, isApp, LocationError, openAppSettings } from "../lib/nativeBridge";
@@ -226,6 +227,7 @@ export function HomePage() {
         navigate(`/toilets/${toilet.id}`, { state: { origin: center, fromMe: centeredOnMe } });
     };
     const activeFilters = activeFilterCount(filter);
+    const accessibleOnly = filter.facilities.includes(FacilityFilter.Accessible);
     // 넓은 화면에서는 지도가 늘 오른쪽에 있으므로 왼쪽 패널은 목록이나 추천 (지도 보기는 목록으로 본다)
     const wide = useMediaQuery("(min-width: 64rem)");
     const panelMode = wide && viewMode === ViewMode.Map ? ViewMode.List : viewMode;
@@ -280,7 +282,14 @@ export function HomePage() {
             </Alert>
         )}
         {query.isError && (
-            <Alert severity="error">
+            <Alert
+                severity="error"
+                action={
+                    <Button color="inherit" size="small" onClick={() => void query.refetch()} disabled={query.isFetching}>
+                        {t("common.retry")}
+                    </Button>
+                }
+            >
                 {friendlyError(query.error, t("home.loadFailed"))}
             </Alert>
         )}
@@ -305,6 +314,25 @@ export function HomePage() {
                         {t("filter.activeCount", { count: activeFilters })}
                     </Box>
                 )}
+            </Button>
+            {/* 장애인 화장실만: 시트를 열지 않고 한 번에 켜고 끈다 (NFR-11). 필터 시트의 시설 "장애인" 칸과 같은 조건 */}
+            <Button
+                variant={accessibleOnly ? "contained" : "outlined"}
+                color="secondary"
+                aria-pressed={accessibleOnly}
+                aria-label={t("filter.accessibleOnly")}
+                title={t("filter.accessibleOnly")}
+                onClick={() =>
+                    setFilter((f) => ({
+                        ...f,
+                        facilities: accessibleOnly
+                            ? f.facilities.filter((x) => x !== FacilityFilter.Accessible)
+                            : [...f.facilities, FacilityFilter.Accessible],
+                    }))
+                }
+                sx={{ minHeight: 40, minWidth: 40, px: 1 }}
+            >
+                <AccessibleIcon fontSize="small" />
             </Button>
             <Box sx={{ flexGrow: 1 }} />
             <ToggleButtonGroup
@@ -385,7 +413,8 @@ export function HomePage() {
         />
     ) : (
         <>
-        {panelMode === ViewMode.List && (
+        {/* 불러오기에 실패했으면 "조건에 맞는 화장실이 없어요" 대신 위의 오류 안내만 (받아 둔 목록이 있으면 그대로) */}
+        {panelMode === ViewMode.List && !(query.isError && !query.data) && (
             <ToiletList
                 toilets={filteredToilets}
                 totalBeforeFilter={query.data?.length}

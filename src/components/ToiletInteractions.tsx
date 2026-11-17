@@ -7,7 +7,11 @@ import {
     CardContent,
     CircularProgress,
     Divider,
+    IconButton,
+    Menu,
+    MenuItem,
     Rating,
+    Snackbar,
     Stack,
     TextField,
     Typography,
@@ -15,6 +19,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import ThumbDownOutlinedIcon from "@mui/icons-material/ThumbDownOutlined";
 import ThumbUpOutlinedIcon from "@mui/icons-material/ThumbUpOutlined";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { fetchComments, postComment, postRating, voteComment } from "../api";
 import type { CommentRow } from "../api";
 import { useAuth } from "../auth/AuthContext";
@@ -22,6 +27,10 @@ import { useTranslation } from "react-i18next";
 import { formatRelativeOrDate } from "../i18n";
 import { friendlyError } from "../lib/friendlyError";
 import { useAppStatus } from "../lib/appStatus";
+import { ReportSheet } from "./ReportSheet";
+
+/** 서버 댓글 최대 길이 (InteractionEndpoints.MaxCommentLength) */
+const COMMENT_MAX = 1000;
 
 interface Props {
     toiletId: number;
@@ -45,6 +54,10 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
     const [pendingScore, setPendingScore] = useState<number | null>(null);
     const [comment, setComment] = useState("");
     const [error, setError] = useState<string | null>(null);
+    // 댓글 ⋮ 메뉴 → 신고 시트
+    const [menu, setMenu] = useState<{ anchor: HTMLElement; comment: CommentRow } | null>(null);
+    const [reporting, setReporting] = useState<CommentRow | null>(null);
+    const [snack, setSnack] = useState<string | null>(null);
 
     const commentsQuery = useQuery({
         queryKey: ["toilet-comments", toiletId],
@@ -126,6 +139,9 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
                                     }
                                 }}
                                 disabled={ratingMut.isPending}
+                                // MUI 기본 접근성 이름은 영어("4 Stars")라 현재 언어로
+                                getLabelText={(v) => t("interactions.starLabel", { count: v })}
+                                emptyLabelText={t("interactions.noRating")}
                             />
                             {ratingMut.isPending && <CircularProgress size={16} />}
                             {ratingMut.isSuccess && !ratingMut.isPending && (
@@ -137,12 +153,13 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
                             <TextField
                                 label={t("interactions.comment")}
                                 value={comment}
-                                onChange={(e) => setComment(e.target.value)}
+                                onChange={(e) => setComment(e.target.value.slice(0, COMMENT_MAX))}
                                 placeholder={t("interactions.commentPlaceholder")}
                                 multiline
                                 minRows={2}
                                 fullWidth
                                 size="small"
+                                helperText={`${comment.length}/${COMMENT_MAX}`}
                             />
                             <Box>
                                 <Button
@@ -186,12 +203,26 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
                     const busy = voteMut.isPending && voteMut.variables?.id === c.id;
                     return (
                         <article key={c.id} className="comment">
-                            <div className="comment-meta">
-                                {/* 탈퇴한 작성자는 서버가 한국어 이름을 주므로 플래그로 현재 언어 문구를 쓴다 */}
-                                {(c.authorName || c.authorDeleted) && (
-                                    <b>{c.isMine ? t("interactions.me") : c.authorDeleted ? t("interactions.deletedUser") : c.authorName}</b>
+                            <div className="comment-head">
+                                <div className="comment-meta">
+                                    {/* 탈퇴한 작성자는 서버가 한국어 이름을 주므로 플래그로 현재 언어 문구를 쓴다 */}
+                                    {(c.authorName || c.authorDeleted) && (
+                                        <b>{c.isMine ? t("interactions.me") : c.authorDeleted ? t("interactions.deletedUser") : c.authorName}</b>
+                                    )}
+                                    <span>{formatRelativeOrDate(c.createdAt)}</span>
+                                </div>
+                                {/* 남의 댓글만 신고할 수 있다 (탈퇴한 사용자 댓글도 신고는 된다) */}
+                                {!c.isMine && !readOnly && (
+                                    <IconButton
+                                        size="small"
+                                        className="comment-more"
+                                        aria-label={t("commentReport.menu")}
+                                        aria-haspopup="menu"
+                                        onClick={(e) => setMenu({ anchor: e.currentTarget, comment: c })}
+                                    >
+                                        <MoreVertIcon fontSize="small" />
+                                    </IconButton>
                                 )}
-                                <span>{formatRelativeOrDate(c.createdAt)}</span>
                             </div>
                             <p className="comment-text">{c.text}</p>
                             {c.isMine ? (
@@ -240,6 +271,31 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
                     );
                 })}
             </CardContent>
+
+            <Menu anchorEl={menu?.anchor} open={menu !== null} onClose={() => setMenu(null)}>
+                <MenuItem
+                    onClick={() => {
+                        const c = menu!.comment;
+                        setMenu(null);
+                        if (!auth.user) setError(t("commentReport.loginRequired"));
+                        else setReporting(c);
+                    }}
+                >
+                    {t("commentReport.action")}
+                </MenuItem>
+            </Menu>
+            <ReportSheet
+                comment={reporting}
+                onClose={() => setReporting(null)}
+                onDone={({ blocked }) => {
+                    setReporting(null);
+                    setError(null);
+                    setSnack(blocked ? t("commentReport.doneBlocked") : t("commentReport.done"));
+                    // 차단했으면 그 사람 댓글이 목록에서 빠진다
+                    if (blocked) qc.invalidateQueries({ queryKey: ["toilet-comments"] });
+                }}
+            />
+            <Snackbar open={snack !== null} autoHideDuration={3000} onClose={() => setSnack(null)} message={snack} />
         </Card>
     );
 }

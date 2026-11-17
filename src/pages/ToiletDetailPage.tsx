@@ -272,6 +272,9 @@ function OverlayButton({ label, onClick, children }: { label: string; onClick: (
 function dayText(t: TFunction, toilet: ToiletDetail, day: ScheduleDay, cell = false): { text: string; kind: "hours" | "closed" | "none" } {
     if (toilet.scheduleStatus === "AlwaysOpen") return { text: t("detail.allDay"), kind: "hours" };
     const slots = (toilet.schedules ?? []).filter((s) => s.day === day);
+    // 공휴일 규칙이 없으면 서버는 그날 요일 규칙을 그대로 쓴다 (OpenStatusEvaluator). 요일 정보가 있을 때만 그렇게 안내
+    if (slots.length === 0 && day === "Holiday" && (toilet.schedules ?? []).some((s) => s.day !== "Holiday"))
+        return { text: t(cell ? "detail.holidayAsDayShort" : "detail.holidayAsDay"), kind: "hours" };
     if (slots.length === 0) return { text: t("detail.noInfo"), kind: "none" };
     if (slots.every((s) => s.closed)) return { text: t("detail.closedDay"), kind: "closed" };
     const parts = slots
