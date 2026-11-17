@@ -292,6 +292,21 @@ export const en: Messages = {
         versionChanged: "The terms just changed. Please review the new version.",
         saveFailed: "Couldn't save. Please try again in a moment.",
     },
+    about: {
+        link: "Terms · Data sources",
+        title: "Terms · Sources",
+        legal: "Terms",
+        data: "Data sources",
+        dataNote: "Mashil processes and shows the data below. If something is wrong, report it from the restroom page.",
+        sources: {
+            toilets: "Restroom list",
+            osm: "Walking paths (road network)",
+            seoulWalk: "Walking paths in Seoul (crosswalks, overpasses, subway exits)",
+            kakao: "Map · finding places by address",
+            vworld: "Finding places by address (addresses Kakao doesn't know)",
+        },
+        fonts: "Fonts",
+    },
     terms: {
         preparing: "This document is being prepared.",
         effective: "Effective {{date}}",

@@ -80,6 +80,11 @@ export function MePage() {
 
             {/* 비회원은 언어만 따로 (회원은 회원 카드 안에) */}
             {!signedIn && <LanguagePicker />}
+
+            {/* 약관과 데이터 출처 (OSM·서울시 도보 네트워크는 출처 표시가 이용 조건) */}
+            <Button color="secondary" component={RouterLink} to="/about" sx={{ alignSelf: "flex-start", px: 1, minHeight: 44 }}>
+                {t("about.link")}
+            </Button>
         </Stack>
     );
 }
