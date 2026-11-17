@@ -238,6 +238,7 @@ export const ko = {
         show_one: "{{count}}곳 보기",
         show_other: "{{count}}곳 보기",
         counting: "세는 중…",
+        accessibleOnly: "장애인 화장실만 보기",
     },
     detail: {
         back: "뒤로",
@@ -377,6 +378,9 @@ export const ko = {
         title: "평점과 댓글",
         loginRequired: "평점과 댓글은 로그인하면 남길 수 있어요.",
         myRating: "내 평점",
+        starLabel_one: "별 {{count}}개",
+        starLabel_other: "별 {{count}}개",
+        noRating: "평점 없음",
         ratingCount_one: "{{count}}명",
         ratingCount_other: "{{count}}명",
         rated: "등록됨",

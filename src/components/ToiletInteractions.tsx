@@ -139,6 +139,9 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
                                     }
                                 }}
                                 disabled={ratingMut.isPending}
+                                // MUI 기본 접근성 이름은 영어("4 Stars")라 현재 언어로
+                                getLabelText={(v) => t("interactions.starLabel", { count: v })}
+                                emptyLabelText={t("interactions.noRating")}
                             />
                             {ratingMut.isPending && <CircularProgress size={16} />}
                             {ratingMut.isSuccess && !ratingMut.isPending && (
