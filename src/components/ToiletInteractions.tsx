@@ -205,7 +205,10 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
                         <article key={c.id} className="comment">
                             <div className="comment-head">
                                 <div className="comment-meta">
-                                    {c.authorName && <b>{c.isMine ? t("interactions.me") : c.authorName}</b>}
+                                    {/* 탈퇴한 작성자는 서버가 한국어 이름을 주므로 플래그로 현재 언어 문구를 쓴다 */}
+                                    {(c.authorName || c.authorDeleted) && (
+                                        <b>{c.isMine ? t("interactions.me") : c.authorDeleted ? t("interactions.deletedUser") : c.authorName}</b>
+                                    )}
                                     <span>{formatRelativeOrDate(c.createdAt)}</span>
                                 </div>
                                 {/* 남의 댓글만 신고할 수 있다 (탈퇴한 사용자 댓글도 신고는 된다) */}
