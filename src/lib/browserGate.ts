@@ -8,8 +8,18 @@ import { IN_APP } from "./inAppChrome";
  * 이 판별은 화면을 고르는 것일 뿐 보안 경계가 아니다 — API 는 따로 인증·권한으로 지킨다.
  *
  * VITE_BROWSER_GATE: on / off. 기본은 운영 빌드에서 on, 개발 서버에서 off (로컬 개발·QA 는 브라우저로 한다).
+ *
+ * 개발 서버(toilets-dev)는 빌드가 on 이어도 브라우저로 연다 — 같은 빌드가 그대로 운영으로 승격되므로
+ * (docs/RELEASE.md) 빌드 설정으로는 나눌 수 없고 접속한 호스트로 정한다.
+ * 호스트 목록은 VITE_BROWSER_OPEN_HOSTS (쉼표 구분)로 바꿀 수 있다.
  */
 const setting = import.meta.env.VITE_BROWSER_GATE ?? (import.meta.env.PROD ? "on" : "off");
 const hasBridge = typeof (window as { MashilBridge?: { postMessage?: unknown } }).MashilBridge?.postMessage === "function";
 
-export const BROWSER_BLOCKED = setting === "on" && !IN_APP && !hasBridge;
+const OPEN_HOSTS = (import.meta.env.VITE_BROWSER_OPEN_HOSTS ?? "toilets-dev.ironhiro.dev")
+    .split(",").map((h) => h.trim().toLowerCase()).filter(Boolean);
+
+/** 브라우저로도 여는 호스트인지 (개발 서버). */
+export const OPEN_IN_BROWSER = OPEN_HOSTS.includes(window.location.hostname.toLowerCase());
+
+export const BROWSER_BLOCKED = setting === "on" && !IN_APP && !hasBridge && !OPEN_IN_BROWSER;
