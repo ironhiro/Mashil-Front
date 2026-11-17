@@ -643,6 +643,7 @@ export const en: Messages = {
             Ambiguous: "Several matches",
             PlaceNameMatch: "Found by name",
             AddressChanged: "Address changed, location kept",
+            FallbackGeocode: "Found via VWorld",
         },
         issueStatus: {
             Open: "Open",

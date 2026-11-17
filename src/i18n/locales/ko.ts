@@ -651,6 +651,7 @@ export const ko = {
             Ambiguous: "후보 여러 개",
             PlaceNameMatch: "이름으로 찾음",
             AddressChanged: "주소 바뀜, 좌표 유지",
+            FallbackGeocode: "브이월드로 찾음",
         },
         issueStatus: {
             Open: "열림",
