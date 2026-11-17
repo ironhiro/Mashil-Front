@@ -61,15 +61,30 @@ export function MaintenanceScreen({ status, onRetry, retrying }: { status: AppSt
     );
 }
 
-/** 읽기 전용 점검 띠: 안내판의 "늦음" 행처럼 옅은 분홍(705 C) 위 잉크 글자 + 반쯤 닫힌 문. */
-export function ReadOnlyBanner({ status, text }: { status: AppStatus; text?: "adminConsole.adminMaintenanceBanner" }) {
+/**
+ * 읽기 전용 점검 띠: 안내판의 "늦음" 행처럼 옅은 분홍(705 C) 위 잉크 글자 + 반쯤 닫힌 문.
+ * 운영자가 문구를 넣었으면 그 문구를, 없으면 기본 문구를 보여 준다 (ADM-06).
+ */
+export function ReadOnlyBanner({
+    status,
+    text,
+}: {
+    status: AppStatus;
+    text?: "adminConsole.adminMaintenanceBanner" | "maintenance.loginOnly";
+}) {
     const { t } = useTranslation();
+    const until = status.until ? formatDateTime(status.until) : null;
+    const readOnlyText = status.message
+        ? until
+            ? `${status.message} (${t("maintenance.untilShort", { time: until })})`
+            : status.message
+        : until
+          ? t("maintenance.readOnlyUntil", { time: until })
+          : t("maintenance.readOnly");
     return (
         <Box role="status" className="band-soon" sx={{ px: 2, py: 1.25, display: "flex", alignItems: "center", gap: 1.5, fontSize: "var(--text-sm)", fontWeight: 800 }}>
             <DoorGlyph open={text ? 0 : 0.45} size={24} />
-            <span>
-                {text ? t(text) : status.until ? t("maintenance.readOnlyUntil", { time: formatDateTime(status.until) }) : t("maintenance.readOnly")}
-            </span>
+            <span>{text ? t(text) : readOnlyText}</span>
         </Box>
     );
 }

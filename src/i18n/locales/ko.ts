@@ -311,6 +311,8 @@ export const ko = {
         openKakaoMap: "카카오맵에서 화장실 찾기",
         readOnly: "찾기는 그대로 돼요. 평가, 댓글, 제보는 잠시 쉬어요.",
         readOnlyUntil: "찾기는 그대로 돼요. 평가, 댓글, 제보는 {{time}}까지 쉬어요.",
+        untilShort: "{{time}}까지",
+        loginOnly: "전체 점검 중이에요. 지금은 관리자만 로그인해서 쓸 수 있어요.",
     },
     days: {
         Mon: "월",
