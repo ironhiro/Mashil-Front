@@ -642,6 +642,7 @@ export const en: Messages = {
             RegionMismatch: "Different province",
             Ambiguous: "Several matches",
             PlaceNameMatch: "Found by name",
+            AddressChanged: "Address changed, location kept",
         },
         issueStatus: {
             Open: "Open",

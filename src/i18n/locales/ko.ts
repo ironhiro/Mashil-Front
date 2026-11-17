@@ -650,6 +650,7 @@ export const ko = {
             RegionMismatch: "시도가 다름",
             Ambiguous: "후보 여러 개",
             PlaceNameMatch: "이름으로 찾음",
+            AddressChanged: "주소 바뀜, 좌표 유지",
         },
         issueStatus: {
             Open: "열림",
