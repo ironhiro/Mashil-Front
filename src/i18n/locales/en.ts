@@ -240,6 +240,8 @@ export const en: Messages = {
         back: "Back",
         share: "Share",
         copied: "Link copied",
+        orgPhone: "Managing office · {{org}}",
+        callOrg: "Call the managing office",
         notFound: "We couldn't find this restroom.",
         hoursTitle: "Opening hours",
         weekdays: "Mon to Fri",
@@ -639,6 +641,7 @@ export const en: Messages = {
             GeocodeNoMatch: "Address not found",
             RegionMismatch: "Different province",
             Ambiguous: "Several matches",
+            PlaceNameMatch: "Found by name",
         },
         issueStatus: {
             Open: "Open",

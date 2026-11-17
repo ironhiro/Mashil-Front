@@ -144,6 +144,9 @@ export interface ToiletDetail {
     /** 평점 평균 (평점이 없으면 null)과 평점 수 */
     averageRating?: number | null;
     ratingCount?: number;
+    /** 관리기관. 화장실 전화번호가 없을 때 그 기관이 대표로 쓰는 번호가 orgPhone (화장실 번호 아님) */
+    managementOrg?: string | null;
+    orgPhone?: string | null;
 }
 
 export function fetchToilet(id: number): Promise<ToiletDetail> {
