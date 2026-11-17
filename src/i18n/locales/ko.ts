@@ -88,6 +88,11 @@ export const ko = {
         clear: "지우기",
         close: "닫기",
         backHome: "홈으로",
+        retry: "다시 시도",
+    },
+    notFound: {
+        title: "페이지를 찾을 수 없어요",
+        body: "주소가 바뀌었거나 없는 페이지예요.",
     },
     search: {
         label: "화장실 이름이나 주소로 찾기",
