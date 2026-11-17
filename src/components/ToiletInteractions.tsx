@@ -29,6 +29,9 @@ import { friendlyError } from "../lib/friendlyError";
 import { useAppStatus } from "../lib/appStatus";
 import { ReportSheet } from "./ReportSheet";
 
+/** 서버 댓글 최대 길이 (InteractionEndpoints.MaxCommentLength) */
+const COMMENT_MAX = 1000;
+
 interface Props {
     toiletId: number;
     /** /near 응답에 함께 실려온 집계 평점 — 표시용. 평점 없으면 null. */
@@ -147,12 +150,13 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
                             <TextField
                                 label={t("interactions.comment")}
                                 value={comment}
-                                onChange={(e) => setComment(e.target.value)}
+                                onChange={(e) => setComment(e.target.value.slice(0, COMMENT_MAX))}
                                 placeholder={t("interactions.commentPlaceholder")}
                                 multiline
                                 minRows={2}
                                 fullWidth
                                 size="small"
+                                helperText={`${comment.length}/${COMMENT_MAX}`}
                             />
                             <Box>
                                 <Button
