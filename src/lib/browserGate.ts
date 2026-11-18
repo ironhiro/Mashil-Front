@@ -22,4 +22,13 @@ const OPEN_HOSTS = (import.meta.env.VITE_BROWSER_OPEN_HOSTS ?? "toilets-dev.iron
 /** 브라우저로도 여는 호스트인지 (개발 서버). */
 export const OPEN_IN_BROWSER = OPEN_HOSTS.includes(window.location.hostname.toLowerCase());
 
+/**
+ * 약관·개인정보처리방침은 브라우저로도 연다. 스토어 심사와 이용자가 앱 없이도 읽을 수 있어야 한다
+ * (Google Play: 개인정보처리방침은 누구나 볼 수 있는 웹 주소여야 함). main.tsx 가 이 주소에서는 약관 화면만 그린다.
+ */
+export const PUBLIC_TERMS_PATH = /^\/terms\/(Terms|Privacy|LocationTerms)\/?$/;
+
 export const BROWSER_BLOCKED = setting === "on" && !IN_APP && !hasBridge && !OPEN_IN_BROWSER;
+
+/** 브라우저로 약관 주소에 들어왔을 때: 앱 설치 안내 대신 약관만 보여 준다 */
+export const BROWSER_TERMS = BROWSER_BLOCKED && PUBLIC_TERMS_PATH.test(window.location.pathname);

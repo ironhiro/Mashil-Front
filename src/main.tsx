@@ -15,7 +15,8 @@ import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext";
 import { theme } from "./theme";
 import { App } from "./App";
-import { BROWSER_BLOCKED } from "./lib/browserGate";
+import { BROWSER_BLOCKED, BROWSER_TERMS } from "./lib/browserGate";
+import { PublicTermsScreen } from "./components/PublicTermsScreen";
 import { GetAppScreen } from "./components/GetAppScreen";
 import { sentryEnvironment } from "./lib/sentryEnv";
 import { installBackHandler } from "./lib/backHandler";
@@ -84,7 +85,8 @@ if (BROWSER_BLOCKED) {
         <StrictMode>
             <ThemeProvider theme={theme}>
                 <CssBaseline />
-                <GetAppScreen />
+                {/* 약관·개인정보처리방침은 브라우저로도 읽을 수 있어야 한다 (스토어 심사) */}
+                {BROWSER_TERMS ? <PublicTermsScreen /> : <GetAppScreen />}
             </ThemeProvider>
         </StrictMode>,
     );

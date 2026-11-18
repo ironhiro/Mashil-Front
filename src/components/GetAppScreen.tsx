@@ -1,4 +1,4 @@
-import { Box, Button, Stack, Typography } from "@mui/material";
+import { Box, Button, Link, Stack, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { DoorGlyph } from "./Maintenance";
 
@@ -50,6 +50,11 @@ export function GetAppScreen() {
                     <Button variant="outlined" size="large" href="https://map.kakao.com/?q=%ED%99%94%EC%9E%A5%EC%8B%A4">
                         {t("maintenance.openKakaoMap")}
                     </Button>
+                </Stack>
+                {/* 약관은 앱 없이도 읽을 수 있다 (PublicTermsScreen) */}
+                <Stack direction="row" spacing={2} sx={{ pt: 1 }}>
+                    <Link href="/terms/Terms" variant="body2" color="secondary">{t("consent.docs.Terms")}</Link>
+                    <Link href="/terms/Privacy" variant="body2" color="secondary">{t("consent.docs.Privacy")}</Link>
                 </Stack>
             </Stack>
         </Box>
