@@ -132,6 +132,7 @@ button:disabled, [aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
 .plate.state { padding: var(--space-md); }
 .plate.state .figure { color: inherit; font-size: var(--text-2xl); }
 .plate.state .unit { color: inherit; }
+.plate.is-single { justify-content: center; align-items: center; text-align: center; }
 
 /* ── 칸(cell): 2px 테두리를 공유하는 정사각 칸들 ──────────────────────── */
 .cells { display: grid; border-top: var(--rule-bar) solid var(--color-ink); border-left: var(--rule-bar) solid var(--color-ink); }
