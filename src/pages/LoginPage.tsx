@@ -16,6 +16,7 @@ import { useAuth } from "../auth/AuthContext";
 import { getAppProviders, NativeSignInCancelled } from "../lib/nativeBridge";
 import { friendlyError } from "../lib/friendlyError";
 import type { SocialProvider } from "../lib/nativeBridge";
+import { markOnboarded } from "../lib/firstRun";
 
 type Mode = "login" | "register";
 
@@ -209,7 +210,7 @@ export function LoginPage() {
                 <Typography variant="body2" color="text.secondary">
                     {t("login.intro")}
                 </Typography>
-                <Button component={RouterLink} to="/" color="secondary" sx={{ textDecoration: "underline", textUnderlineOffset: 3 }}>
+                <Button component={RouterLink} to="/" replace onClick={markOnboarded} color="secondary" sx={{ textDecoration: "underline", textUnderlineOffset: 3 }}>
                     {t("login.browseWithout")}
                 </Button>
             </Stack>
