@@ -42,7 +42,7 @@ function statusDetail(t: TFunction, status: OpenStatus): string {
     if (status.kind === "unknown") {
         return status.raw ? t("openStatus.unknownWithRaw", { raw: status.raw }) : t("openStatus.unknownEmpty");
     }
-    if (status.kind === "24h") return t("openStatus.alwaysDetail");
+    if (status.kind === "24h") return ""; // "24시간" 한 줄로 충분
     // 큰 글자("22:00까지")와 다른 정보: 남은 시간
     if (status.kind === "open" && status.minutesLeft !== undefined) {
         const h = Math.floor(status.minutesLeft / 60);
@@ -59,10 +59,11 @@ function statusDetail(t: TFunction, status: OpenStatus): string {
 export function StatusTile({ toilet }: Omit<Props, "variant">) {
     const { t } = useTranslation();
     const status = statusOf(toilet);
+    const detail = statusDetail(t, status);
     return (
         <div className={`plate ${stateClass(tileStateOf(status))}`}>
             <span className="figure">{openStatusLabel(t, status, "short")}</span>
-            <span className="unit">{statusDetail(t, status)}</span>
+            {detail && <span className="unit">{detail}</span>}
         </div>
     );
 }

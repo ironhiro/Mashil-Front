@@ -360,7 +360,6 @@ export const ko = {
     },
     openStatus: {
         always: "24시간 영업",
-        alwaysDetail: "언제든 열려 있어요",
         openUntil: "영업중 ~{{time}}",
         closedNoNext: "지금은 닫혀 있어요",
         leftHours: "닫기까지 {{h}}시간 {{m}}분",
@@ -481,7 +480,7 @@ export const ko = {
         nativeFailed: "로그인을 마치지 못했어요. 다시 시도해 주세요.",
     },
     report: {
-        loginRequired: "제보하려면 로그인해 주세요.",
+        guestNote: "로그인하지 않아도 제보할 수 있어요. 로그인하면 처리 결과를 내 정보에서 볼 수 있어요.",
         done: "제보가 접수됐어요. 운영팀이 확인한 뒤 반영할게요. (접수 번호 <b>{{id}}</b>)",
         another: "하나 더 제보하기",
         title: "화장실 정보 제보",
