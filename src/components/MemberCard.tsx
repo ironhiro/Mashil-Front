@@ -12,8 +12,6 @@ import {
     Link,
     Stack,
     TextField,
-    ToggleButton,
-    ToggleButtonGroup,
     Typography,
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
@@ -24,38 +22,9 @@ import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { accountErrorCode, updateMyDisplayName } from "../api";
 import { useAuth, userLabel } from "../auth/AuthContext";
 import type { AuthUser } from "../auth/AuthContext";
-import { SUPPORTED_LANGUAGES, currentLanguage } from "../i18n";
-import type { LanguageCode } from "../i18n";
 import { UserRole } from "../lib/enums";
 import { NativeSignInCancelled, isApp } from "../lib/nativeBridge";
 import { BlockedUsers } from "./BlockedUsers";
-
-/** 언어 고르기. 비회원은 내 정보에, 회원은 설정 화면에 */
-export function LanguagePicker() {
-    const { t, i18n } = useTranslation();
-    return (
-        <Box>
-            <Typography variant="subtitle1" component="h2" sx={{ mb: 1, fontWeight: 800 }}>
-                {/* 언어 이름은 번역하지 않고 각 언어로 표기 (내가 못 읽는 언어로 바뀌어도 돌아올 수 있게) */}
-                {t("nav.language")}
-                {currentLanguage() !== "en" && " / Language"}
-            </Typography>
-            <ToggleButtonGroup
-                exclusive
-                fullWidth
-                value={currentLanguage()}
-                onChange={(_, v: LanguageCode | null) => v && void i18n.changeLanguage(v)}
-                aria-label={t("nav.language")}
-            >
-                {SUPPORTED_LANGUAGES.map((l) => (
-                    <ToggleButton key={l.code} value={l.code} lang={l.code}>
-                        {l.label}
-                    </ToggleButton>
-                ))}
-            </ToggleButtonGroup>
-        </Box>
-    );
-}
 
 /**
  * 내 정보의 회원 카드: 이름과 로그인 방법만. 누르면 설정 화면(/me/settings)으로 간다.
@@ -123,10 +92,6 @@ export function AccountSettings({ user }: { user: AuthUser }) {
                         {t("me.rename")}
                     </Button>
                 </Stack>
-            </Box>
-
-            <Box component="section" className="plate">
-                <LanguagePicker />
             </Box>
 
             <BlockedUsers />
