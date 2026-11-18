@@ -3,6 +3,7 @@
 import { readAuthToken, refreshAccessToken } from "./auth/AuthContext";
 import type { ChangeRequestKind, ChangeRequestStatus } from "./lib/enums";
 import { USE_MOCK } from "./mock/flag";
+import { nearbyLocal, recommendedLocal, searchLocal } from "./lib/toiletIndex";
 
 /** 서버가 KST·요일·공휴일·자정 넘김을 반영해 판정한 영업 상태 (docs/API.md). */
 export interface ServerOpenStatus {
@@ -159,6 +160,8 @@ export async function fetchNearbyToilets(
     radiusM: number,
     limit = 2000,
 ): Promise<ToiletNear[]> {
+    // 위치를 서버로 보내지 않는다: 전국 목록을 기기에 두고 여기서 찾는다 (lib/toiletIndex). 목업만 예전 API
+    if (!USE_MOCK) return nearbyLocal(lat, lng, radiusM, limit);
     const qs = new URLSearchParams({
         lat: String(lat),
         lng: String(lng),
@@ -270,8 +273,10 @@ export interface ToiletSearchPage {
     total: number;
 }
 
-/** near 를 주면 서버가 그 근처부터 고른다. offset 부터 SEARCH_PAGE 건 */
+/** near 를 주면 그 근처부터 (기기에서 정렬). offset 부터 SEARCH_PAGE 건 */
 export async function searchToilets(q: string, near: LatLng | null, offset = 0): Promise<ToiletSearchPage> {
+    // 가까운 순 정렬에 위치가 필요해서 검색도 기기에서 한다 (lib/toiletIndex)
+    if (!USE_MOCK) return searchLocal(q, near, offset, SEARCH_PAGE);
     const at = near ? `&lat=${near.lat}&lng=${near.lng}` : "";
     let total: number | null = null;
     const items = await apiFetch<ToiletSearchResult[]>(
@@ -287,6 +292,7 @@ export async function searchToilets(q: string, near: LatLng | null, offset = 0):
 }
 
 export function fetchRecommendedToilets(lat: number, lng: number, radiusM: number, limit = 5): Promise<RecommendedToilet[]> {
+    if (!USE_MOCK) return recommendedLocal(lat, lng, radiusM, limit);
     return apiFetch<RecommendedToilet[]>(
         `/api/toilets/recommended?lat=${lat}&lng=${lng}&radiusM=${radiusM}&limit=${limit}`,
     );
@@ -319,6 +325,12 @@ const WALKING_SPEED_M_PER_MIN = 4_000 / 60; // 4 km/h ≈ 67 m/min
 const EARTH_RADIUS_M = 6_371_000;
 
 // --- 도보 경로 (POST /api/routes/walk, OpenStreetMap) ---
+
+/**
+ * 서버 도보 경로를 쓸지. 기본은 끔: 출발지(사용자 위치)를 서버로 보내야 해서, 끄면 위치가 기기 밖으로 나가지 않는다
+ * (위치정보법 검토, 2026-11). 켜려면 빌드 때 VITE_WALK_ROUTE=on. 꺼져 있으면 방향 안내는 직선 안내만 한다
+ */
+export const WALK_ROUTE_ENABLED = import.meta.env.VITE_WALK_ROUTE === "on";
 
 /** 서버가 찾은 도보 경로. points 는 [위도, 경도] (스냅한 출발점 → 스냅한 도착점) */
 export interface WalkRoute {
@@ -545,7 +557,8 @@ export async function fetchAppStatus(): Promise<AppStatus | null> {
 
 // ── 약관 동의 (docs/API.md Auth) ────────────────────────────────────────
 
-export type ConsentDocType = "Terms" | "Privacy" | "LocationTerms";
+/** 동의 종류. AgeOver14 는 문서가 아니라 확인 항목. LocationTerms 는 위치를 기기에서만 쓰게 되면서 필수에서 빠졌다 (서버 설정이 정함) */
+export type ConsentDocType = "Terms" | "Privacy" | "LocationTerms" | "AgeOver14";
 
 export interface ConsentStatus {
     required: boolean;
