@@ -515,7 +515,11 @@ export const ko = {
         locating: "위치 확인 중…",
         relocate: "다시 확인",
         locationSet: "지금 내 위치를 입력했어요",
-        locationHint: "화장실 앞이라면 한 번 눌러 주세요. 비워 두면 주소로 위치를 찾아요.",
+        locationHint: "화장실 앞이라면 눌러 주세요. 주소도 같이 채워요.",
+        useMyLocationShort: "위치 찾기",
+        findingAddress: "주소 찾는 중…",
+        addressNotFound: "주소는 찾지 못했어요. 아래 칸에 직접 적어 주세요.",
+        locationFailedTitle: "위치를 확인하지 못했어요",
     },
     admin: {
         forbidden: "관리자 전용 페이지입니다. 권한이 없어요.",

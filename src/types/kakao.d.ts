@@ -111,6 +111,22 @@ declare namespace kakao.maps {
     }
 
     function load(callback: () => void): void;
+
+    /** libraries=services */
+    namespace services {
+        enum Status {
+            OK = "OK",
+            ZERO_RESULT = "ZERO_RESULT",
+            ERROR = "ERROR",
+        }
+        interface Coord2AddressResult {
+            address: { address_name: string } | null;
+            road_address: { address_name: string; building_name?: string } | null;
+        }
+        class Geocoder {
+            coord2Address(lng: number, lat: number, callback: (result: Coord2AddressResult[], status: Status) => void): void;
+        }
+    }
 }
 
 interface Window {

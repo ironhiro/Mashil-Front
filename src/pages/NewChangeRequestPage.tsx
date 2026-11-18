@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     Alert,
     Box,
     Button,
-    Chip,
     CircularProgress,
     Divider,
     MenuItem,
@@ -17,6 +16,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../auth/AuthContext";
 import { fetchToilet, submitChangeRequest } from "../api";
 import { getCurrentPosition, LocationError } from "../lib/nativeBridge";
+import { reverseGeocode, type ReverseAddress } from "../lib/kakaoMap";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import MyLocationIcon from "@mui/icons-material/MyLocation";
 import { friendlyError } from "../lib/friendlyError";
 import { toiletKindLabel } from "../lib/facilityChips";
 import {
@@ -68,6 +71,8 @@ export function NewChangeRequestPage() {
         prefill.targetToiletId !== undefined ? String(prefill.targetToiletId) : "",
     );
     const [fields, setFields] = useState<ToiletFormFields>(EMPTY_FIELDS);
+    /** "지금 내 위치로 입력"이 채운 주소 — 지우기 때 사용자가 고치지 않은 주소만 같이 지우려고 기억한다 */
+    const autoAddress = useRef<ReverseAddress | null>(null);
     /** Edit 모드 일 때 fetch 직후 스냅샷 — 제출 시 fields 와 비교해 변경된 항목만 payload 에 담음. */
     const [originalFields, setOriginalFields] = useState<ToiletFormFields | null>(null);
     const [note, setNote] = useState("");        // Add/Edit 시 자유 메모
@@ -260,6 +265,34 @@ export function NewChangeRequestPage() {
                             </TextField>
 
                             <Divider textAlign="left">{t("report.sectionLocation")}</Divider>
+                            {kind === ChangeRequestKind.Add && (
+                                <CoordinateCapture
+                                    captured={fields.latitude !== "" && fields.longitude !== ""}
+                                    onSet={(lat, lng, address) => {
+                                        setFields((f) => ({
+                                            ...f,
+                                            latitude: lat,
+                                            longitude: lng,
+                                            // 찾은 주소만 덮어쓴다. 못 찾은 칸은 사용자가 쓴 값을 그대로 둔다
+                                            roadAddress: address?.roadAddress || f.roadAddress,
+                                            lotAddress: address?.lotAddress || f.lotAddress,
+                                        }));
+                                        autoAddress.current = address;
+                                    }}
+                                    onClear={() => {
+                                        const auto = autoAddress.current;
+                                        setFields((f) => ({
+                                            ...f,
+                                            latitude: "",
+                                            longitude: "",
+                                            // 자동으로 채운 주소를 손대지 않았으면 같이 지운다
+                                            roadAddress: auto?.roadAddress && f.roadAddress === auto.roadAddress ? "" : f.roadAddress,
+                                            lotAddress: auto?.lotAddress && f.lotAddress === auto.lotAddress ? "" : f.lotAddress,
+                                        }));
+                                        autoAddress.current = null;
+                                    }}
+                                />
+                            )}
                             <TextField
                                 label={t("report.roadAddress")}
                                 value={fields.roadAddress}
@@ -274,21 +307,7 @@ export function NewChangeRequestPage() {
                                 placeholder={detailQuery.data?.lotAddress ?? ""}
                                 fullWidth
                             />
-                            {kind === ChangeRequestKind.Add ? (
-                                <CoordinateCapture
-                                    latitude={fields.latitude}
-                                    longitude={fields.longitude}
-                                    onSet={(lat, lng) => {
-                                        patch("latitude", lat);
-                                        patch("longitude", lng);
-                                    }}
-                                    onClear={() => {
-                                        patch("latitude", "");
-                                        patch("longitude", "");
-                                    }}
-                                    onError={setError}
-                                />
-                            ) : (
+                            {kind === ChangeRequestKind.Add ? null : (
                                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
                                     <TextField
                                         label={t("report.latitude")}
@@ -389,70 +408,130 @@ export function NewChangeRequestPage() {
     );
 }
 
+type CaptureStatus =
+    | { step: "idle" }
+    | { step: "locating" }
+    | { step: "addressing" }
+    | { step: "done"; road: string; lot: string; addressFailed: boolean }
+    | { step: "error"; message: string };
+
 /**
- * Add 모드용 좌표 입력 — 수동 입력 대신 한 번 클릭으로 현재 위치 캡처.
- * 비워두면 서버 geocode 워커가 추후 주소로 자동 보정.
+ * Add 모드용 위치 입력 — 한 번 눌러 현재 위치를 잡고, 그 좌표의 도로명·지번 주소를 칸에 채운다.
+ * 진행·결과·오류를 모두 이 한 칸 안에서 보여 준다. 비워 두면 서버 geocode 워커가 나중에 주소로 좌표를 채운다.
  */
 function CoordinateCapture({
-    latitude,
-    longitude,
+    captured,
     onSet,
     onClear,
-    onError,
 }: {
-    latitude: string;
-    longitude: string;
-    onSet: (lat: string, lng: string) => void;
+    captured: boolean;
+    onSet: (lat: string, lng: string, address: ReverseAddress | null) => void;
     onClear: () => void;
-    onError: (msg: string) => void;
 }) {
     const { t } = useTranslation();
-    const [capturing, setCapturing] = useState(false);
-    const captured = latitude !== "" && longitude !== "";
+    const [status, setStatus] = useState<CaptureStatus>({ step: "idle" });
+    const busy = status.step === "locating" || status.step === "addressing";
+    // 폼이 바깥에서 비워졌으면 (종류 변경 등) 이 칸도 처음으로
+    const shown: CaptureStatus = !captured && status.step === "done" ? { step: "idle" } : status;
 
     async function capture() {
-        setCapturing(true);
+        setStatus({ step: "locating" });
+        let lat: number, lng: number;
         try {
             // 앱이면 브리지로 네이티브 GPS, 브라우저면 navigator.geolocation
-            const { lat, lng } = await getCurrentPosition({ enableHighAccuracy: true, timeout: 8_000 });
-            onSet(String(lat), String(lng));
+            ({ lat, lng } = await getCurrentPosition({ enableHighAccuracy: true, timeout: 8_000 }));
         } catch (err) {
-            onError(err instanceof LocationError ? err.message : t("location.failed"));
-        } finally {
-            setCapturing(false);
+            setStatus({ step: "error", message: err instanceof LocationError ? err.message : t("location.failed") });
+            return;
         }
+        setStatus({ step: "addressing" });
+        let address: ReverseAddress | null = null;
+        try {
+            address = await reverseGeocode(lat, lng);
+        } catch {
+            address = null;
+        }
+        onSet(String(lat), String(lng), address);
+        const found = !!address && (address.roadAddress !== "" || address.lotAddress !== "");
+        setStatus({
+            step: "done",
+            road: address?.roadAddress ?? "",
+            lot: address?.lotAddress ?? "",
+            addressFailed: !found,
+        });
+    }
+
+    function clear() {
+        onClear();
+        setStatus({ step: "idle" });
+    }
+
+    let icon: React.ReactNode;
+    let title: string;
+    let detail: React.ReactNode = null;
+    switch (shown.step) {
+        case "idle":
+            icon = <MyLocationIcon color="primary" />;
+            title = t("report.useMyLocation");
+            detail = t("report.locationHint");
+            break;
+        case "locating":
+            title = t("report.locating");
+            icon = <CircularProgress size={22} aria-label={title} />;
+            break;
+        case "addressing":
+            title = t("report.findingAddress");
+            icon = <CircularProgress size={22} aria-label={title} />;
+            break;
+        case "done":
+            icon = <CheckCircleIcon color="success" />;
+            title = t("report.locationSet");
+            detail = shown.addressFailed ? t("report.addressNotFound") : (shown.road || shown.lot);
+            break;
+        case "error":
+            icon = <ErrorOutlineIcon color="error" />;
+            title = t("report.locationFailedTitle");
+            detail = shown.message;
+            break;
     }
 
     return (
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
-            {captured ? (
-                <>
-                    <Chip
-                        color="success"
-                        label={t("report.locationSet")}
-                    />
-                    <Button size="small" onClick={onClear}>{t("common.clear")}</Button>
-                    <Button size="small" onClick={capture} disabled={capturing}>
-                        {capturing ? t("report.locating") : t("report.relocate")}
-                    </Button>
-                </>
-            ) : (
-                <>
-                    <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={capture}
-                        disabled={capturing}
-                        startIcon={capturing ? <CircularProgress size={14} /> : null}
-                    >
-                        {capturing ? t("report.locating") : t("report.useMyLocation")}
-                    </Button>
-                    <Typography variant="caption" color="text.secondary">
-                        {t("report.locationHint")}
-                    </Typography>
-                </>
-            )}
-        </Stack>
+        <Box
+            role="status"
+            aria-live="polite"
+            sx={{
+                border: 2,
+                borderColor: shown.step === "done" ? "success.main" : shown.step === "error" ? "error.main" : "text.primary",
+                borderRadius: 1,
+                p: 1.5,
+            }}
+        >
+            <Stack direction="row" spacing={1.5} alignItems="center">
+                <Box sx={{ display: "flex", flexShrink: 0, width: 24, justifyContent: "center" }}>{icon}</Box>
+                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{title}</Typography>
+                    {detail && (
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "block", wordBreak: "keep-all" }}>
+                            {detail}
+                        </Typography>
+                    )}
+                </Box>
+                <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
+                    {shown.step === "idle" && (
+                        <Button variant="contained" size="small" onClick={capture}>{t("report.useMyLocationShort")}</Button>
+                    )}
+                    {shown.step === "done" && (
+                        <>
+                            <Button size="small" onClick={capture} disabled={busy}>{t("report.relocate")}</Button>
+                            <Button size="small" onClick={clear}>{t("common.clear")}</Button>
+                        </>
+                    )}
+                    {shown.step === "error" && (
+                        <Button size="small" variant="outlined" onClick={capture}>{t("report.relocate")}</Button>
+                    )}
+                </Stack>
+            </Stack>
+        </Box>
     );
 }
 
