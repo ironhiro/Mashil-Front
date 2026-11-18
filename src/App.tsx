@@ -31,6 +31,7 @@ import { MaintenanceScreen, ReadOnlyBanner } from "./components/Maintenance";
 import { useAppStatus } from "./lib/appStatus";
 import { useAuth } from "./auth/AuthContext";
 import { UserRole } from "./lib/enums";
+import { useKeyboardOpen } from "./lib/useKeyboardOpen";
 
 /** 관리 화면 경로 → 화면. 모두 RequireAdmin 으로 감싼다 */
 const ADMIN_ROUTES = [
@@ -89,6 +90,8 @@ export function App() {
     const appStatus = useAppStatus();
     const { pathname } = useLocation();
     const withNav = showsBottomNav(pathname);
+    // 키보드가 올라오면 하단 탭을 숨긴다 (app.css .keyboard-open, 폰 폭에서만)
+    const keyboardOpen = useKeyboardOpen();
     const isAdmin = useAuth().user?.role === UserRole.Admin;
     useRouteFocus(pathname);
 
@@ -101,7 +104,7 @@ export function App() {
 
     // 위쪽 앱 바와 왼쪽 서랍 대신 하단 탭 세 칸 (찾기 / 제보 / 내 정보)
     return (
-        <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }} className={withNav ? "app-root has-bottom-nav" : "app-root"}>
+        <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }} className={["app-root", withNav && "has-bottom-nav", keyboardOpen && "keyboard-open"].filter(Boolean).join(" ")}>
             {appStatus.data?.maintenance ? (
                 <ReadOnlyBanner status={appStatus.data} text={isAdmin ? "adminConsole.adminMaintenanceBanner" : "maintenance.loginOnly"} />
             ) : (
