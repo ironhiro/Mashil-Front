@@ -11,6 +11,8 @@ interface ImportMetaEnv {
     /** 브라우저 안내 화면의 스토어 주소. 없으면 "곧 나와요" */
     readonly VITE_PLAY_STORE_URL?: string;
     readonly VITE_APP_STORE_URL?: string;
+    /** 이메일·비밀번호 로그인 칸: 개발 빌드는 늘 보이고, 운영 빌드는 on 일 때만 (LoginPage EMAIL_LOGIN) */
+    readonly VITE_EMAIL_LOGIN?: "on" | "off";
 }
 
 interface ImportMeta {
