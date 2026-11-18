@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     Alert,
     Box,
@@ -6,6 +6,10 @@ import {
     Card,
     CardContent,
     CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
     Divider,
     IconButton,
     Menu,
@@ -20,7 +24,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import ThumbDownOutlinedIcon from "@mui/icons-material/ThumbDownOutlined";
 import ThumbUpOutlinedIcon from "@mui/icons-material/ThumbUpOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import { fetchComments, postComment, postRating, voteComment, fetchMyRating } from "../api";
+import { deleteComment, editComment, fetchComments, postComment, postRating, voteComment, fetchMyRating } from "../api";
 import type { CommentRow } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { useTranslation } from "react-i18next";
@@ -64,6 +68,15 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
     // 댓글 ⋮ 메뉴 → 신고 시트
     const [menu, setMenu] = useState<{ anchor: HTMLElement; comment: CommentRow } | null>(null);
     const [reporting, setReporting] = useState<CommentRow | null>(null);
+    // 내 댓글 고치기(그 자리에서) / 지우기(확인 대화상자)
+    const [editing, setEditing] = useState<{ id: number; text: string } | null>(null);
+    const [deleting, setDeleting] = useState<CommentRow | null>(null);
+    // 고치기를 누르면 입력 칸으로 커서를 옮긴다 (누른 사람의 동작에 따른 이동이라 autoFocus 대신 한 번만)
+    const editInputRef = useRef<HTMLTextAreaElement | null>(null);
+    const editingId = editing?.id;
+    useEffect(() => {
+        if (editingId !== undefined) editInputRef.current?.focus();
+    }, [editingId]);
     const [snack, setSnack] = useState<string | null>(null);
 
     const commentsQuery = useQuery({
@@ -108,6 +121,33 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
             qc.invalidateQueries({ queryKey: ["me", "comments"] }); // 내 정보의 댓글 목록
         },
         onError: (e: Error) => setError(friendlyError(e, t("interactions.commentFailed"))),
+    });
+
+    const editMut = useMutation({
+        mutationFn: (args: { id: number; text: string }) => editComment(args.id, args.text),
+        onSuccess: () => {
+            setEditing(null);
+            setError(null);
+            qc.invalidateQueries({ queryKey: ["toilet-comments", toiletId] });
+            qc.invalidateQueries({ queryKey: ["me", "comments"] });
+        },
+        onError: (e: Error) => setError(friendlyError(e, t("interactions.editFailed"))),
+    });
+
+    const deleteMut = useMutation({
+        mutationFn: (id: number) => deleteComment(id),
+        onSuccess: () => {
+            setDeleting(null);
+            setError(null);
+            setSnack(t("interactions.deleted"));
+            qc.invalidateQueries({ queryKey: ["toilet-comments", toiletId] });
+            qc.invalidateQueries({ queryKey: ["toilets", "near"] }); // 지도 배지의 댓글 수
+            qc.invalidateQueries({ queryKey: ["me", "comments"] });
+        },
+        onError: (e: Error) => {
+            setDeleting(null);
+            setError(friendlyError(e, t("interactions.deleteFailed")));
+        },
     });
 
     return (
@@ -220,13 +260,15 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
                                         <b>{c.isMine ? t("interactions.me") : c.authorDeleted ? t("interactions.deletedUser") : c.authorName}</b>
                                     )}
                                     <span>{formatRelativeOrDate(c.createdAt)}</span>
+                                    {/* 고친 댓글은 표시 (서버는 작성 직후에도 updatedAt 을 같게 둔다) */}
+                                    {Date.parse(c.updatedAt) - Date.parse(c.createdAt) > 1000 && <span>{t("interactions.edited")}</span>}
                                 </div>
-                                {/* 남의 댓글만 신고할 수 있다 (탈퇴한 사용자 댓글도 신고는 된다) */}
-                                {!c.isMine && !readOnly && (
+                                {/* 남의 댓글은 신고, 내 댓글은 고치기·지우기 (탈퇴한 사용자 댓글도 신고는 된다) */}
+                                {!readOnly && editing?.id !== c.id && (
                                     <IconButton
                                         size="small"
                                         className="comment-more"
-                                        aria-label={t("commentReport.menu")}
+                                        aria-label={c.isMine ? t("interactions.myMenu") : t("commentReport.menu")}
                                         aria-haspopup="menu"
                                         onClick={(e) => setMenu({ anchor: e.currentTarget, comment: c })}
                                     >
@@ -234,7 +276,34 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
                                     </IconButton>
                                 )}
                             </div>
-                            <p className="comment-text">{c.text}</p>
+                            {editing?.id === c.id ? (
+                                <Stack spacing={1} sx={{ mt: 1 }}>
+                                    <TextField
+                                        value={editing.text}
+                                        onChange={(e) => setEditing({ id: c.id, text: e.target.value.slice(0, COMMENT_MAX) })}
+                                        multiline
+                                        minRows={2}
+                                        inputRef={editInputRef}
+                                        helperText={`${editing.text.length}/${COMMENT_MAX}`}
+                                        inputProps={{ "aria-label": t("interactions.comment") }}
+                                    />
+                                    <Stack direction="row" spacing={1}>
+                                        <Button
+                                            variant="contained"
+                                            size="small"
+                                            disabled={editMut.isPending || !editing.text.trim() || editing.text.trim() === c.text}
+                                            onClick={() => editMut.mutate({ id: c.id, text: editing.text.trim() })}
+                                        >
+                                            {t("interactions.save")}
+                                        </Button>
+                                        <Button size="small" disabled={editMut.isPending} onClick={() => setEditing(null)}>
+                                            {t("common.cancel")}
+                                        </Button>
+                                    </Stack>
+                                </Stack>
+                            ) : (
+                                <p className="comment-text">{c.text}</p>
+                            )}
                             {c.isMine ? (
                                 // 내 댓글: 표는 못 누르고 받은 수만
                                 <div className="votes">
@@ -283,17 +352,62 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
             </CardContent>
 
             <Menu anchorEl={menu?.anchor} open={menu !== null} onClose={() => setMenu(null)}>
-                <MenuItem
-                    onClick={() => {
-                        const c = menu!.comment;
-                        setMenu(null);
-                        if (!auth.user) setError(t("commentReport.loginRequired"));
-                        else setReporting(c);
-                    }}
-                >
-                    {t("commentReport.action")}
-                </MenuItem>
+                {menu?.comment.isMine
+                    ? [
+                          <MenuItem
+                              key="edit"
+                              onClick={() => {
+                                  const c = menu.comment;
+                                  setMenu(null);
+                                  setEditing({ id: c.id, text: c.text });
+                              }}
+                          >
+                              {t("interactions.editComment")}
+                          </MenuItem>,
+                          <MenuItem
+                              key="delete"
+                              onClick={() => {
+                                  const c = menu.comment;
+                                  setMenu(null);
+                                  setDeleting(c);
+                              }}
+                              sx={{ color: "var(--color-error)" }}
+                          >
+                              {t("interactions.deleteComment")}
+                          </MenuItem>,
+                      ]
+                    : (
+                          <MenuItem
+                              onClick={() => {
+                                  const c = menu!.comment;
+                                  setMenu(null);
+                                  if (!auth.user) setError(t("commentReport.loginRequired"));
+                                  else setReporting(c);
+                              }}
+                          >
+                              {t("commentReport.action")}
+                          </MenuItem>
+                      )}
             </Menu>
+            <Dialog open={deleting !== null} onClose={deleteMut.isPending ? undefined : () => setDeleting(null)} fullWidth maxWidth="xs">
+                <DialogTitle>{t("interactions.deleteTitle")}</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2">{t("interactions.deleteBody")}</Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDeleting(null)} disabled={deleteMut.isPending}>
+                        {t("common.cancel")}
+                    </Button>
+                    <Button
+                        variant="contained"
+                        color="error"
+                        disabled={deleteMut.isPending}
+                        onClick={() => deleting && deleteMut.mutate(deleting.id)}
+                    >
+                        {t("interactions.deleteComment")}
+                    </Button>
+                </DialogActions>
+            </Dialog>
             <ReportSheet
                 comment={reporting}
                 onClose={() => setReporting(null)}

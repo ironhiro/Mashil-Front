@@ -61,7 +61,8 @@ export function StatusTile({ toilet }: Omit<Props, "variant">) {
     const status = statusOf(toilet);
     const detail = statusDetail(t, status);
     return (
-        <div className={`plate ${stateClass(tileStateOf(status))}`}>
+        // 자세한 문구가 없으면 ("24시간"처럼 한 마디) 판 가운데에 둔다
+        <div className={`plate ${stateClass(tileStateOf(status))}${detail ? "" : " is-single"}`}>
             <span className="figure">{openStatusLabel(t, status, "short")}</span>
             {detail && <span className="unit">{detail}</span>}
         </div>

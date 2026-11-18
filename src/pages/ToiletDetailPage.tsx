@@ -7,6 +7,7 @@ import { Alert, Box, Button, CircularProgress, IconButton, Link, Stack, Typograp
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import IosShareIcon from "@mui/icons-material/IosShare";
 import PhoneIcon from "@mui/icons-material/Phone";
+import PhoneDisabledIcon from "@mui/icons-material/PhoneDisabled";
 import NavigationIcon from "@mui/icons-material/NavigationOutlined";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -40,15 +41,6 @@ interface DetailState {
  * 화장실 상세 (Hallmark · Wayfind): 지도 띠, 거리 판과 상태 판, 요일 8칸(오늘은 잉크 칸), 묶음 표와 원문,
  * 시설 4칸, 편의시설, 평점·댓글, 출처와 "정보 수정 요청", 하단 고정 바(전화와 길찾기).
  */
-/** 누르면 전화 걸기 화면 (앱은 tel: 를 전화 앱으로 넘긴다). 번호는 글자 그대로 보이고 밑줄로 누를 수 있음을 알린다 */
-function PhoneLink({ phone, label }: { phone: string; label: string }) {
-    return (
-        <Link href={`tel:${phone.replace(/[^0-9+]/g, "")}`} aria-label={label} color="inherit" sx={{ textUnderlineOffset: 3, fontWeight: 600 }}>
-            {phone}
-        </Link>
-    );
-}
-
 export function ToiletDetailPage() {
     const { id } = useParams();
     const toiletId = Number(id);
@@ -102,6 +94,7 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
     };
 
     const hasCoords = toilet.latitude != null && toilet.longitude != null;
+    const phoneToCall = toilet.phone ?? toilet.orgPhone ?? null;
     const split = useMediaQuery(LANDSCAPE_SPLIT);
 
     return (
@@ -154,23 +147,6 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                                 <CopyButton text={(toilet.roadAddress ?? toilet.lotAddress)!} what={t("copy.address")} />
                             </Typography>
                         )}
-                        {toilet.phone ? (
-                            <Typography variant="body1" sx={{ mt: 0.5 }}>
-                                <PhoneLink phone={toilet.phone} label={`${t("detail.call")} ${toilet.phone}`} />
-                                <CopyButton text={toilet.phone} what={t("copy.phone")} />
-                            </Typography>
-                        ) : (
-                            toilet.orgPhone && (
-                                // 화장실 번호가 아니라 관리기관 번호 — 그렇다고 밝힌다
-                                <Typography variant="body1" sx={{ mt: 0.5 }}>
-                                    <PhoneLink phone={toilet.orgPhone} label={`${t("detail.callOrg")} ${toilet.orgPhone}`} />
-                                    <CopyButton text={toilet.orgPhone} what={t("copy.phone")} />
-                                    <Typography component="span" variant="body2" color="text.secondary" sx={{ display: "block" }}>
-                                        {t("detail.orgPhone", { org: toilet.managementOrg ?? "" })}
-                                    </Typography>
-                                </Typography>
-                            )
-                        )}
                     </Box>
 
                     <HoursSection toilet={toilet} />
@@ -221,14 +197,25 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                     gap: 1,
                 }}
             >
-                {(toilet.phone || toilet.orgPhone) && (
+                {/* 전화는 이 단추로만 (본문에 번호를 따로 적지 않는다). 번호가 없으면 자리는 두고 누를 수 없게 해서
+                    바의 배치가 화장실마다 달라지지 않게 한다. 화장실 번호가 없으면 관리기관 번호로 건다 */}
+                {phoneToCall ? (
                     <IconButton
                         component="a"
-                        href={`tel:${toilet.phone ?? toilet.orgPhone}`}
+                        href={`tel:${phoneToCall.replace(/[^0-9+]/g, "")}`}
                         aria-label={toilet.phone ? `${t("detail.call")} ${toilet.phone}` : `${t("detail.callOrg")} ${toilet.orgPhone}`}
+                        title={toilet.phone ? undefined : t("detail.orgPhone", { org: toilet.managementOrg ?? "" })}
                         sx={{ width: 52, height: 52, border: "var(--rule-bar) solid var(--color-ink)", color: "var(--color-ink)" }}
                     >
                         <PhoneIcon />
+                    </IconButton>
+                ) : (
+                    <IconButton
+                        disabled
+                        aria-label={t("detail.noPhone")}
+                        sx={{ width: 52, height: 52, border: "var(--rule-bar) solid var(--color-rule)", "&.Mui-disabled": { color: "var(--color-muted)" } }}
+                    >
+                        <PhoneDisabledIcon />
                     </IconButton>
                 )}
                 {hasCoords && (
