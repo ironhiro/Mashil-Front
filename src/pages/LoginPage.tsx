@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     Alert,
     Box,
@@ -103,10 +103,20 @@ export function LoginPage() {
     const [displayName, setDisplayName] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [missing, setMissing] = useState<"email" | "password" | null>(null);
+    const emailRef = useRef<HTMLInputElement | null>(null);
+    const passwordRef = useRef<HTMLInputElement | null>(null);
 
     async function onSubmit(e: React.FormEvent) {
         e.preventDefault();
         setError(null);
+        // 필수 칸은 브라우저 말풍선 대신 칸 아래에 알린다
+        const missing = !email.trim() ? "email" : !password ? "password" : null;
+        setMissing(missing);
+        if (missing) {
+            (missing === "email" ? emailRef : passwordRef).current?.focus();
+            return;
+        }
         setSubmitting(true);
         try {
             if (mode === "login") {
@@ -169,13 +179,19 @@ export function LoginPage() {
                 <Tab value="register" label={t("login.tabRegister")} />
             </Tabs>
 
-            <form onSubmit={onSubmit}>
+            <form onSubmit={onSubmit} noValidate>
                 <Stack spacing={2}>
                     <TextField
                         type="email"
                         label={t("login.email")}
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => {
+                            setEmail(e.target.value);
+                            if (missing === "email") setMissing(null);
+                        }}
+                        inputRef={emailRef}
+                        error={missing === "email"}
+                        helperText={missing === "email" ? t("login.emailRequired") : undefined}
                         required
                         autoComplete="email"
                         fullWidth
@@ -184,7 +200,13 @@ export function LoginPage() {
                         type="password"
                         label={t("login.password")}
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        onChange={(e) => {
+                            setPassword(e.target.value);
+                            if (missing === "password") setMissing(null);
+                        }}
+                        inputRef={passwordRef}
+                        error={missing === "password"}
+                        helperText={missing === "password" ? t("login.passwordRequired") : undefined}
                         required
                         autoComplete={mode === "login" ? "current-password" : "new-password"}
                         fullWidth

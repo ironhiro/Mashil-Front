@@ -28,6 +28,7 @@ import { BoardRowContent } from "../components/BoardRow";
 import CloseIcon from "@mui/icons-material/Close";
 import IosShareIcon from "@mui/icons-material/IosShare";
 import { ShareSheet } from "../components/ShareSheet";
+import { SPLIT } from "../lib/layout";
 import { toiletShareUrl } from "../lib/share";
 import NavigationIcon from "@mui/icons-material/NavigationOutlined";
 import { ToiletInteractions } from "../components/ToiletInteractions";
@@ -235,7 +236,8 @@ export function HomePage() {
     const activeFilters = activeFilterCount(filter);
     const accessibleOnly = filter.facilities.includes(FacilityFilter.Accessible);
     // 넓은 화면에서는 지도가 늘 오른쪽에 있으므로 왼쪽 패널은 목록이나 추천 (지도 보기는 목록으로 본다)
-    const wide = useMediaQuery("(min-width: 64rem)");
+    // 목록|지도 나란히: 넓은 화면이거나 가로 (lib/layout.ts)
+    const wide = useMediaQuery(SPLIT);
     const panelMode = wide && viewMode === ViewMode.Map ? ViewMode.List : viewMode;
     /** 넓은 화면의 목록에서 고르면 상세로 가지 않고 지도에서 고른다 (지도와 카드가 함께 보이므로) */
     const selectOnMap = (toilet: ToiletNear) => {
@@ -303,8 +305,8 @@ export function HomePage() {
         <SearchField onSearch={startSearch} />
         <Snackbar open={notice !== null} autoHideDuration={4000} onClose={() => setNotice(null)} message={notice} />
 
-        {/* === 필터 버튼 + 지도/목록 전환 === */}
-        <Stack direction="row" spacing={1} alignItems="center">
+        {/* === 필터 버튼 + 지도/목록 전환 === (좁은 폰에서는 전환 칸이 다음 줄로 내려간다) */}
+        <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
             <Button
                 variant={activeFilters > 0 ? "contained" : "outlined"}
                 color="secondary"
@@ -328,6 +330,7 @@ export function HomePage() {
                 aria-pressed={accessibleOnly}
                 aria-label={t("filter.accessibleOnly")}
                 title={t("filter.accessibleOnly")}
+                startIcon={<AccessibleIcon fontSize="small" />}
                 onClick={() =>
                     setFilter((f) => ({
                         ...f,
@@ -336,9 +339,10 @@ export function HomePage() {
                             : [...f.facilities, FacilityFilter.Accessible],
                     }))
                 }
-                sx={{ minHeight: 40, minWidth: 40, px: 1 }}
+                sx={{ minHeight: 40, px: 1.5 }}
             >
-                <AccessibleIcon fontSize="small" />
+                {/* 아이콘만으로는 뜻이 안 보여서 짧은 글자를 함께 (Material 3: 아이콘 버튼은 뜻이 분명할 때만) */}
+                {t("facility.filter.accessible")}
             </Button>
             <Box sx={{ flexGrow: 1 }} />
             <ToggleButtonGroup
@@ -666,7 +670,7 @@ export function HomePage() {
         </>
     );
 
-    // 넓은 화면(64rem~): 왼쪽 패널(제목·필터·고른 곳·목록)과 오른쪽 지도를 나란히. 지도는 화면 높이를 채운 채 붙어 있다
+    // 넓거나 가로인 화면: 왼쪽 패널(제목·필터·고른 곳·목록)과 오른쪽 지도를 나란히. 지도는 화면 높이를 채운 채 붙어 있다
     if (wide) {
         return (
             <Box className="home-split">
