@@ -13,7 +13,6 @@ import type { TFunction } from "i18next";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { computeStraightRoute, fetchToilet } from "../api";
 import type { LatLng, ScheduleDay, ToiletDetail } from "../api";
-import { useAuth } from "../auth/AuthContext";
 import { AdminToiletLink } from "../components/AdminToiletLink";
 import { MiniMap } from "../components/MiniMap";
 import { StatusTile, openStatusLabel } from "../components/OpenStatusBadge";
@@ -40,6 +39,15 @@ interface DetailState {
  * 화장실 상세 (Hallmark · Wayfind): 지도 띠, 거리 판과 상태 판, 요일 8칸(오늘은 잉크 칸), 묶음 표와 원문,
  * 시설 4칸, 편의시설, 평점·댓글, 출처와 "정보 수정 요청", 하단 고정 바(전화와 길찾기).
  */
+/** 누르면 전화 걸기 화면 (앱은 tel: 를 전화 앱으로 넘긴다). 번호는 글자 그대로 보이고 밑줄로 누를 수 있음을 알린다 */
+function PhoneLink({ phone, label }: { phone: string; label: string }) {
+    return (
+        <Link href={`tel:${phone.replace(/[^0-9+]/g, "")}`} aria-label={label} color="inherit" sx={{ textUnderlineOffset: 3, fontWeight: 600 }}>
+            {phone}
+        </Link>
+    );
+}
+
 export function ToiletDetailPage() {
     const { id } = useParams();
     const toiletId = Number(id);
@@ -78,7 +86,6 @@ export function ToiletDetailPage() {
 function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: DetailState; onBack: () => void }) {
     const { t, i18n } = useTranslation();
     const navigate = useNavigate();
-    const auth = useAuth();
     const [shareOpen, setShareOpen] = useState(false);
     const status = statusOf(toilet);
 
@@ -90,8 +97,7 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
 
     const requestFix = () => {
         const state = { kind: ChangeRequestKind.Edit, targetToiletId: toilet.id, targetName: toilet.name };
-        if (auth.user) navigate("/change-requests/new", { state });
-        else navigate("/login");
+        navigate("/change-requests/new", { state }); // 비회원도 제보할 수 있다
     };
 
     const hasCoords = toilet.latitude != null && toilet.longitude != null;
@@ -142,14 +148,14 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                         )}
                         {toilet.phone ? (
                             <Typography variant="body1" sx={{ mt: 0.5 }}>
-                                {toilet.phone}
+                                <PhoneLink phone={toilet.phone} label={`${t("detail.call")} ${toilet.phone}`} />
                                 <CopyButton text={toilet.phone} what={t("copy.phone")} />
                             </Typography>
                         ) : (
                             toilet.orgPhone && (
                                 // 화장실 번호가 아니라 관리기관 번호 — 그렇다고 밝힌다
                                 <Typography variant="body1" sx={{ mt: 0.5 }}>
-                                    {toilet.orgPhone}
+                                    <PhoneLink phone={toilet.orgPhone} label={`${t("detail.callOrg")} ${toilet.orgPhone}`} />
                                     <CopyButton text={toilet.orgPhone} what={t("copy.phone")} />
                                     <Typography component="span" variant="body2" color="text.secondary" sx={{ display: "block" }}>
                                         {t("detail.orgPhone", { org: toilet.managementOrg ?? "" })}

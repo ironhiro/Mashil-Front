@@ -106,15 +106,6 @@ export function NewChangeRequestPage() {
     }, [kind, detailQuery.data]);
 
 
-    if (!auth.user) {
-        return (
-            <Alert severity="info">
-                {t("report.loginRequired")}{" "}
-                <Button size="small" onClick={() => navigate("/login")}>{t("nav.login")}</Button>
-            </Alert>
-        );
-    }
-
     if (doneId !== null) {
         return (
             <Stack spacing={2}>
@@ -191,6 +182,13 @@ export function NewChangeRequestPage() {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 {t("report.intro")}
             </Typography>
+            {/* 비회원도 제보할 수 있다. 다만 처리 결과는 회원만 내 정보에서 본다 */}
+            {!auth.user && (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                    {t("report.guestNote")}{" "}
+                    <Button size="small" onClick={() => navigate("/login")}>{t("nav.login")}</Button>
+                </Alert>
+            )}
 
             <form onSubmit={onSubmit}>
                 <Stack spacing={2}>

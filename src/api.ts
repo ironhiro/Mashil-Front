@@ -402,7 +402,8 @@ export function haversineMeters(a: LatLng, b: LatLng): number {
 
 export interface ChangeRequestRow {
     id: number;
-    requesterId: string;
+    /** 비회원 제보면 null */
+    requesterId: string | null;
     targetToiletId: number | null;
     kind: string;
     payloadJson: string;

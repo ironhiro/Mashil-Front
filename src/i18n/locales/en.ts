@@ -342,7 +342,6 @@ export const en: Messages = {
     },
     openStatus: {
         always: "Open 24 hours",
-        alwaysDetail: "Open any time",
         openUntil: "Open until {{time}}",
         closedNoNext: "Closed right now",
         leftHours: "Closes in {{h}} h {{m}} min",
@@ -461,7 +460,7 @@ export const en: Messages = {
         nativeFailed: "Couldn't finish logging in. Please try again.",
     },
     report: {
-        loginRequired: "Please log in to send a report.",
+        guestNote: "You can send a report without logging in. Log in to see how it was handled in My page.",
         done: "Thanks! We got your report and will apply it after review. (Report no. <b>{{id}}</b>)",
         another: "Send another report",
         title: "Report restroom info",
