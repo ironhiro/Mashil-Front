@@ -254,8 +254,8 @@ export const ko = {
         varies: "요일마다 달라요",
         closedDay: "휴무",
         noInfo: "정보없음",
-        holidayAsDay: "그날 요일 시간과 같아요",
-        holidayAsDayShort: "요일과 같음",
+        holidayAsDay: "해당 요일 시간과 같아요",
+        holidayAsDayShort: "해당 요일과 같음",
         allDay: "24시간",
         rawHours: "원문: {{raw}}",
         schedule: {
