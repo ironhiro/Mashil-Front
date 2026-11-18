@@ -557,7 +557,8 @@ export async function fetchAppStatus(): Promise<AppStatus | null> {
 
 // ── 약관 동의 (docs/API.md Auth) ────────────────────────────────────────
 
-export type ConsentDocType = "Terms" | "Privacy" | "LocationTerms";
+/** 동의 종류. AgeOver14 는 문서가 아니라 확인 항목. LocationTerms 는 위치를 기기에서만 쓰게 되면서 필수에서 빠졌다 (서버 설정이 정함) */
+export type ConsentDocType = "Terms" | "Privacy" | "LocationTerms" | "AgeOver14";
 
 export interface ConsentStatus {
     required: boolean;
