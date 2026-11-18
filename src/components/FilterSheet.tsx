@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Box, Button, ButtonBase, Drawer, Stack, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
+import { Box, Button, ButtonBase, Stack, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { fetchNearbyToilets } from "../api";
@@ -8,6 +8,7 @@ import { SEARCH_RADIUS_OPTIONS, SearchRadius } from "../lib/enums";
 import type { FacilityFilter } from "../lib/enums";
 import { EMPTY_FILTER, FACILITY_TILE_OPTIONS, KIND_FILTER_OPTIONS, applyFilter } from "../lib/toiletFilter";
 import type { KindFilter, OpenFilter, ToiletFilter } from "../lib/toiletFilter";
+import { BottomSheet, sheetBottomPad } from "./BottomSheet";
 
 interface Props {
     open: boolean;
@@ -55,21 +56,8 @@ export function FilterSheet({ open, onClose, center, filter, radiusM, onApply }:
         setDraft((d) => ({ ...d, kinds: d.kinds.includes(k) ? d.kinds.filter((x) => x !== k) : [...d.kinds, k] }));
 
     return (
-        <Drawer
-            anchor="bottom"
-            open={open}
-            onClose={onClose}
-            slotProps={{
-                paper: {
-                    sx: {
-                        maxWidth: 640,
-                        mx: "auto",
-                        maxHeight: "90vh",
-                    },
-                },
-            }}
-        >
-            <Box sx={{ px: 2, pt: 1.25, pb: 2, display: "flex", flexDirection: "column", gap: 2.25, overflowY: "auto" }}>
+        <BottomSheet open={open} onClose={onClose}>
+            <Box sx={{ px: 2, pb: sheetBottomPad, display: "flex", flexDirection: "column", gap: 2.25 }}>
                 <Typography component="h2" variant="h6">
                     {t("filter.title")}
                 </Typography>
@@ -169,7 +157,7 @@ export function FilterSheet({ open, onClose, center, filter, radiusM, onApply }:
                     </Button>
                 </Stack>
             </Box>
-        </Drawer>
+        </BottomSheet>
     );
 }
 

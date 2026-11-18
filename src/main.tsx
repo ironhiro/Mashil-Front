@@ -18,6 +18,10 @@ import { App } from "./App";
 import { BROWSER_BLOCKED } from "./lib/browserGate";
 import { GetAppScreen } from "./components/GetAppScreen";
 import { sentryEnvironment } from "./lib/sentryEnv";
+import { installBackHandler } from "./lib/backHandler";
+
+// Android 뒤로 가기가 열린 시트·대화상자부터 닫게 (앱이 window.__mashilBack 을 먼저 부른다)
+installBackHandler();
 
 // 에러 모니터링 (NFR-10) — VITE_SENTRY_DSN 이 있는 빌드에서만 켠다. 별도 청크로 나중에 받아 첫 화면 번들에 넣지 않는다
 // (DSN 이 없는 빌드는 이 블록과 청크가 통째로 빠진다). 개인정보는 보내지 않고, URL 의 위치 쿼리는 지운다 (NFR-06).

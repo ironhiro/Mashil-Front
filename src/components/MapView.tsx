@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { bottomNavHeight } from "./BottomNav";
+import { useMapRelayout } from "../lib/layout";
 import { Alert, Box, Button, IconButton, Popover, Stack, Typography, useMediaQuery } from "@mui/material";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { useTranslation } from "react-i18next";
@@ -105,7 +106,9 @@ export function MapView({
             const top = el.getBoundingClientRect().top + window.scrollY;
             const viewport = window.visualViewport?.height ?? window.innerHeight;
             // 하단 탭이 있으면 그 높이만큼 뺀다 (지도가 탭 아래로 들어가지 않게)
-            setHeight(Math.max(MAP_MIN_HEIGHT, Math.round(viewport - top - MAP_BOTTOM_GAP - bottomNavHeight())));
+            // 가로 폰처럼 화면이 낮으면 최소 높이도 화면 안에 들어오게 줄인다
+            const min = Math.min(MAP_MIN_HEIGHT, Math.round(viewport - 2 * MAP_BOTTOM_GAP));
+            setHeight(Math.max(min, Math.round(viewport - top - MAP_BOTTOM_GAP - bottomNavHeight())));
         };
         measure();
         window.addEventListener("resize", measure);
@@ -115,6 +118,9 @@ export function MapView({
             window.visualViewport?.removeEventListener("resize", measure);
         };
     }, []);
+
+    // 0a) 폭만 바뀌어도 (회전, 레일, 분할 화면) 다시 그린다
+    useMapRelayout(containerRef, () => mapRef.current);
 
     // 0b) 칸 크기가 바뀌면 Kakao 지도에 알려 다시 그리게 한다 (안 하면 빈 타일이 남는다)
     useEffect(() => {

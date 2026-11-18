@@ -29,7 +29,14 @@ export const theme = createTheme({
     typography: {
         fontFamily: "var(--font-body)",
         fontWeightBold: 800,
-        h4: { fontWeight: 800, fontSize: "var(--text-3xl)", letterSpacing: "var(--tracking-display)", lineHeight: 1.05 },
+        // 가로 폰처럼 화면이 낮으면 큰 제목이 한 화면을 다 먹지 않게 한 단계 줄인다
+        h4: {
+            fontWeight: 800,
+            fontSize: "var(--text-3xl)",
+            letterSpacing: "var(--tracking-display)",
+            lineHeight: 1.05,
+            "@media (max-height: 30rem)": { fontSize: "var(--text-2xl)" },
+        },
         h5: { fontWeight: 800, fontSize: "var(--text-2xl)", letterSpacing: "var(--tracking-display)", lineHeight: 1.05 },
         h6: { fontWeight: 800, fontSize: "var(--text-xl)", lineHeight: 1.1 },
         subtitle1: { fontWeight: 800 },
@@ -119,6 +126,10 @@ export const theme = createTheme({
                     // 포커스는 테두리 두께가 아니라 색 (39a). 바깥 outline 은 떠 있는 라벨("표시 이름")을 가로질러 그어져서
                     // 라벨 자리를 비워 두는 테두리(notched outline)의 색을 바꾼다
                     "&.Mui-focused .MuiOutlinedInput-notchedOutline": { border: "var(--rule-bar) solid var(--color-focus)" },
+                    // 필수 칸을 비우고 보냈을 때: 포커스가 있어도 테두리는 오류 색 (라벨·안내 글자와 같은 색)
+                    "&.Mui-error .MuiOutlinedInput-notchedOutline, &.Mui-error.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                        border: "var(--rule-bar) solid var(--color-error)",
+                    },
                 },
             },
         },

@@ -32,6 +32,7 @@ import {
     remainingOnRoute,
 } from "../lib/walkGuide";
 import type { WalkGuideState } from "../lib/walkGuide";
+import { LANDSCAPE_SPLIT, useMapRelayout } from "../lib/layout";
 
 /**
  * 방향 안내 (직선): 내 위치에서 화장실까지 점선을 긋고, 걸어가는 동안 위치를 따라가며 남은 거리를 보여 준다.
@@ -207,6 +208,8 @@ function GuideBody({
                 display: "flex",
                 flexDirection: "column",
                 bgcolor: "var(--color-paper)",
+                // 가로로 넓으면 지도(왼쪽) | 안내 판(오른쪽). 세로는 지도 위, 판 아래
+                [`@media ${LANDSCAPE_SPLIT}`]: { flexDirection: "row" },
             }}
         >
             <Box sx={{ position: "relative", flex: 1, minHeight: 0 }}>
@@ -245,6 +248,16 @@ function GuideBody({
                     px: 2,
                     pt: 1.5,
                     pb: "calc(12px + env(safe-area-inset-bottom))",
+                    [`@media ${LANDSCAPE_SPLIT}`]: {
+                        width: "22rem",
+                        flexShrink: 0,
+                        borderTop: 0,
+                        borderLeft: "var(--rule-bar) solid var(--color-ink)",
+                        overflowY: "auto",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "flex-end",
+                    },
                 }}
             >
                 <Stack spacing={1.25}>
@@ -316,7 +329,7 @@ function GuideBody({
                         </>
                     ) : (
                         <Stack direction="row" spacing={1} alignItems="center" role="status">
-                            <CircularProgress size={18} color="inherit" aria-hidden />
+                            <CircularProgress size={24} thickness={5} aria-hidden sx={{ flexShrink: 0 }} />
                             <span>{t("map.locating")}</span>
                         </Stack>
                     )}
@@ -397,6 +410,8 @@ function GuideMap({
         accuracy: kakao.maps.Circle;
         fitted: boolean;
     } | null>(null);
+    // 회전·가로 배치로 칸 크기가 바뀌면 다시 그린다 (가운데는 따라가기 효과가 다시 맞춘다)
+    useMapRelayout(ref, () => objs.current?.map);
     // 지도와 도형이 만들어지면 올린다 (아래 효과들이 다시 돌게)
     const [readyTick, setReadyTick] = useState(0);
     const onUserMoveRef = useRef(onUserMove);

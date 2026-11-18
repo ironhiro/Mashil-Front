@@ -40,3 +40,27 @@ export function loadKakaoMaps(): Promise<typeof kakao.maps> {
     });
     return loadingPromise;
 }
+
+export interface ReverseAddress {
+    roadAddress: string;
+    lotAddress: string;
+}
+
+/** 좌표 → 도로명·지번 주소 (Kakao Geocoder). 못 찾으면 둘 다 빈 문자열, SDK·네트워크 실패는 reject. */
+export async function reverseGeocode(lat: number, lng: number): Promise<ReverseAddress> {
+    const maps = await loadKakaoMaps();
+    return new Promise((resolve, reject) => {
+        new maps.services.Geocoder().coord2Address(lng, lat, (result, status) => {
+            if (status === maps.services.Status.OK && result[0]) {
+                resolve({
+                    roadAddress: result[0].road_address?.address_name ?? "",
+                    lotAddress: result[0].address?.address_name ?? "",
+                });
+            } else if (status === maps.services.Status.ZERO_RESULT) {
+                resolve({ roadAddress: "", lotAddress: "" });
+            } else {
+                reject(new Error(`reverse geocode failed: ${status}`));
+            }
+        });
+    });
+}

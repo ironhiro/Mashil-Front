@@ -142,6 +142,8 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
                                 // MUI 기본 접근성 이름은 영어("4 Stars")라 현재 언어로
                                 getLabelText={(v) => t("interactions.starLabel", { count: v })}
                                 emptyLabelText={t("interactions.noRating")}
+                                // 별 하나가 누르는 칸 하나: 36px 별 + 6px 여백 = 48px (Material 3 48dp, HIG 44pt)
+                                sx={{ fontSize: "2.25rem", "& .MuiRating-icon": { p: "6px" } }}
                             />
                             {ratingMut.isPending && <CircularProgress size={16} />}
                             {ratingMut.isSuccess && !ratingMut.isPending && (
