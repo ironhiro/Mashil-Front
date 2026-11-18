@@ -24,7 +24,7 @@ export function BottomNav() {
     ];
     return (
         <nav className="bottom-nav" aria-label={t("nav.label")}>
-            {/* 넓은 화면(64rem~)에서만 보이는 워드마크. 그때 탭 줄은 화면 위쪽 바가 된다 */}
+            {/* 600px 이상에서만 보이는 워드마크. 그때 탭 줄은 왼쪽 내비게이션 레일이 된다 (Material 3) */}
             <Link to="/" className="bottom-nav-brand">
                 {t("app.name")}
             </Link>
@@ -38,7 +38,7 @@ export function BottomNav() {
     );
 }
 
-/** 하단 탭의 실제 높이 (없거나 넓은 화면에서 위쪽 바가 됐으면 0). 지도 칸처럼 화면 아래까지 채우는 요소가 뺀다. */
+/** 하단 탭의 실제 높이 (없거나 넓은 화면에서 왼쪽 레일이 됐으면 0). 지도 칸처럼 화면 아래까지 채우는 요소가 뺀다. */
 export function bottomNavHeight() {
     const r = document.querySelector(".bottom-nav")?.getBoundingClientRect();
     if (!r) return 0;

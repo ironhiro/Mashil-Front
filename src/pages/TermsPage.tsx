@@ -1,11 +1,11 @@
 import { Alert, Box, Button, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import type { ConsentDocType } from "../api";
+import type { LegalDocType } from "../legal/documents";
 import { hasPlaceholders, LEGAL_DOCS } from "../legal/documents";
 import { OPERATOR } from "../legal/operator";
 
-const KNOWN: ConsentDocType[] = ["Terms", "Privacy", "LocationTerms"];
+const KNOWN: LegalDocType[] = ["Terms", "Privacy", "LocationTerms"];
 
 /**
  * 약관 보기 (LEG-02, LEG-03). 본문은 src/legal/documents.ts 에 있다 (한국어가 정본).
@@ -16,7 +16,7 @@ export function TermsPage() {
     const { t, i18n } = useTranslation();
     const navigate = useNavigate();
     const version = (useLocation().state as { version?: string } | null)?.version;
-    const docKey = KNOWN.includes(docType as ConsentDocType) ? (docType as ConsentDocType) : "Terms";
+    const docKey = KNOWN.includes(docType as LegalDocType) ? (docType as LegalDocType) : "Terms";
     const doc = LEGAL_DOCS[docKey];
     const draft = OPERATOR.isDraft || hasPlaceholders(doc);
 

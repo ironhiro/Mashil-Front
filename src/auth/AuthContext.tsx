@@ -7,6 +7,7 @@ import i18n from "../i18n";
 import { deleteMyAccount } from "../api";
 import { appPlatform, nativeSignIn, nativeSignOut } from "../lib/nativeBridge";
 import type { SocialProvider } from "../lib/nativeBridge";
+import { userTag } from "../lib/userTag";
 
 export interface AuthUser {
     id: string;
@@ -20,7 +21,7 @@ export interface AuthUser {
 
 /** 화면에 보여줄 사용자 이름. */
 export function userLabel(u: AuthUser): string {
-    return u.displayName || u.email || i18n.t("app.defaultUserName");
+    return `${u.displayName || u.email || i18n.t("app.defaultUserName")}#${userTag(u.id)}`;
 }
 
 export interface SocialLoginResult {

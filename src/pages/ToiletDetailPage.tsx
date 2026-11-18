@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { CopyButton } from "../components/CopyButton";
 import { ShareSheet } from "../components/ShareSheet";
+import { LANDSCAPE_SPLIT } from "../lib/layout";
 import { toiletShareUrl } from "../lib/share";
-import { Alert, Box, Button, CircularProgress, IconButton, Link, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, IconButton, Link, Stack, Typography, useMediaQuery } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import IosShareIcon from "@mui/icons-material/IosShare";
 import PhoneIcon from "@mui/icons-material/Phone";
@@ -101,13 +102,16 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
     };
 
     const hasCoords = toilet.latitude != null && toilet.longitude != null;
+    const split = useMediaQuery(LANDSCAPE_SPLIT);
 
     return (
         // App 의 Container 여백을 걷어 지도 띠를 가장자리까지
         <Box sx={{ mx: { xs: -2, sm: -3 }, mt: -3 }}>
-            <Box sx={{ position: "relative" }}>
+            {/* 가로로 넓으면 지도 | 내용 (app.css .detail-split). 지도 칸은 화면 높이에서 하단 바를 뺀 만큼 */}
+            <Box className="detail-split">
+            <Box className="detail-map" sx={{ position: "relative", height: split ? "calc(100dvh - 76px - env(safe-area-inset-bottom))" : undefined }}>
                 {hasCoords ? (
-                    <MiniMap lat={toilet.latitude!} lng={toilet.longitude!} label={openStatusLabel(t, status, "short")} state={tileStateOf(status)} />
+                    <MiniMap lat={toilet.latitude!} lng={toilet.longitude!} label={openStatusLabel(t, status, "short")} state={tileStateOf(status)} fill={split} />
                 ) : (
                     <Box sx={{ height: 72, borderBottom: "var(--rule-bar) solid var(--color-ink)" }} />
                 )}
@@ -192,6 +196,7 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                         <AdminToiletLink toiletId={toilet.id} />
                     </Box>
                 </Stack>
+            </Box>
             </Box>
 
             {/* 하단 고정 바: 전화(아이콘)와 길찾기(주 행동) */}

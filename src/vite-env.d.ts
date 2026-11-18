@@ -11,6 +11,11 @@ interface ImportMetaEnv {
     /** 브라우저 안내 화면의 스토어 주소. 없으면 "곧 나와요" */
     readonly VITE_PLAY_STORE_URL?: string;
     readonly VITE_APP_STORE_URL?: string;
+    /** 서버 도보 경로: on 일 때만 켬 (사용자 위치를 서버로 보내므로 기본 끔). api.ts WALK_ROUTE_ENABLED */
+    readonly VITE_WALK_ROUTE?: "on" | "off";
+    /** 이메일·비밀번호 로그인 칸: 개발 빌드는 늘 보이고, 운영 빌드는 on 일 때만 (LoginPage EMAIL_LOGIN) */
+    /** 이메일·비밀번호 로그인 칸: on 일 때만 (개발·운영 모두 기본 숨김, LoginPage EMAIL_LOGIN). 서버도 Auth:LegacyPasswordLogin 이 켜져 있어야 동작 */
+    readonly VITE_EMAIL_LOGIN?: "on" | "off";
 }
 
 interface ImportMeta {
