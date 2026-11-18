@@ -62,7 +62,6 @@ export function LanguagePicker() {
  */
 export function MemberCard({ user }: { user: AuthUser }) {
     const { t } = useTranslation();
-    const provider = user.provider ? t(`me.providers.${user.provider}`) : null;
     return (
         <ButtonBase
             component={RouterLink}
@@ -88,7 +87,6 @@ export function MemberCard({ user }: { user: AuthUser }) {
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                     {user.role === UserRole.Admin ? t("app.roleAdmin") : t("app.roleUser")}
-                    {provider && ` · ${t("me.signedInWith", { provider })}`}
                 </Typography>
             </Box>
             <Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, color: "var(--color-ink)", fontWeight: 800, flexShrink: 0 }}>
@@ -110,7 +108,6 @@ export function AccountSettings({ user }: { user: AuthUser }) {
     const navigate = useNavigate();
     const [renaming, setRenaming] = useState(false);
     const [withdrawing, setWithdrawing] = useState(false);
-    const provider = user.provider ? t(`me.providers.${user.provider}`) : null;
 
     return (
         <Stack spacing={3}>
@@ -121,11 +118,6 @@ export function AccountSettings({ user }: { user: AuthUser }) {
                 <Stack direction="row" alignItems="center" spacing={1}>
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Typography sx={{ fontWeight: 800, fontSize: "var(--text-lg)", overflowWrap: "anywhere" }}>{userLabel(user)}</Typography>
-                        {provider && (
-                            <Typography variant="body2" color="text.secondary">
-                                {t("me.signedInWith", { provider })}
-                            </Typography>
-                        )}
                     </Box>
                     <Button variant="outlined" size="small" onClick={() => setRenaming(true)} sx={{ flexShrink: 0 }}>
                         {t("me.rename")}
