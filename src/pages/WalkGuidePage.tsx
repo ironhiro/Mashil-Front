@@ -5,7 +5,7 @@ import MyLocationIcon from "@mui/icons-material/MyLocation";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { fetchToilet, fetchWalkRoute } from "../api";
+import { fetchToilet, fetchWalkRoute, WALK_ROUTE_ENABLED } from "../api";
 import type { LatLng, WalkRoute, WalkRouteError } from "../api";
 import { openStatusLabel } from "../components/OpenStatusBadge";
 import { tileStateOf } from "../design/statusTile";
@@ -118,11 +118,11 @@ function GuideBody({
 
     const est = useMemo(() => (me ? estimate(me, dest) : null), [me, dest]);
 
-    // 실제 도보 경로 (서버, OpenStreetMap). 못 받으면 직선 안내 그대로
+    // 실제 도보 경로 (서버, OpenStreetMap). 꺼져 있거나 못 받으면 직선 안내 그대로
     const [route, setRoute] = useState<WalkRoute | null>(null);
     const routeReq = useRef({ inFlight: false, lastAt: 0, offCount: 0, failures: 0, gaveUp: false });
     useEffect(() => {
-        if (!me || arrived) return;
+        if (!WALK_ROUTE_ENABLED || !me || arrived) return; // 꺼져 있으면 위치를 서버로 보내지 않는다
         const r = routeReq.current;
         if (r.inFlight || r.gaveUp) return;
         // 위치가 너무 부정확하면 엉뚱한 길에 붙으므로 기다린다
