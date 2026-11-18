@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { Box, CircularProgress, Container } from "@mui/material";
 import { useTranslation } from "react-i18next";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useNavigationType } from "react-router-dom";
 import { BottomNav, showsBottomNav } from "./components/BottomNav";
 import { RequireAdmin } from "./components/RequireAdmin";
 // 찾기와 상세는 첫 화면과 가장 잦은 이동이라 바로 싣고, 나머지 화면은 처음 열 때 받는다 (첫 로딩 번들을 줄인다)
@@ -63,9 +63,12 @@ function PageLoading() {
 function useRouteFocus(pathname: string) {
     // 직전에 포커스를 옮긴 경로. 첫 화면은 여기서 시작해 건너뛴다 (StrictMode 가 효과를 두 번 돌려도 그대로)
     const last = useRef(pathname);
+    const navType = useNavigationType();
     useEffect(() => {
         if (last.current === pathname) return;
         last.current = pathname;
+        // 새 화면은 맨 위에서 시작한다 (상세·제보 양식이 앞 화면의 스크롤 위치로 열리지 않게). 뒤로 가기는 위치 유지
+        if (navType !== "POP") window.scrollTo(0, 0);
         let tries = 0;
         let frame = 0;
         const focusHeading = () => {
@@ -85,7 +88,7 @@ function useRouteFocus(pathname: string) {
         };
         frame = requestAnimationFrame(focusHeading);
         return () => cancelAnimationFrame(frame);
-    }, [pathname]);
+    }, [pathname, navType]);
 }
 
 /**
