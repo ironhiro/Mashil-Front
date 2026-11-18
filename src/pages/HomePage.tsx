@@ -134,6 +134,16 @@ export function HomePage() {
         setSearchPage(0);
         setSearchOrigin(searchOriginNow.current);
     }, []);
+    // 검색 중에는 지도·목록·추천 대신 검색 결과만 보인다. 보기 단추를 누르면 검색을 끝내고 그 보기로 간다
+    // (전에는 검색어가 남아 있으면 단추를 눌러도 결과가 그대로 남아 있었다)
+    const searching = searchTerm !== "";
+    const [searchFieldKey, setSearchFieldKey] = useState(0);
+    const clearSearch = () => {
+        lastTerm.current = "";
+        setSearchTerm("");
+        setSearchPage(0);
+        setSearchFieldKey((k) => k + 1); // 검색 칸의 글자도 비운다
+    };
     const search = useQuery({
         queryKey: ["toilets", "search", searchTerm, searchPage],
         queryFn: () => searchToilets(searchTerm, searchOrigin, searchPage * SEARCH_PAGE),
@@ -328,7 +338,7 @@ export function HomePage() {
             </Alert>
         )}
 
-        <SearchField onSearch={startSearch} />
+        <SearchField key={searchFieldKey} onSearch={startSearch} />
         <Snackbar open={notice !== null} autoHideDuration={4000} onClose={() => setNotice(null)} message={notice} />
 
         {/* === 필터 버튼 + 지도/목록 전환 === (좁은 폰에서는 전환 칸이 다음 줄로 내려간다) */}
@@ -374,8 +384,13 @@ export function HomePage() {
             <ToggleButtonGroup
                 size="small"
                 exclusive
-                value={panelMode}
-                onChange={(_, v: ViewMode | null) => v && setViewMode(v)}
+                // 검색 중에는 어느 보기도 고른 것으로 보이지 않게 (결과는 검색 결과)
+                value={searching ? null : panelMode}
+                onChange={(_, v: ViewMode | null) => {
+                    if (!v) return;
+                    if (searching) clearSearch();
+                    setViewMode(v);
+                }}
                 aria-label={t("home.viewToggle")}
             >
                 {!wide && <ToggleButton value={ViewMode.Map}>{t("home.viewMap")}</ToggleButton>}
@@ -714,7 +729,8 @@ export function HomePage() {
     return (
         <Stack spacing={2}>
             {header}
-            {viewMode === ViewMode.Map && mapView}
+            {/* 휴대폰: 검색 중에는 지도를 접고 결과만 (지도 아래에 붙어 있으면 결과가 눈에 띄지 않는다) */}
+            {viewMode === ViewMode.Map && !searching && mapView}
             {results}
             {selection}
             {debug}
