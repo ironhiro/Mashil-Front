@@ -23,10 +23,10 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 type Mode = "login" | "register";
 
 /**
- * 이메일·비밀번호 로그인 칸. 운영은 카카오·Google 만 쓰고 서버도 이메일 로그인을 꺼 둔다(Auth:LegacyPasswordLogin),
- * 그래서 개발 빌드에서만 보인다. 운영 빌드에서 켜려면 VITE_EMAIL_LOGIN=on.
+ * 이메일·비밀번호 로그인 칸. 운영은 카카오·Google 만 쓰고 서버도 이메일 로그인을 꺼 둔다(Auth:LegacyPasswordLogin).
+ * 개발 빌드도 운영과 같은 화면이 되도록 기본은 숨긴다 (2026-11-18). 개발 중 이메일 테스트 계정이 필요하면 .env.local 에 VITE_EMAIL_LOGIN=on.
  */
-const EMAIL_LOGIN = import.meta.env.DEV || import.meta.env.VITE_EMAIL_LOGIN === "on";
+const EMAIL_LOGIN = import.meta.env.VITE_EMAIL_LOGIN === "on";
 
 const PROVIDER_ORDER: SocialProvider[] = ["kakao", "google", "apple"];
 
