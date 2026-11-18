@@ -181,6 +181,11 @@ button:disabled, [aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
 .bottom-nav-tab.active:hover { background: var(--color-ink-2); }
 .bottom-nav-tab svg { font-size: 1.5rem; }
 @media (prefers-reduced-motion: reduce) { .bottom-nav-tab { transition: none; } }
+/* 입력 중(소프트 키보드가 올라옴): 하단 탭을 숨겨 입력 칸에 자리를 준다 (Material 3). 왼쪽 레일(600px~)은 그대로 */
+@media (max-width: 37.4375rem) {
+  .app-root.has-bottom-nav.keyboard-open { padding-bottom: env(safe-area-inset-bottom); }
+  .app-root.keyboard-open .bottom-nav { display: none; }
+}
 
 /* ── 화면 크기 (Material 3 window size classes). src/lib/layout.ts 와 같은 값 ───────────────
    compact (< 37.5rem = 600px): 하단 탭
