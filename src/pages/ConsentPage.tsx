@@ -7,14 +7,19 @@ import { fetchConsents, postConsents, updateDisplayName } from "../api";
 import type { ConsentDocType } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { friendlyError } from "../lib/friendlyError";
+import { userTag } from "../lib/userTag";
 
-const DOC_ORDER: ConsentDocType[] = ["Terms", "Privacy", "LocationTerms"];
+/** 화면에 늘어놓는 순서. 실제로 받을 항목은 서버(`/api/me/consents`)가 정한다 (지금은 Terms, Privacy, AgeOver14) */
+const DOC_ORDER: ConsentDocType[] = ["Terms", "Privacy", "AgeOver14", "LocationTerms"];
+/** 본문 없이 확인만 받는 항목 ("보기" 링크 없음) */
+const CONFIRM_ONLY: ConsentDocType[] = ["AgeOver14"];
+const NONE_CHECKED: Record<ConsentDocType, boolean> = { Terms: false, Privacy: false, LocationTerms: false, AgeOver14: false };
 const NAME_MAX = 20;
 
 /**
  * 약관 동의 (docs/07-ui-design.md §7 "약관 동의"): 첫 로그인 직후 한 번.
- * 표시 이름(IdP 닉네임 기본값) + 모두 동의 + 필수 3종(각 보기 링크) + 위치 정보 안내.
- * 필수 3종이 모두 체크되고 이름이 있어야 시작 버튼이 켜진다.
+ * 표시 이름(IdP 닉네임 기본값, 중복 허용 · 이름#1234 로 보임) + 모두 동의 + 필수 항목(이용약관, 개인정보, 만 14세 이상)
+ * + 위치 정보 안내(보기만). 필수가 모두 체크되고 이름이 있어야 시작 버튼이 켜진다.
  */
 export function ConsentPage() {
     const auth = useAuth();
@@ -22,7 +27,7 @@ export function ConsentPage() {
     const navigate = useNavigate();
     const qc = useQueryClient();
     const [name, setName] = useState(auth.user?.displayName ?? "");
-    const [checked, setChecked] = useState<Record<ConsentDocType, boolean>>({ Terms: false, Privacy: false, LocationTerms: false });
+    const [checked, setChecked] = useState<Record<ConsentDocType, boolean>>(NONE_CHECKED);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -55,7 +60,7 @@ export function ConsentPage() {
         } catch (e) {
             if ((e as Error).message.includes("consent_version_mismatch")) {
                 // 약관이 그 사이 바뀜 — 새 버전을 받아 다시 보여 준다
-                setChecked({ Terms: false, Privacy: false, LocationTerms: false });
+                setChecked(NONE_CHECKED);
                 await qc.invalidateQueries({ queryKey: ["consents"] });
                 setError(t("consent.versionChanged"));
             } else {
@@ -79,7 +84,7 @@ export function ConsentPage() {
                 label={t("consent.displayName")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                helperText={t("consent.displayNameHelp")}
+                helperText={t("consent.displayNameHelp", { name: trimmed || t("app.defaultUserName"), tag: userTag(auth.user.id) })}
                 slotProps={{ htmlInput: { maxLength: NAME_MAX } }}
                 fullWidth
                 sx={{ mb: 3 }}
@@ -96,7 +101,7 @@ export function ConsentPage() {
                             <Checkbox
                                 checked={allChecked}
                                 indeterminate={!allChecked && docs.some((d) => checked[d.docType])}
-                                onChange={(e) => setChecked({ Terms: e.target.checked, Privacy: e.target.checked, LocationTerms: e.target.checked })}
+                                onChange={(e) => setChecked(Object.fromEntries(docs.map((d) => [d.docType, e.target.checked])) as Record<ConsentDocType, boolean>)}
                             />
                         }
                         label={<Typography sx={{ fontWeight: 700 }}>{t("consent.agreeAll")}</Typography>}
@@ -120,19 +125,26 @@ export function ConsentPage() {
                                     </Typography>
                                 }
                             />
-                            <Link component={RouterLink} to={`/terms/${d.docType}`} state={{ version: d.version }} color="secondary" variant="body2" sx={{ fontWeight: 600, px: 1, py: 1.25 }}>
-                                {t("consent.view")}
-                            </Link>
+                            {!CONFIRM_ONLY.includes(d.docType) && (
+                                <Link component={RouterLink} to={`/terms/${d.docType}`} state={{ version: d.version }} color="secondary" variant="body2" sx={{ fontWeight: 600, px: 1, py: 1.25 }}>
+                                    {t("consent.view")}
+                                </Link>
+                            )}
                         </Stack>
                     ))}
                 </Box>
             )}
 
-            {/* 위치 정보 안내는 별도 칸 (NFR-06) */}
+            {/* 위치 정보 안내는 별도 칸 (NFR-06). 위치를 기기에서만 써서 동의가 아니라 안내만 한다 */}
             <Box className="plate" sx={{ mb: 3 }}>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {t("consent.locationNote")}
-                </Typography>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, flex: 1 }}>
+                        {t("consent.locationNote")}
+                    </Typography>
+                    <Link component={RouterLink} to="/terms/LocationTerms" color="secondary" variant="body2" sx={{ fontWeight: 600, px: 1, py: 1.25, flexShrink: 0 }}>
+                        {t("consent.view")}
+                    </Link>
+                </Stack>
             </Box>
 
             {error && (

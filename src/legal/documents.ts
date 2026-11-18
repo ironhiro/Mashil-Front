@@ -260,7 +260,10 @@ const location: LegalDoc = {
     ],
 };
 
-export const LEGAL_DOCS: Record<ConsentDocType, LegalDoc> = {
+/** 본문이 있는 문서 (AgeOver14 는 확인 항목이라 본문이 없다) */
+export type LegalDocType = Exclude<ConsentDocType, "AgeOver14">;
+
+export const LEGAL_DOCS: Record<LegalDocType, LegalDoc> = {
     Terms: terms,
     Privacy: privacy,
     LocationTerms: location,
