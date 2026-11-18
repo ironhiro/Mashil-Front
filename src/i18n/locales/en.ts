@@ -22,7 +22,7 @@ export const en: Messages = {
     },
     me: {
         title: "My info",
-        guest: "Log in to rate, comment and tell us about new restrooms or wrong info.",
+        guest: "Log in to leave ratings and comments and to see what happened to your reports. You can send reports without logging in.",
         reports: "My reports",
         reportsEmpty: "No reports yet. Use the Report tab below to tell us about a new restroom or wrong info.",
         pendingCount: "{{count}} in review",
