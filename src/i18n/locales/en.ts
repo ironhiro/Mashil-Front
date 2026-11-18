@@ -511,7 +511,11 @@ export const en: Messages = {
         locating: "Finding location…",
         relocate: "Try again",
         locationSet: "Your current location was added",
-        locationHint: "Tap this if you're at the restroom. If left blank, we'll find it from the address.",
+        locationHint: "Tap this if you're at the restroom. We'll fill in the address too.",
+        useMyLocationShort: "Locate",
+        findingAddress: "Finding the address…",
+        addressNotFound: "Couldn't find the address. Please type it below.",
+        locationFailedTitle: "Couldn't get your location",
     },
     admin: {
         forbidden: "This page is for admins only.",
