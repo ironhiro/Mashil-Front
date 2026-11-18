@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Box, Button, Checkbox, CircularProgress, FormControlLabel, Link, Stack, TextField, Typography } from "@mui/material";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -7,7 +7,6 @@ import { fetchConsents, postConsents, updateDisplayName } from "../api";
 import type { ConsentDocType } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { friendlyError } from "../lib/friendlyError";
-import { userTag } from "../lib/userTag";
 
 /** 화면에 늘어놓는 순서. 실제로 받을 항목은 서버(`/api/me/consents`)가 정한다 (지금은 Terms, Privacy, AgeOver14) */
 const DOC_ORDER: ConsentDocType[] = ["Terms", "Privacy", "AgeOver14", "LocationTerms"];
@@ -18,7 +17,7 @@ const NAME_MAX = 20;
 
 /**
  * 약관 동의 (docs/07-ui-design.md §7 "약관 동의"): 첫 로그인 직후 한 번.
- * 표시 이름(IdP 닉네임 기본값, 중복 허용 · 이름#1234 로 보임) + 모두 동의 + 필수 항목(이용약관, 개인정보, 만 14세 이상)
+ * 회원 가입: 표시 이름(IdP 닉네임 기본값, 중복 허용) + 모두 동의 + 필수 항목(이용약관, 개인정보, 만 14세 이상)
  * + 위치 정보 안내(보기만). 필수가 모두 체크되고 이름이 있어야 시작 버튼이 켜진다.
  */
 export function ConsentPage() {
@@ -33,9 +32,13 @@ export function ConsentPage() {
 
     const query = useQuery({ enabled: !!auth.user, queryKey: ["consents"], queryFn: fetchConsents });
 
+    // 로그인 정보가 늦게 오면 그때 한 번만 IdP 닉네임으로 채운다. 이름 칸을 비웠다고 다시 채우지 않는다 (지우고 새로 쓸 수 있게)
+    const prefilled = useRef(!!auth.user?.displayName);
     useEffect(() => {
-        if (auth.user?.displayName && !name) setName(auth.user.displayName);
-    }, [auth.user?.displayName, name]);
+        if (prefilled.current || !auth.user?.displayName) return;
+        prefilled.current = true;
+        setName(auth.user.displayName);
+    }, [auth.user?.displayName]);
 
     if (!auth.user) return <Navigate to="/login" replace />;
 
@@ -84,7 +87,7 @@ export function ConsentPage() {
                 label={t("consent.displayName")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                helperText={t("consent.displayNameHelp", { name: trimmed || t("app.defaultUserName"), tag: userTag(auth.user.id) })}
+                helperText={t("consent.displayNameHelp")}
                 slotProps={{ htmlInput: { maxLength: NAME_MAX } }}
                 fullWidth
                 sx={{ mb: 3 }}

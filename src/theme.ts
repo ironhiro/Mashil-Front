@@ -116,9 +116,9 @@ export const theme = createTheme({
                     backgroundColor: "var(--color-paper-3)",
                     "& .MuiOutlinedInput-notchedOutline": { border: bar },
                     "&:hover .MuiOutlinedInput-notchedOutline": { border: bar },
-                    // 포커스는 테두리 두께가 아니라 outline (39a)
-                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": { border: bar },
-                    "&.Mui-focused": { outline: "2px solid var(--color-focus)", outlineOffset: 2 },
+                    // 포커스는 테두리 두께가 아니라 색 (39a). 바깥 outline 은 떠 있는 라벨("표시 이름")을 가로질러 그어져서
+                    // 라벨 자리를 비워 두는 테두리(notched outline)의 색을 바꾼다
+                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": { border: "var(--rule-bar) solid var(--color-focus)" },
                 },
             },
         },
