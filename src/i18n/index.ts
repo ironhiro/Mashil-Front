@@ -1,8 +1,10 @@
 /**
  * i18n 설정 (i18next + react-i18next).
  *
- * 언어 결정 순서: 주소의 `?lang=en` → 사용자가 고른 언어(localStorage) → 브라우저·기기 언어 → 한국어.
- * 앱 웹뷰는 기기 언어를 navigator.language 로 넘겨주므로 따로 브리지가 필요 없다.
+ * 언어 결정 순서: 주소의 `?lang=en` (개발·확인용) → 기기 언어 → 한국어. 앱 안에 언어 고르기는 두지 않는다 (2026-11-18):
+ * 기기 언어를 따르고, 이 앱만 다른 언어로 쓰려면 기기의 앱별 언어 설정(Android 13+, iOS)을 쓴다.
+ * 앱 웹뷰는 기기(또는 앱별) 언어를 navigator.language 로 넘겨주므로 따로 브리지가 필요 없다.
+ * 저장하지 않는다: 기기 언어를 바꾸면 다음 실행부터 바로 따른다.
  *
  * 새 언어 추가: locales/<code>.ts 를 만들고 (타입 `Messages`), 아래 resources·SUPPORTED_LANGUAGES 에 넣는다.
  */
@@ -19,7 +21,13 @@ export const SUPPORTED_LANGUAGES = [
 export type LanguageCode = (typeof SUPPORTED_LANGUAGES)[number]["code"];
 
 export const DEFAULT_LANGUAGE: LanguageCode = "ko";
-const STORAGE_KEY = "mashil_lang";
+/** 예전에 앱 안에서 고른 언어를 저장하던 키. 이제 쓰지 않으므로 지운다 (남아 있으면 기기 언어를 가린다) */
+const LEGACY_STORAGE_KEY = "mashil_lang";
+try {
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+} catch {
+    // 저장소를 못 쓰는 환경: 지울 것도 없다
+}
 
 void i18n
     .use(LanguageDetector)
@@ -35,10 +43,9 @@ void i18n
         fallbackLng: DEFAULT_LANGUAGE,
         interpolation: { escapeValue: false }, // React 가 이스케이프
         detection: {
-            order: ["querystring", "localStorage", "navigator"],
+            order: ["querystring", "navigator"],
             lookupQuerystring: "lang",
-            lookupLocalStorage: STORAGE_KEY,
-            caches: ["localStorage"],
+            caches: [],
         },
     });
 

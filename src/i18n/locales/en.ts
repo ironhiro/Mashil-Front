@@ -15,7 +15,6 @@ export const en: Messages = {
         loginOrRegister: "Log in / Sign up",
         logout: "Log out",
         review: "Review reports",
-        language: "Language",
         label: "Main menu",
         find: "Find restrooms",
         reportTab: "Report",

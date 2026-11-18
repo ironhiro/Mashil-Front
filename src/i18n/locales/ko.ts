@@ -19,7 +19,6 @@ export const ko = {
         loginOrRegister: "로그인 / 회원가입",
         logout: "로그아웃",
         review: "제보 검토",
-        language: "언어",
         label: "주 메뉴",
         find: "화장실 찾기",
         reportTab: "제보하기",

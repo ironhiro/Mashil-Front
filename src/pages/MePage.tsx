@@ -8,7 +8,7 @@ import { fetchMyChangeRequests, fetchMyComments } from "../api";
 import type { MyChangeRequest, MyComment } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { ChangeRequestStatusTag } from "../components/ChangeRequestStatusTag";
-import { LanguagePicker, MemberCard } from "../components/MemberCard";
+import { MemberCard } from "../components/MemberCard";
 import { SupportCards } from "../components/SupportCards";
 import { formatDateTime } from "../i18n";
 import { ChangeRequestStatus, UserRole } from "../lib/enums";
@@ -77,9 +77,6 @@ export function MePage() {
                     {t("adminConsole.hubTitle")}
                 </Button>
             )}
-
-            {/* 비회원은 언어만 따로 (회원은 회원 카드 안에) */}
-            {!signedIn && <LanguagePicker />}
 
             {/* 약관과 데이터 출처 (OSM·서울시 도보 네트워크는 출처 표시가 이용 조건) */}
             <Button color="secondary" component={RouterLink} to="/about" sx={{ alignSelf: "flex-start", px: 1, minHeight: 44 }}>
