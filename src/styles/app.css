@@ -237,7 +237,6 @@ button:disabled, [aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
 /* 상세: 가로로 넓으면 지도(왼쪽, 화면 높이에 붙음) | 내용(오른쪽) */
 @media (min-width: 37.5rem) and (orientation: landscape) {
   .detail-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
-  .detail-map { position: sticky; top: 0; }
 }
 
 /* ── 내 정보: 내 제보·내 댓글 (안내판과 같은 면, 잉크 머리 줄) ─────────── */

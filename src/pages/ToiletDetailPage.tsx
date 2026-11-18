@@ -109,7 +109,11 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
         <Box sx={{ mx: { xs: -2, sm: -3 }, mt: -3 }}>
             {/* 가로로 넓으면 지도 | 내용 (app.css .detail-split). 지도 칸은 화면 높이에서 하단 바를 뺀 만큼 */}
             <Box className="detail-split">
-            <Box className="detail-map" sx={{ position: "relative", height: split ? "calc(100dvh - 76px - env(safe-area-inset-bottom))" : undefined }}>
+            <Box
+                className="detail-map"
+                // 가로: 지도는 화면 높이에 붙어 있고 오른쪽 내용만 스크롤된다. sx 의 position 이 CSS 를 덮으므로 여기서 정한다
+                sx={split ? { position: "sticky", top: 0, height: "calc(100dvh - 76px - env(safe-area-inset-bottom))" } : { position: "relative" }}
+            >
                 {hasCoords ? (
                     <MiniMap lat={toilet.latitude!} lng={toilet.longitude!} label={openStatusLabel(t, status, "short")} state={tileStateOf(status)} fill={split} />
                 ) : (
@@ -238,7 +242,8 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                                 state: { name: toilet.name, lat: toilet.latitude!, lng: toilet.longitude! } satisfies WalkGuideState,
                             })
                         }
-                        sx={{ flexShrink: 0, whiteSpace: "nowrap" }}
+                        // 두 버튼이 폭을 나눠 쓰고, 영어처럼 긴 글자는 두 줄까지 접힌다
+                        sx={{ flex: "1 1 0", minWidth: 0, whiteSpace: "normal", wordBreak: "keep-all", lineHeight: 1.2 }}
                     >
                         {t("guide.start")}
                     </Button>
@@ -251,6 +256,8 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                         size="large"
                         dest={{ name: toilet.name, lat: toilet.latitude!, lng: toilet.longitude! }}
                         from={nav.fromMe ? (nav.origin ?? null) : null}
+                        // 영어처럼 긴 글자는 두 줄로 (한 줄 고정이면 좁은 폰에서 버튼 밖으로 넘친다)
+                        sx={{ flex: "1.3 1 0", minWidth: 0, whiteSpace: "normal", wordBreak: "keep-all", lineHeight: 1.2, textAlign: "center" }}
                     >
                         {t("home.kakaoDirections")}
                     </KakaoDirectionsButton>
