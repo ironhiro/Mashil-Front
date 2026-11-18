@@ -4,7 +4,6 @@ import {
     Box,
     Button,
     Checkbox,
-    Drawer,
     FormControl,
     FormControlLabel,
     FormLabel,
@@ -19,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import { blockUser, reportComment, REPORT_REASONS } from "../api";
 import type { CommentRow, ReportReason } from "../api";
 import { friendlyError } from "../lib/friendlyError";
+import { BottomSheet, sheetBottomPad } from "./BottomSheet";
 
 /** 서버 Moderation:AutoHideReportCount 기본값. 서로 다른 사람이 이만큼 신고하면 관리자 확인 전까지 가린다 */
 const AUTO_HIDE_COUNT = 3;
@@ -72,10 +72,10 @@ export function ReportSheet({ comment, onClose, onDone }: Props) {
 
     const quote = comment?.text ?? "";
     return (
-        <Drawer anchor="bottom" open={comment !== null} onClose={close} slotProps={{ paper: { sx: { maxWidth: 640, mx: "auto" } } }}>
+        <BottomSheet open={comment !== null} onClose={close}>
             <Box
                 component="form"
-                sx={{ px: 2, pt: 1.5, pb: "calc(16px + env(safe-area-inset-bottom))" }}
+                sx={{ px: 2, pb: sheetBottomPad }}
                 onSubmit={(e) => {
                     e.preventDefault();
                     if (comment && reason) mut.mutate(comment);
@@ -140,6 +140,6 @@ export function ReportSheet({ comment, onClose, onDone }: Props) {
                     </Button>
                 </Stack>
             </Box>
-        </Drawer>
+        </BottomSheet>
     );
 }

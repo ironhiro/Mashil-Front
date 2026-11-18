@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Box, Button, Drawer, Snackbar, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Snackbar, Stack, Typography } from "@mui/material";
 import ChatBubbleIcon from "@mui/icons-material/ChatBubbleOutline";
 import IosShareIcon from "@mui/icons-material/IosShare";
 import LinkIcon from "@mui/icons-material/Link";
@@ -8,6 +8,7 @@ import { copyText } from "../lib/copyText";
 import { friendlyError } from "../lib/friendlyError";
 import { canSystemShare, share } from "../lib/share";
 import type { SharePayload, ShareTarget } from "../lib/share";
+import { BottomSheet, sheetBottomPad } from "./BottomSheet";
 
 interface Props {
     open: boolean;
@@ -52,8 +53,8 @@ export function ShareSheet({ open, onClose, payload }: Props) {
 
     return (
         <>
-            <Drawer anchor="bottom" open={open} onClose={close} slotProps={{ paper: { sx: { maxWidth: 640, mx: "auto" } } }}>
-                <Box sx={{ px: 2, pt: 1.5, pb: "calc(16px + env(safe-area-inset-bottom))" }}>
+            <BottomSheet open={open} onClose={close}>
+                <Box sx={{ px: 2, pb: sheetBottomPad }}>
                     <Typography component="h2" variant="h6">
                         {t("share.title")}
                     </Typography>
@@ -91,7 +92,7 @@ export function ShareSheet({ open, onClose, payload }: Props) {
                         </Button>
                     </Stack>
                 </Box>
-            </Drawer>
+            </BottomSheet>
             <Snackbar open={snack !== null} autoHideDuration={2500} onClose={() => setSnack(null)} message={snack} />
         </>
     );
