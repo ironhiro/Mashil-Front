@@ -29,7 +29,14 @@ export const theme = createTheme({
     typography: {
         fontFamily: "var(--font-body)",
         fontWeightBold: 800,
-        h4: { fontWeight: 800, fontSize: "var(--text-3xl)", letterSpacing: "var(--tracking-display)", lineHeight: 1.05 },
+        // 가로 폰처럼 화면이 낮으면 큰 제목이 한 화면을 다 먹지 않게 한 단계 줄인다
+        h4: {
+            fontWeight: 800,
+            fontSize: "var(--text-3xl)",
+            letterSpacing: "var(--tracking-display)",
+            lineHeight: 1.05,
+            "@media (max-height: 30rem)": { fontSize: "var(--text-2xl)" },
+        },
         h5: { fontWeight: 800, fontSize: "var(--text-2xl)", letterSpacing: "var(--tracking-display)", lineHeight: 1.05 },
         h6: { fontWeight: 800, fontSize: "var(--text-xl)", lineHeight: 1.1 },
         subtitle1: { fontWeight: 800 },

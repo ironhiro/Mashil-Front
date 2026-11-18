@@ -11,7 +11,7 @@ interface Props {
     what: string;
 }
 
-/** 글자 옆의 작은 복사 버튼. 복사하면 아래에 짧게 알린다. */
+/** 글자 옆의 복사 버튼 (아이콘은 작고 누르는 영역은 48px). 복사하면 아래에 짧게 알린다. */
 export function CopyButton({ text, what }: Props) {
     const { t } = useTranslation();
     const [done, setDone] = useState<null | boolean>(null);
@@ -21,7 +21,8 @@ export function CopyButton({ text, what }: Props) {
                 size="small"
                 aria-label={t("copy.button", { what })}
                 onClick={() => void copyText(text).then(setDone)}
-                sx={{ ml: 0.5, my: -0.5, color: "var(--color-muted)" }}
+                // 아이콘은 작게 두되 누르는 영역은 48px (Material 3 / HIG 44pt). 줄 높이는 음수 여백으로 그대로
+                sx={{ width: 48, height: 48, my: -1.5, ml: -0.5, color: "var(--color-muted)" }}
             >
                 <ContentCopyIcon fontSize="small" />
             </IconButton>

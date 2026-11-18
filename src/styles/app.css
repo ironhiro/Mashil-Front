@@ -182,29 +182,38 @@ button:disabled, [aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
 .bottom-nav-tab svg { font-size: 1.5rem; }
 @media (prefers-reduced-motion: reduce) { .bottom-nav-tab { transition: none; } }
 
-/* ── 넓은 화면(64rem~): 탭 줄은 위쪽 바(워드마크 + 탭), 홈은 왼쪽 패널 + 오른쪽 지도 ──────── */
+/* ── 화면 크기 (Material 3 window size classes). src/lib/layout.ts 와 같은 값 ───────────────
+   compact (< 37.5rem = 600px): 하단 탭
+   medium 이상 (≥ 600px): 왼쪽 내비게이션 레일 (폰 가로, 태블릿, 넓은 창)
+   홈 목록|지도 나란히: expanded (≥ 52.5rem = 840px) 이거나 medium 가로
+   상세·방향 안내 지도|내용 나란히: medium 이상 가로 */
 .bottom-nav-brand { display: none; }
-@media (min-width: 64rem) {
-  .app-root.has-bottom-nav { --bottom-nav-h: 56px; padding-top: var(--bottom-nav-h); padding-bottom: env(safe-area-inset-bottom); }
+@media (min-width: 37.5rem) {
+  .app-root.has-bottom-nav { --rail-w: 88px; padding-bottom: env(safe-area-inset-bottom); padding-left: var(--rail-w); }
   .bottom-nav {
-    top: 0; bottom: auto; display: flex; justify-content: flex-end;
-    border-top: 0; border-bottom: var(--rule-bar) solid var(--color-ink);
-    padding: 0 var(--space-lg);
+    top: 0; right: auto; bottom: 0; width: var(--rail-w);
+    display: flex; flex-direction: column; justify-content: flex-start;
+    border-top: 0; border-right: var(--rule-bar) solid var(--color-ink);
+    padding: 0 0 env(safe-area-inset-bottom);
+    overflow-y: auto;
   }
   .bottom-nav-brand {
-    display: flex; align-items: center; margin-right: auto; padding-right: var(--space-lg);
+    display: flex; align-items: center; justify-content: center; flex: 0 0 auto; height: 64px;
     color: var(--color-ink); text-decoration: none; font: 800 var(--text-lg)/1 var(--font-body);
+    border-bottom: var(--rule-bar) solid var(--color-ink);
   }
-  .bottom-nav-brand:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 4px; }
-  .bottom-nav-brand + .bottom-nav-tab { border-left: var(--rule-bar) solid var(--color-ink); }
-  .bottom-nav-tab:last-child { border-right: var(--rule-bar) solid var(--color-ink); }
-  .bottom-nav-tab { flex-direction: row; gap: var(--space-xs); padding: 0 var(--space-lg); }
-  .bottom-nav-tab svg { font-size: 1.25rem; }
+  .bottom-nav-brand:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -4px; }
+  /* 레일 칸: 아이콘 위, 글자 아래. 칸 사이는 가로 2px 줄 */
+  .bottom-nav-tab { flex: 0 0 auto; height: 80px; padding: 0 var(--space-3xs); text-align: center; font-size: var(--text-xs); }
+  .bottom-nav-tab + .bottom-nav-tab { border-left: 0; border-top: var(--rule-bar) solid var(--color-ink); }
+  .bottom-nav-tab:last-child { border-bottom: var(--rule-bar) solid var(--color-ink); }
+}
 
-  .home-split { display: grid; grid-template-columns: minmax(0, 28rem) minmax(0, 1fr); gap: var(--space-lg); align-items: start; }
+@media (min-width: 52.5rem), (min-width: 37.5rem) and (orientation: landscape) {
+  .home-split { display: grid; grid-template-columns: minmax(0, 24rem) minmax(0, 1fr); gap: var(--space-lg); align-items: start; }
   .home-panel { min-width: 0; }
-  /* 지도는 화면 높이를 채운 채 붙어 있고, 왼쪽 패널만 스크롤된다 (위쪽 바 + 본문 위 여백만큼 아래) */
-  .home-map { position: sticky; top: calc(var(--bottom-nav-h) + var(--space-lg)); min-width: 0; }
+  /* 지도는 화면 높이를 채운 채 붙어 있고, 왼쪽 패널만 스크롤된다 (본문 위 여백만큼 아래) */
+  .home-map { position: sticky; top: var(--space-lg); min-width: 0; }
 
   /* 왼쪽 패널은 휴대폰 폭과 비슷하므로 안내판 행도 좁은 화면 배치를 쓴다 (40rem 이하 규칙과 같음) */
   .home-panel .board-head { grid-template-columns: minmax(0, 1fr); row-gap: var(--space-2xs); }
@@ -215,6 +224,15 @@ button:disabled, [aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
   .home-panel .board-dist { font-size: var(--text-lg); }
   .home-panel .board-state { padding: 0 var(--space-xs); font-size: var(--text-xs); }
   .home-panel .rec-why { padding-inline: var(--space-sm); padding-left: calc(var(--space-sm) + 4.25rem + var(--space-sm)); }
+}
+@media (min-width: 64rem) {
+  .home-split { grid-template-columns: minmax(0, 28rem) minmax(0, 1fr); }
+}
+
+/* 상세: 가로로 넓으면 지도(왼쪽, 화면 높이에 붙음) | 내용(오른쪽) */
+@media (min-width: 37.5rem) and (orientation: landscape) {
+  .detail-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .detail-map { position: sticky; top: 0; }
 }
 
 /* ── 내 정보: 내 제보·내 댓글 (안내판과 같은 면, 잉크 머리 줄) ─────────── */

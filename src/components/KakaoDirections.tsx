@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { Box, Button, Drawer, Stack, Typography } from "@mui/material";
+import { Box, Button, Stack, Typography } from "@mui/material";
 import type { ButtonProps } from "@mui/material";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import DirectionsWalkIcon from "@mui/icons-material/DirectionsWalk";
@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import type { LatLng } from "../api";
 import { isApp, openDirectionsInApp } from "../lib/nativeBridge";
 import type { DirectionsMode } from "../lib/nativeBridge";
+import { BottomSheet, sheetBottomPad } from "./BottomSheet";
 
 export interface DirectionsTarget {
     name: string;
@@ -72,8 +73,8 @@ export function KakaoDirectionsButton({ dest, from, children, ...buttonProps }: 
             <Button {...buttonProps} aria-haspopup="dialog" onClick={() => setOpen(true)}>
                 {children}
             </Button>
-            <Drawer anchor="bottom" open={open} onClose={() => setOpen(false)} slotProps={{ paper: { sx: { maxWidth: 640, mx: "auto" } } }}>
-                <Box sx={{ px: 2, pt: 1.5, pb: "calc(16px + env(safe-area-inset-bottom))" }}>
+            <BottomSheet open={open} onClose={() => setOpen(false)}>
+                <Box sx={{ px: 2, pb: sheetBottomPad }}>
                     <Typography component="h2" variant="h6">
                         {t("directions.title")}
                     </Typography>
@@ -85,7 +86,7 @@ export function KakaoDirectionsButton({ dest, from, children, ...buttonProps }: 
                         {option("car", <DirectionsCarIcon aria-hidden />, t("directions.car"), t("directions.carNote"))}
                     </Stack>
                 </Box>
-            </Drawer>
+            </BottomSheet>
         </>
     );
 }
