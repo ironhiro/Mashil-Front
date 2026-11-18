@@ -7,20 +7,43 @@
  * 저장하지 않는다: 기기 언어를 바꾸면 다음 실행부터 바로 따른다.
  *
  * 새 언어 추가: locales/<code>.ts 를 만들고 (타입 `Messages`), 아래 resources·SUPPORTED_LANGUAGES 에 넣는다.
+ * 앱 쪽도 같이: Mashil-App 의 lib/l10n/app_<code>.arb, res/xml/locales_config.xml, ios Info.plist.
  */
 import i18n from "i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import { initReactI18next } from "react-i18next";
 import { en } from "./locales/en";
+import { ja } from "./locales/ja";
 import { ko } from "./locales/ko";
+import { zhHans } from "./locales/zhHans";
+import { zhHant } from "./locales/zhHant";
 
+/** 앱 (lib/l10n, Android locales_config, iOS CFBundleLocalizations) 과 같은 목록으로 둔다 */
 export const SUPPORTED_LANGUAGES = [
     { code: "ko", label: "한국어" },
     { code: "en", label: "English" },
+    { code: "ja", label: "日本語" },
+    { code: "zh-Hans", label: "简体中文" },
+    { code: "zh-Hant", label: "繁體中文" },
 ] as const;
 export type LanguageCode = (typeof SUPPORTED_LANGUAGES)[number]["code"];
 
 export const DEFAULT_LANGUAGE: LanguageCode = "ko";
+/**
+ * 기기 언어 → 지원 언어 코드. 중국어는 글자 체계로 나눈다: zh-TW·zh-HK·zh-MO·zh-Hant-* 는 번체, 그 밖의 zh 는 간체.
+ * (그냥 두면 i18next 가 zh-TW 를 zh 로 줄여 어느 쪽에도 맞지 않는다)
+ */
+export function toSupportedLanguage(lng: string): string {
+    const parts = lng.replace(/_/g, "-").split("-");
+    const base = parts[0].toLowerCase();
+    if (base === "zh") {
+        const traditional = parts.slice(1).some((p) => ["hant", "tw", "hk", "mo"].includes(p.toLowerCase()));
+        return traditional ? "zh-Hant" : "zh-Hans";
+    }
+    // ja-JP → ja, en-US → en (리소스는 언어 코드로만 있다. load: "currentOnly" 라 i18next 가 줄여 주지 않는다)
+    return base;
+}
+
 /** 예전에 앱 안에서 고른 언어를 저장하던 키. 이제 쓰지 않으므로 지운다 (남아 있으면 기기 언어를 가린다) */
 const LEGACY_STORAGE_KEY = "mashil_lang";
 try {
@@ -36,16 +59,19 @@ void i18n
         resources: {
             ko: { translation: ko },
             en: { translation: en },
+            ja: { translation: ja },
+            "zh-Hans": { translation: zhHans },
+            "zh-Hant": { translation: zhHant },
         },
         supportedLngs: SUPPORTED_LANGUAGES.map((l) => l.code),
-        nonExplicitSupportedLngs: true, // en-US → en, ko-KR → ko
-        load: "languageOnly",
+        load: "currentOnly", // zh-Hant 를 zh 로 줄이지 않게
         fallbackLng: DEFAULT_LANGUAGE,
         interpolation: { escapeValue: false }, // React 가 이스케이프
         detection: {
             order: ["querystring", "navigator"],
             lookupQuerystring: "lang",
             caches: [],
+            convertDetectedLanguage: toSupportedLanguage,
         },
     });
 

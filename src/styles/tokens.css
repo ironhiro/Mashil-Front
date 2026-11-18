@@ -47,6 +47,9 @@
   /* 앱 아이콘 "열린 문": 파랑 바탕, 흰 문짝, 빨강 손잡이 (app/tool/make_icons.py 와 같은 값) */
   --color-door-bg: var(--color-accent); --color-door-light: oklch(81.7% 0.065 254.3); --color-door-leaf: oklch(99.5% 0.003 250); --color-door-handle: var(--color-accent-2);
 }
+/* 일본어·중국어: 서울남산체에는 가나와 간체가 없고, 한자는 한국식 글자꼴이다. 기기 글꼴(Noto CJK 등)이 그 언어 글꼴로 그리게 한다 */
+:root:lang(ja), :root:lang(zh) { --font-display: "Overpass", system-ui, sans-serif; }
+
 
 /* night colourway (Wayfind): 기기가 다크 모드일 때 */
 @media (prefers-color-scheme: dark) {
