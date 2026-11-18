@@ -76,11 +76,8 @@ export function ConsentPage() {
 
     return (
         <Box sx={{ maxWidth: 480, mx: "auto" }}>
-            <Typography component="h1" variant="h5">
+            <Typography component="h1" variant="h5" sx={{ mb: 3 }}>
                 {t("consent.title")}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                {t("consent.intro")}
             </Typography>
 
             <TextField

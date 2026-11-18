@@ -279,7 +279,6 @@ export const en: Messages = {
     },
     consent: {
         title: "Sign up",
-        intro: "We'll only ask this once.",
         displayName: "Display name",
         displayNameHelp: "Shown with your comments. It may be the same as someone else's. Up to 20 characters.",
         agreeAll: "Agree to all",

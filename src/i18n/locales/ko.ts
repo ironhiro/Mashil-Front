@@ -283,7 +283,6 @@ export const ko = {
     },
     consent: {
         title: "회원 가입",
-        intro: "처음 한 번만 확인할게요.",
         displayName: "표시 이름",
         displayNameHelp: "댓글에 보이는 이름이에요. 다른 분과 같아도 괜찮아요. 20자까지.",
         agreeAll: "모두 동의",
