@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     Alert,
     Box,
     Button,
     Divider,
+    IconButton,
     Stack,
     Tab,
     Tabs,
@@ -16,8 +17,16 @@ import { useAuth } from "../auth/AuthContext";
 import { getAppProviders, NativeSignInCancelled } from "../lib/nativeBridge";
 import { friendlyError } from "../lib/friendlyError";
 import type { SocialProvider } from "../lib/nativeBridge";
+import { isOnboarded, markOnboarded } from "../lib/firstRun";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 type Mode = "login" | "register";
+
+/**
+ * 이메일·비밀번호 로그인 칸. 운영은 카카오·Google 만 쓰고 서버도 이메일 로그인을 꺼 둔다(Auth:LegacyPasswordLogin).
+ * 개발 빌드도 운영과 같은 화면이 되도록 기본은 숨긴다 (2026-11-18). 개발 중 이메일 테스트 계정이 필요하면 .env.local 에 VITE_EMAIL_LOGIN=on.
+ */
+const EMAIL_LOGIN = import.meta.env.VITE_EMAIL_LOGIN === "on";
 
 const PROVIDER_ORDER: SocialProvider[] = ["kakao", "google", "apple"];
 
@@ -82,11 +91,13 @@ function SocialLoginButtons({ onError }: { onError: (msg: string | null) => void
                     {busy === p ? t("login.signingIn") : t(`login.continueWith.${p}`)}
                 </button>
             ))}
-            <Divider sx={{ pt: 1 }}>
-                <Typography variant="caption" color="text.secondary">
-                    {t("login.orEmail")}
-                </Typography>
-            </Divider>
+            {EMAIL_LOGIN && (
+                <Divider sx={{ pt: 1 }}>
+                    <Typography variant="caption" color="text.secondary">
+                        {t("login.orEmail")}
+                    </Typography>
+                </Divider>
+            )}
         </Stack>
     );
 }
@@ -103,10 +114,20 @@ export function LoginPage() {
     const [displayName, setDisplayName] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [missing, setMissing] = useState<"email" | "password" | null>(null);
+    const emailRef = useRef<HTMLInputElement | null>(null);
+    const passwordRef = useRef<HTMLInputElement | null>(null);
 
     async function onSubmit(e: React.FormEvent) {
         e.preventDefault();
         setError(null);
+        // 필수 칸은 브라우저 말풍선 대신 칸 아래에 알린다
+        const missing = !email.trim() ? "email" : !password ? "password" : null;
+        setMissing(missing);
+        if (missing) {
+            (missing === "email" ? emailRef : passwordRef).current?.focus();
+            return;
+        }
         setSubmitting(true);
         try {
             if (mode === "login") {
@@ -123,8 +144,17 @@ export function LoginPage() {
         }
     }
 
+    // 첫 실행(아직 로그인도 둘러보기도 안 함)이면 "로그인 없이 둘러보기"를, 내 정보·설정 등에서 들어왔으면 위쪽 뒤로 단추를 보인다
+    const firstRun = !isOnboarded();
+    const goBack = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate("/me"));
+
     return (
         <Box sx={{ maxWidth: 420, mx: "auto" }}>
+            {!firstRun && (
+                <IconButton aria-label={t("detail.back")} onClick={goBack} sx={{ width: 44, height: 44, ml: -1, mb: 1 }}>
+                    <ArrowBackIcon />
+                </IconButton>
+            )}
             {/* 아이콘 · 이름 · 슬로건 (줄눈 격자 바탕). 소개 문구는 버튼 아래 */}
             <Stack
                 alignItems="center"
@@ -160,58 +190,76 @@ export function LoginPage() {
             </Typography>
 
 
-            <Tabs
-                value={mode}
-                onChange={(_, v: Mode) => setMode(v)}
-                sx={{ mb: 2 }}
-            >
-                <Tab value="login" label={t("login.tabLogin")} />
-                <Tab value="register" label={t("login.tabRegister")} />
-            </Tabs>
+            {EMAIL_LOGIN && (
+                <>
+                <Tabs
+                    value={mode}
+                    onChange={(_, v: Mode) => setMode(v)}
+                    sx={{ mb: 2 }}
+                >
+                    <Tab value="login" label={t("login.tabLogin")} />
+                    <Tab value="register" label={t("login.tabRegister")} />
+                </Tabs>
 
-            <form onSubmit={onSubmit}>
-                <Stack spacing={2}>
-                    <TextField
-                        type="email"
-                        label={t("login.email")}
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        autoComplete="email"
-                        fullWidth
-                    />
-                    <TextField
-                        type="password"
-                        label={t("login.password")}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        autoComplete={mode === "login" ? "current-password" : "new-password"}
-                        fullWidth
-                    />
-                    {mode === "register" && (
+                <form onSubmit={onSubmit} noValidate>
+                    <Stack spacing={2}>
                         <TextField
-                            label={t("login.displayName")}
-                            value={displayName}
-                            onChange={(e) => setDisplayName(e.target.value)}
+                            type="email"
+                            label={t("login.email")}
+                            value={email}
+                            onChange={(e) => {
+                                setEmail(e.target.value);
+                                if (missing === "email") setMissing(null);
+                            }}
+                            inputRef={emailRef}
+                            error={missing === "email"}
+                            helperText={missing === "email" ? t("login.emailRequired") : undefined}
+                            required
+                            autoComplete="email"
                             fullWidth
                         />
-                    )}
-                    {error && <Alert severity="error">{error}</Alert>}
-                    <Button type="submit" variant="contained" disabled={submitting}>
-                        {submitting ? t("login.processing") : mode === "login" ? t("login.submitLogin") : t("login.submitRegister")}
-                    </Button>
-                </Stack>
-            </form>
+                        <TextField
+                            type="password"
+                            label={t("login.password")}
+                            value={password}
+                            onChange={(e) => {
+                                setPassword(e.target.value);
+                                if (missing === "password") setMissing(null);
+                            }}
+                            inputRef={passwordRef}
+                            error={missing === "password"}
+                            helperText={missing === "password" ? t("login.passwordRequired") : undefined}
+                            required
+                            autoComplete={mode === "login" ? "current-password" : "new-password"}
+                            fullWidth
+                        />
+                        {mode === "register" && (
+                            <TextField
+                                label={t("login.displayName")}
+                                value={displayName}
+                                onChange={(e) => setDisplayName(e.target.value)}
+                                fullWidth
+                            />
+                        )}
+                        {error && <Alert severity="error">{error}</Alert>}
+                        <Button type="submit" variant="contained" disabled={submitting}>
+                            {submitting ? t("login.processing") : mode === "login" ? t("login.submitLogin") : t("login.submitRegister")}
+                        </Button>
+                    </Stack>
+                </form>
+                </>
+            )}
 
             {/* 맨 아래: 로그인으로 할 수 있는 일과 로그인 없이 둘러보기 (로그인 버튼이 화면 위쪽에 오게) */}
             <Stack alignItems="center" spacing={1} sx={{ mt: 4, textAlign: "center" }}>
                 <Typography variant="body2" color="text.secondary">
                     {t("login.intro")}
                 </Typography>
-                <Button component={RouterLink} to="/" color="secondary" sx={{ textDecoration: "underline", textUnderlineOffset: 3 }}>
-                    {t("login.browseWithout")}
-                </Button>
+                {firstRun && (
+                    <Button component={RouterLink} to="/" replace onClick={markOnboarded} color="secondary" sx={{ textDecoration: "underline", textUnderlineOffset: 3 }}>
+                        {t("login.browseWithout")}
+                    </Button>
+                )}
             </Stack>
         </Box>
     );

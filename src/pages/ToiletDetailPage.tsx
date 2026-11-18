@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { CopyButton } from "../components/CopyButton";
 import { ShareSheet } from "../components/ShareSheet";
+import { LANDSCAPE_SPLIT } from "../lib/layout";
 import { toiletShareUrl } from "../lib/share";
-import { Alert, Box, Button, CircularProgress, IconButton, Link, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, IconButton, Link, Stack, Typography, useMediaQuery } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import IosShareIcon from "@mui/icons-material/IosShare";
 import PhoneIcon from "@mui/icons-material/Phone";
@@ -13,7 +14,6 @@ import type { TFunction } from "i18next";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { computeStraightRoute, fetchToilet } from "../api";
 import type { LatLng, ScheduleDay, ToiletDetail } from "../api";
-import { useAuth } from "../auth/AuthContext";
 import { AdminToiletLink } from "../components/AdminToiletLink";
 import { MiniMap } from "../components/MiniMap";
 import { StatusTile, openStatusLabel } from "../components/OpenStatusBadge";
@@ -40,6 +40,15 @@ interface DetailState {
  * 화장실 상세 (Hallmark · Wayfind): 지도 띠, 거리 판과 상태 판, 요일 8칸(오늘은 잉크 칸), 묶음 표와 원문,
  * 시설 4칸, 편의시설, 평점·댓글, 출처와 "정보 수정 요청", 하단 고정 바(전화와 길찾기).
  */
+/** 누르면 전화 걸기 화면 (앱은 tel: 를 전화 앱으로 넘긴다). 번호는 글자 그대로 보이고 밑줄로 누를 수 있음을 알린다 */
+function PhoneLink({ phone, label }: { phone: string; label: string }) {
+    return (
+        <Link href={`tel:${phone.replace(/[^0-9+]/g, "")}`} aria-label={label} color="inherit" sx={{ textUnderlineOffset: 3, fontWeight: 600 }}>
+            {phone}
+        </Link>
+    );
+}
+
 export function ToiletDetailPage() {
     const { id } = useParams();
     const toiletId = Number(id);
@@ -78,7 +87,6 @@ export function ToiletDetailPage() {
 function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: DetailState; onBack: () => void }) {
     const { t, i18n } = useTranslation();
     const navigate = useNavigate();
-    const auth = useAuth();
     const [shareOpen, setShareOpen] = useState(false);
     const status = statusOf(toilet);
 
@@ -90,18 +98,20 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
 
     const requestFix = () => {
         const state = { kind: ChangeRequestKind.Edit, targetToiletId: toilet.id, targetName: toilet.name };
-        if (auth.user) navigate("/change-requests/new", { state });
-        else navigate("/login");
+        navigate("/change-requests/new", { state }); // 비회원도 제보할 수 있다
     };
 
     const hasCoords = toilet.latitude != null && toilet.longitude != null;
+    const split = useMediaQuery(LANDSCAPE_SPLIT);
 
     return (
         // App 의 Container 여백을 걷어 지도 띠를 가장자리까지
         <Box sx={{ mx: { xs: -2, sm: -3 }, mt: -3 }}>
-            <Box sx={{ position: "relative" }}>
+            {/* 가로로 넓으면 지도 | 내용 (app.css .detail-split). 지도 칸은 화면 높이에서 하단 바를 뺀 만큼 */}
+            <Box className="detail-split">
+            <Box className="detail-map" sx={{ position: "relative", height: split ? "calc(100dvh - 76px - env(safe-area-inset-bottom))" : undefined }}>
                 {hasCoords ? (
-                    <MiniMap lat={toilet.latitude!} lng={toilet.longitude!} label={openStatusLabel(t, status, "short")} state={tileStateOf(status)} />
+                    <MiniMap lat={toilet.latitude!} lng={toilet.longitude!} label={openStatusLabel(t, status, "short")} state={tileStateOf(status)} fill={split} />
                 ) : (
                     <Box sx={{ height: 72, borderBottom: "var(--rule-bar) solid var(--color-ink)" }} />
                 )}
@@ -142,14 +152,14 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                         )}
                         {toilet.phone ? (
                             <Typography variant="body1" sx={{ mt: 0.5 }}>
-                                {toilet.phone}
+                                <PhoneLink phone={toilet.phone} label={`${t("detail.call")} ${toilet.phone}`} />
                                 <CopyButton text={toilet.phone} what={t("copy.phone")} />
                             </Typography>
                         ) : (
                             toilet.orgPhone && (
                                 // 화장실 번호가 아니라 관리기관 번호 — 그렇다고 밝힌다
                                 <Typography variant="body1" sx={{ mt: 0.5 }}>
-                                    {toilet.orgPhone}
+                                    <PhoneLink phone={toilet.orgPhone} label={`${t("detail.callOrg")} ${toilet.orgPhone}`} />
                                     <CopyButton text={toilet.orgPhone} what={t("copy.phone")} />
                                     <Typography component="span" variant="body2" color="text.secondary" sx={{ display: "block" }}>
                                         {t("detail.orgPhone", { org: toilet.managementOrg ?? "" })}
@@ -186,6 +196,7 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                         <AdminToiletLink toiletId={toilet.id} />
                     </Box>
                 </Stack>
+            </Box>
             </Box>
 
             {/* 하단 고정 바: 전화(아이콘)와 길찾기(주 행동) */}
