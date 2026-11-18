@@ -2,10 +2,11 @@ import { Box, IconButton, Link, Stack, Typography } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useTranslation } from "react-i18next";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import type { ConsentDocType } from "../api";
 import { LEGAL_DOCS } from "../legal/documents";
+import type { LegalDocType } from "../legal/documents";
 
-const DOCS: ConsentDocType[] = ["Terms", "Privacy", "LocationTerms"];
+// 본문이 있는 문서만 (만 14세 확인은 체크 항목이라 문서가 없다)
+const DOCS: LegalDocType[] = ["Terms", "Privacy", "LocationTerms"];
 
 /** 데이터 출처. 이름과 라이선스는 원문 그대로 둔다 (출처 표시가 이용 조건: ODbL, 공공누리 제1유형) */
 type SourceKey = "toilets" | "osm" | "seoulWalk" | "kakao" | "vworld";
