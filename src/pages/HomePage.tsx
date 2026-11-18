@@ -52,6 +52,7 @@ import { toiletKindLabel } from "../lib/facilityChips";
 import type { LocationFailure } from "../lib/nativeBridge";
 import { walkGuidePath } from "../lib/walkGuide";
 import type { WalkGuideState } from "../lib/walkGuide";
+import { preloadToilets } from "../lib/toiletIndex";
 
 const SEOUL_CITY_HALL: LatLng = { lat: 37.5666, lng: 126.9784 };
 
@@ -107,6 +108,11 @@ export function HomePage() {
     const [notice, setNotice] = useState<string | null>((routerLocation.state as { notice?: string } | null)?.notice ?? null);
     // 위치를 못 받았을 때 이유 — 문장은 렌더 시 번역 (언어를 바꿔도 따라감)
     const [geoFailure, setGeoFailure] = useState<LocationFailure | null>(homeMemory.geoFailure);
+
+    // 전국 목록을 위치를 받는 동안 미리 받아 둔다 (근처 찾기를 기기에서 하므로)
+    useEffect(() => {
+        if (!USE_MOCK) preloadToilets();
+    }, []);
 
     const [radiusM, setRadiusM] = useState<SearchRadius>(homeMemory.radiusM);
     const [filter, setFilter] = useState<ToiletFilter>(homeMemory.filter);

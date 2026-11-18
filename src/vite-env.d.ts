@@ -11,6 +11,8 @@ interface ImportMetaEnv {
     /** 브라우저 안내 화면의 스토어 주소. 없으면 "곧 나와요" */
     readonly VITE_PLAY_STORE_URL?: string;
     readonly VITE_APP_STORE_URL?: string;
+    /** 서버 도보 경로: on 일 때만 켬 (사용자 위치를 서버로 보내므로 기본 끔). api.ts WALK_ROUTE_ENABLED */
+    readonly VITE_WALK_ROUTE?: "on" | "off";
 }
 
 interface ImportMeta {
