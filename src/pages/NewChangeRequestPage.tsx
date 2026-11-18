@@ -34,6 +34,9 @@ interface PrefillState {
     targetName?: string;
 }
 
+/** 비우면 보낼 수 없는 칸 */
+type RequiredField = "target" | "name" | "reason";
+
 /** 8개 핵심 필드 — Add/Edit 둘 다 사용. */
 interface ToiletFormFields {
     name: string;
@@ -80,6 +83,9 @@ export function NewChangeRequestPage() {
 
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    // 필수 칸 오류: 브라우저 기본 말풍선 대신 그 칸 아래에 우리 모양으로 적고, 그 칸으로 옮겨 간다
+    const [fieldError, setFieldError] = useState<{ field: RequiredField; message: string } | null>(null);
+    const fieldRefs = useRef<Partial<Record<RequiredField, HTMLInputElement | HTMLTextAreaElement | null>>>({});
     const [doneId, setDoneId] = useState<number | null>(null);
 
     const requiresTargetId = kind !== ChangeRequestKind.Add;
@@ -149,22 +155,32 @@ export function NewChangeRequestPage() {
 
     function patch<K extends keyof ToiletFormFields>(key: K, value: ToiletFormFields[K]) {
         setFields((f) => ({ ...f, [key]: value }));
+        if (key === "name") setFieldError((fe) => (fe?.field === "name" ? null : fe));
+    }
+
+    const errorOf = (field: RequiredField) => (fieldError?.field === field ? fieldError.message : undefined);
+    function failField(field: RequiredField, message: string) {
+        setFieldError({ field, message });
+        const el = fieldRefs.current[field];
+        el?.focus();
+        el?.scrollIntoView({ block: "center", behavior: "smooth" });
     }
 
     async function onSubmit(e: React.FormEvent) {
         e.preventDefault();
         setError(null);
+        setFieldError(null);
 
         if (requiresTargetId && !targetIdValid) {
-            setError(t("report.errorNoTarget"));
+            failField("target", t("report.errorNoTarget"));
             return;
         }
         if (kind === ChangeRequestKind.Add && !fields.name.trim()) {
-            setError(t("report.errorNoName"));
+            failField("name", t("report.errorNoName"));
             return;
         }
         if (kind === ChangeRequestKind.Delete && !reason.trim()) {
-            setError(t("report.errorNoReason"));
+            failField("reason", t("report.errorNoReason"));
             return;
         }
 
@@ -197,13 +213,17 @@ export function NewChangeRequestPage() {
                 {t("report.intro")}
             </Typography>
 
-            <form onSubmit={onSubmit}>
+            {/* noValidate: 필수 칸은 onSubmit 이 확인하고 칸 아래에 알린다 (브라우저 말풍선을 쓰지 않음) */}
+            <form onSubmit={onSubmit} noValidate>
                 <Stack spacing={2}>
                     <TextField
                         select
                         label={t("report.kindLabel")}
                         value={kind}
-                        onChange={(e) => setKind(e.target.value as ChangeRequestKind)}
+                        onChange={(e) => {
+                            setKind(e.target.value as ChangeRequestKind);
+                            setFieldError(null);
+                        }}
                         helperText={t(`report.kind.${kind}.description`)}
                         fullWidth
                     >
@@ -219,11 +239,19 @@ export function NewChangeRequestPage() {
                             label={t("report.targetId")}
                             type="number"
                             value={targetId}
-                            onChange={(e) => setTargetId(e.target.value)}
+                            onChange={(e) => {
+                                setTargetId(e.target.value);
+                                setFieldError((fe) => (fe?.field === "target" ? null : fe));
+                            }}
+                            inputRef={(el: HTMLInputElement | null) => {
+                                fieldRefs.current.target = el;
+                            }}
+                            error={!!errorOf("target")}
                             helperText={
-                                prefill.targetName
+                                errorOf("target") ??
+                                (prefill.targetName
                                     ? t("report.targetSelected", { name: prefill.targetName })
-                                    : t("report.targetHint")
+                                    : t("report.targetHint"))
                             }
                             required
                             fullWidth
@@ -245,6 +273,11 @@ export function NewChangeRequestPage() {
                                 onChange={(e) => patch("name", e.target.value)}
                                 placeholder={detailQuery.data?.name ?? ""}
                                 required={kind === ChangeRequestKind.Add}
+                                inputRef={(el: HTMLInputElement | null) => {
+                                    fieldRefs.current.name = el;
+                                }}
+                                error={!!errorOf("name")}
+                                helperText={errorOf("name")}
                                 fullWidth
                             />
                             <TextField
@@ -375,11 +408,19 @@ export function NewChangeRequestPage() {
                             <TextField
                                 label={t("report.deleteReason")}
                                 value={reason}
-                                onChange={(e) => setReason(e.target.value)}
+                                onChange={(e) => {
+                                    setReason(e.target.value);
+                                    setFieldError((fe) => (fe?.field === "reason" ? null : fe));
+                                }}
                                 placeholder={t("report.deleteReasonPlaceholder")}
                                 multiline
                                 minRows={4}
                                 required
+                                inputRef={(el: HTMLTextAreaElement | null) => {
+                                    fieldRefs.current.reason = el;
+                                }}
+                                error={!!errorOf("reason")}
+                                helperText={errorOf("reason")}
                                 fullWidth
                             />
                         </>

@@ -126,6 +126,10 @@ export const theme = createTheme({
                     // 포커스는 테두리 두께가 아니라 outline (39a)
                     "&.Mui-focused .MuiOutlinedInput-notchedOutline": { border: bar },
                     "&.Mui-focused": { outline: "2px solid var(--color-focus)", outlineOffset: 2 },
+                    // 필수 칸을 비우고 보냈을 때: 테두리를 오류 색으로 (라벨·안내 글자와 같은 색)
+                    "&.Mui-error .MuiOutlinedInput-notchedOutline, &.Mui-error.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                        border: "var(--rule-bar) solid var(--color-error)",
+                    },
                 },
             },
         },
