@@ -350,6 +350,7 @@ export type WalkRouteError =
     | "no_route"
     | "too_complex"
     | "route_timeout"
+    | "route_busy"
     | "failed";
 
 /** 응답 상한: 이보다 점이 많으면 비정상 응답으로 보고 쓰지 않는다 */

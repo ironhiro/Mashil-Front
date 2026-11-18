@@ -19,6 +19,7 @@ const SettingsPage = page(() => import("./pages/SettingsPage"), "SettingsPage");
 const NewChangeRequestPage = page(() => import("./pages/NewChangeRequestPage"), "NewChangeRequestPage");
 const ConsentPage = page(() => import("./pages/ConsentPage"), "ConsentPage");
 const TermsPage = page(() => import("./pages/TermsPage"), "TermsPage");
+const AboutPage = page(() => import("./pages/AboutPage"), "AboutPage");
 const AdminChangeRequestsPage = page(() => import("./pages/AdminChangeRequestsPage"), "AdminChangeRequestsPage");
 const AdminCommentReportsPage = page(() => import("./pages/AdminCommentReportsPage"), "AdminCommentReportsPage");
 const AdminHomePage = page(() => import("./pages/AdminHomePage"), "AdminHomePage");
@@ -135,6 +136,7 @@ export function App() {
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/consent" element={<ConsentPage />} />
                     <Route path="/terms/:docType" element={<TermsPage />} />
+                    <Route path="/about" element={<AboutPage />} />
                     <Route path="/toilets/:id" element={<ToiletDetailPage />} />
                     <Route path="/toilets/:id/guide" element={<WalkGuidePage />} />
                     <Route path="/change-requests/new" element={<NewChangeRequestPage />} />

@@ -295,6 +295,21 @@ export const ko = {
         versionChanged: "약관이 방금 바뀌었어요. 새 내용을 확인해 주세요.",
         saveFailed: "저장하지 못했어요. 잠시 후 다시 시도해 주세요.",
     },
+    about: {
+        link: "약관 · 데이터 출처",
+        title: "약관 · 출처",
+        legal: "약관",
+        data: "데이터 출처",
+        dataNote: "마실은 아래 데이터를 가공해 보여 줘요. 틀린 정보는 화장실 화면에서 제보해 주세요.",
+        sources: {
+            toilets: "화장실 목록",
+            osm: "걷는 길 (도로망)",
+            seoulWalk: "서울 안 걷는 길 (횡단보도·육교·지하철 출입구)",
+            kakao: "지도 · 주소로 위치 찾기",
+            vworld: "주소로 위치 찾기 (카카오에 없는 주소)",
+        },
+        fonts: "글꼴",
+    },
     terms: {
         preparing: "문서를 준비하고 있어요.",
         effective: "시행일 {{date}}",
