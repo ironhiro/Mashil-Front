@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { Box, CircularProgress, Container } from "@mui/material";
 import { useTranslation } from "react-i18next";
-import { Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { BottomNav, showsBottomNav } from "./components/BottomNav";
 import { RequireAdmin } from "./components/RequireAdmin";
 // 찾기와 상세는 첫 화면과 가장 잦은 이동이라 바로 싣고, 나머지 화면은 처음 열 때 받는다 (첫 로딩 번들을 줄인다)
@@ -31,6 +31,7 @@ import { MaintenanceScreen, ReadOnlyBanner } from "./components/Maintenance";
 import { useAppStatus } from "./lib/appStatus";
 import { useAuth } from "./auth/AuthContext";
 import { UserRole } from "./lib/enums";
+import { isOnboarded, markOnboarded } from "./lib/firstRun";
 import { useKeyboardOpen } from "./lib/useKeyboardOpen";
 
 /** 관리 화면 경로 → 화면. 모두 RequireAdmin 으로 감싼다 */
@@ -86,6 +87,19 @@ function useRouteFocus(pathname: string) {
     }, [pathname]);
 }
 
+/**
+ * 메인(/)에 처음 들어오면 로그인 화면으로 (로그인 없이 둘러보기 포함). 로그인했거나 한 번 둘러보기를 골랐으면 그대로 메인.
+ * 공유 링크(/toilets/…) 같은 다른 주소로 처음 들어온 경우에는 막지 않는다.
+ */
+function FirstRunGate({ children }: { children: React.ReactNode }) {
+    const { user } = useAuth();
+    if (user) {
+        markOnboarded();
+        return <>{children}</>;
+    }
+    return isOnboarded() ? <>{children}</> : <Navigate to="/login" replace />;
+}
+
 export function App() {
     const appStatus = useAppStatus();
     const { pathname } = useLocation();
@@ -115,7 +129,7 @@ export function App() {
             <Container component="main" id="main" maxWidth={pathname === "/" ? "xl" : "md"} sx={{ py: 3, flex: 1 }}>
                 <Suspense fallback={<PageLoading />}>
                 <Routes>
-                    <Route path="/" element={<HomePage />} />
+                    <Route path="/" element={<FirstRunGate><HomePage /></FirstRunGate>} />
                     <Route path="/me" element={<MePage />} />
                     <Route path="/me/settings" element={<SettingsPage />} />
                     <Route path="/login" element={<LoginPage />} />
