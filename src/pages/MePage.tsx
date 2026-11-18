@@ -10,6 +10,8 @@ import { useAuth } from "../auth/AuthContext";
 import { ChangeRequestStatusTag } from "../components/ChangeRequestStatusTag";
 import { MemberCard } from "../components/MemberCard";
 import { SupportCards } from "../components/SupportCards";
+
+const SUPPORT_CARDS = import.meta.env.VITE_SUPPORT_CARDS === "on";
 import { formatDateTime } from "../i18n";
 import { ChangeRequestStatus, UserRole } from "../lib/enums";
 import { friendlyError } from "../lib/friendlyError";
@@ -70,7 +72,8 @@ export function MePage() {
             )}
 
             {/* 광고 제거·후원: 산 것은 계정에 묶이므로 회원만 */}
-            {signedIn && <SupportCards />}
+            {/* 광고 제거·후원은 결제가 붙기 전까지 숨긴다 (비공개 테스트, 2026-11-18). 확인할 때만 VITE_SUPPORT_CARDS=on */}
+            {signedIn && SUPPORT_CARDS && <SupportCards />}
 
             {isAdmin && (
                 <Button variant="outlined" size="large" component={RouterLink} to="/admin">

@@ -304,6 +304,16 @@ export function fetchRecommendedToilets(lat: number, lng: number, radiusM: numbe
     );
 }
 
+/** 내 댓글 고치기 (작성자만) */
+export function editComment(commentId: number, text: string): Promise<void> {
+    return apiFetch<void>(`/api/comments/${commentId}`, { method: "PUT", body: { text }, auth: true });
+}
+
+/** 내 댓글 지우기 (작성자만). 받은 표와 신고도 같이 지워진다 */
+export function deleteComment(commentId: number): Promise<void> {
+    return apiFetch<void>(`/api/comments/${commentId}`, { method: "DELETE", auth: true });
+}
+
 export function postComment(toiletId: number, text: string): Promise<CommentRow> {
     return apiFetch<CommentRow>(`/api/toilets/${toiletId}/comments`, {
         method: "POST",
