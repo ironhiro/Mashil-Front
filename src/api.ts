@@ -171,6 +171,12 @@ export async function fetchNearbyToilets(
     return apiFetch<ToiletNear[]>(`/api/toilets/near?${qs}`);
 }
 
+/** 이 화장실에 내가 매긴 별점 (없으면 null). 로그인했을 때만 */
+export async function fetchMyRating(toiletId: number): Promise<number | null> {
+    const r = await apiFetch<{ score: number | null }>(`/api/toilets/${toiletId}/ratings/me`, { auth: true });
+    return r.score ?? null;
+}
+
 export async function postRating(toiletId: number, score: number): Promise<void> {
     return apiFetch<void>(`/api/toilets/${toiletId}/ratings`, {
         method: "POST",

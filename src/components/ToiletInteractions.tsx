@@ -20,7 +20,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import ThumbDownOutlinedIcon from "@mui/icons-material/ThumbDownOutlined";
 import ThumbUpOutlinedIcon from "@mui/icons-material/ThumbUpOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import { fetchComments, postComment, postRating, voteComment } from "../api";
+import { fetchComments, postComment, postRating, voteComment, fetchMyRating } from "../api";
 import type { CommentRow } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { useTranslation } from "react-i18next";
@@ -51,7 +51,14 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
     const qc = useQueryClient();
     const readOnly = useAppStatus().data?.readOnly ?? false;
 
-    const [pendingScore, setPendingScore] = useState<number | null>(null);
+    // 내가 매긴 별: 서버 값을 기본으로, 방금 누른 값이 있으면 그것 (상세를 다시 열어도 내 별이 보이게)
+    const myRatingQuery = useQuery({
+        queryKey: ["toilet-my-rating", toiletId, auth.user?.id],
+        queryFn: () => fetchMyRating(toiletId),
+        enabled: !!auth.user,
+    });
+    const [pickedScore, setPendingScore] = useState<number | null>(null);
+    const pendingScore = pickedScore ?? myRatingQuery.data ?? null;
     const [comment, setComment] = useState("");
     const [error, setError] = useState<string | null>(null);
     // 댓글 ⋮ 메뉴 → 신고 시트
@@ -72,6 +79,7 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
             qc.invalidateQueries({ queryKey: ["toilets", "near"] });
             qc.invalidateQueries({ queryKey: ["toilets", "recommended"] }); // 추천 점수의 절반이 평점
             qc.invalidateQueries({ queryKey: ["toilet", toiletId] }); // 상세 화면의 평균
+            qc.invalidateQueries({ queryKey: ["toilet-my-rating", toiletId] });
         },
         onError: (e: Error) => setError(friendlyError(e, t("interactions.ratingFailed"))),
     });

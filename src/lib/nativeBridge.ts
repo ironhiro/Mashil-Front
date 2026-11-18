@@ -92,8 +92,19 @@ export class LocationError extends Error {
 const LOCATION_FAILURES: LocationFailure[] = ["denied", "deniedForever", "serviceDisabled", "timeout", "unsupported", "failed"];
 
 /** 앱이면 네이티브 GPS(권한 요청 포함), 아니면 navigator.geolocation (APP-03). */
+/** 어느 화면에서든 위치를 얻으면 알린다 (홈이 "위치 권한 없음" 상태였다면 이것으로 바로 내 위치로 옮긴다) */
+export const LOCATION_FOUND_EVENT = "mashil:location-found";
+
 export async function getCurrentPosition(
     opts: { enableHighAccuracy?: boolean; timeout?: number; maximumAge?: number } = {},
+): Promise<Position> {
+    const p = await getCurrentPositionRaw(opts);
+    window.dispatchEvent(new CustomEvent<Position>(LOCATION_FOUND_EVENT, { detail: p }));
+    return p;
+}
+
+async function getCurrentPositionRaw(
+    opts: { enableHighAccuracy?: boolean; timeout?: number; maximumAge?: number },
 ): Promise<Position> {
     if (isApp()) {
         // 예전 앱은 이 파라미터를 무시하고 정밀 측정만 한다 (cached 도 오지 않음)

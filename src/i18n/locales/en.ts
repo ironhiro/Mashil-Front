@@ -450,7 +450,7 @@ export const en: Messages = {
         phone: "phone number",
     },
     login: {
-        intro: "Log in to rate, comment, or report restroom info. You can find restrooms without logging in.",
+        intro: "Log in to rate or comment. You can find restrooms and report restroom info without logging in.",
         continueWith: {
             kakao: "Login with Kakao",
             google: "Continue with Google",

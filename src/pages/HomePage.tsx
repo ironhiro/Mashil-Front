@@ -44,7 +44,7 @@ import TuneIcon from "@mui/icons-material/Tune";
 import AccessibleIcon from "@mui/icons-material/Accessible";
 
 import { MOCK_USER_LOCATION, USE_MOCK } from "../mock/flag";
-import { getCurrentPosition, isApp, LocationError, openAppSettings } from "../lib/nativeBridge";
+import { getCurrentPosition, isApp, LOCATION_FOUND_EVENT, LocationError, openAppSettings } from "../lib/nativeBridge";
 import { KakaoDirectionsButton } from "../components/KakaoDirections";
 import { friendlyError } from "../lib/friendlyError";
 import { formatDistance } from "../i18n";
@@ -198,6 +198,32 @@ export function HomePage() {
             cancelled = true;
         };
     }, []);
+
+    // 위치를 못 받아 서울시청을 보여 주는 중에 권한이 생기면 (방향 안내에서 허용, 설정 앱에서 켜고 돌아옴)
+    // 앱을 다시 켜지 않아도 내 위치로 옮긴다
+    useEffect(() => {
+        if (USE_MOCK || geoFailure === null) return;
+        const moveHere = (here: LatLng) => {
+            homeMemory.locatedAt = Date.now();
+            setGeoFailure(null);
+            setUserLocation(here);
+            setCenter(here); // 지금 중심은 대신 보여 준 서울시청이므로 옮긴다
+        };
+        const onFound = (e: Event) => {
+            const p = (e as CustomEvent<{ lat: number; lng: number }>).detail;
+            moveHere({ lat: p.lat, lng: p.lng });
+        };
+        const onVisible = () => {
+            if (document.visibilityState !== "visible") return;
+            getCurrentPosition({ enableHighAccuracy: false, timeout: 8_000, maximumAge: QUICK_LOCATION_MAX_AGE_MS }).catch(() => undefined);
+        };
+        window.addEventListener(LOCATION_FOUND_EVENT, onFound);
+        document.addEventListener("visibilitychange", onVisible);
+        return () => {
+            window.removeEventListener(LOCATION_FOUND_EVENT, onFound);
+            document.removeEventListener("visibilitychange", onVisible);
+        };
+    }, [geoFailure]);
 
     const query = useQuery({
         enabled: center !== null,
