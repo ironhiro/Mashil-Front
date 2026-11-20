@@ -32,6 +32,9 @@ jobs:
         run: npx tsc -b
       - name: Build
         run: npx vite build
+      # 브라우저로 새는 값 검사: VITE_ 목록(src/vite-env.d.ts), import.meta.env 객체째 사용, 번들 속 비밀 모양 문자열
+      - name: Env leak check
+        run: node tool/check-env.mjs dist
 
   # 배포용 빌드. 글꼴은 라이선스상 저장소에 넣지 않으므로 여기서 만든다 (tool/make_fonts.py, seoul.go.kr 에서 받음)
   dist:
@@ -60,6 +63,9 @@ jobs:
           VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
           VITE_RELEASE: ${{ github.sha }}
         run: npm run build
+      # 실제 배포 값을 넣은 빌드로 다시 검사한다 (위 check 는 VITE_ 값 없이 빌드)
+      - name: Env leak check
+        run: node tool/check-env.mjs dist
       - uses: actions/upload-artifact@v4
         with:
           name: web-dist-${{ github.sha }}
