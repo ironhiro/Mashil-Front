@@ -9,17 +9,16 @@
  *
  * 하나라도 비어 있으면 문서 위에 "초안" 안내가 뜬다. 출시 전에 채우고, 법률 검토를 받은 뒤 내보낸다.
  */
-const env = import.meta.env as Record<string, string | undefined>;
-
-function value(key: string, placeholder: string, fallback?: string): { text: string; missing: boolean } {
-    const v = env[key]?.trim() || fallback;
+// 환경 변수는 이름을 바로 붙여 읽는다. 객체째나 env[key] 처럼 읽으면 빌드 때 있던 VITE_ 변수가 전부 번들에 들어간다 (tool/check-env.mjs)
+function value(raw: string | undefined, placeholder: string, fallback?: string): { text: string; missing: boolean } {
+    const v = raw?.trim() || fallback;
     return v ? { text: v, missing: false } : { text: placeholder, missing: true };
 }
 
-const name = value("VITE_OPERATOR_NAME", "[운영자]", "마실");
-const officer = value("VITE_PRIVACY_OFFICER", "[보호책임자 이름]");
-const email = value("VITE_CONTACT_EMAIL", "[문의 이메일]");
-const effective = value("VITE_LEGAL_EFFECTIVE_DATE", "[시행일]", "2026년 12월 1일");
+const name = value(import.meta.env.VITE_OPERATOR_NAME, "[운영자]", "마실");
+const officer = value(import.meta.env.VITE_PRIVACY_OFFICER, "[보호책임자 이름]");
+const email = value(import.meta.env.VITE_CONTACT_EMAIL, "[문의 이메일]");
+const effective = value(import.meta.env.VITE_LEGAL_EFFECTIVE_DATE, "[시행일]", "2026년 12월 1일");
 
 export const OPERATOR = {
     name: name.text,
