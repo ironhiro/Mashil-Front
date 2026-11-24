@@ -387,7 +387,9 @@ export const ja: Messages = {
     },
     interactions: {
         title: "評価とコメント",
-        loginRequired: "評価とコメントはログインすると残せます。",
+        /** 회원 기능을 숨겼을 때 (별점만) */
+        ratingTitle: "評価",
+        loginRequired: "コメントはログインすると残せます。",
         myRating: "自分の評価",
         starLabel_one: "星{{count}}つ",
         starLabel_other: "星{{count}}つ",

@@ -387,7 +387,9 @@ export const zhHans: Messages = {
     },
     interactions: {
         title: "评分与评论",
-        loginRequired: "登录后即可评分和评论。",
+        /** 회원 기능을 숨겼을 때 (별점만) */
+        ratingTitle: "评分",
+        loginRequired: "登录后即可评论。",
         myRating: "我的评分",
         starLabel_one: "{{count}} 星",
         starLabel_other: "{{count}} 星",

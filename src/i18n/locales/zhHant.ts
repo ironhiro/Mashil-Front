@@ -387,7 +387,9 @@ export const zhHant: Messages = {
     },
     interactions: {
         title: "評分與留言",
-        loginRequired: "登入後即可評分和留言。",
+        /** 회원 기능을 숨겼을 때 (별점만) */
+        ratingTitle: "評分",
+        loginRequired: "登入後即可留言。",
         myRating: "我的評分",
         starLabel_one: "{{count}} 顆星",
         starLabel_other: "{{count}} 顆星",

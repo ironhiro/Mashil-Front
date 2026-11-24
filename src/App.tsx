@@ -33,6 +33,7 @@ import { useAppStatus } from "./lib/appStatus";
 import { useAuth } from "./auth/AuthContext";
 import { UserRole } from "./lib/enums";
 import { isOnboarded, markOnboarded } from "./lib/firstRun";
+import { ACCOUNTS } from "./lib/features";
 import { useKeyboardOpen } from "./lib/useKeyboardOpen";
 
 /** 관리 화면 경로 → 화면. 모두 RequireAdmin 으로 감싼다 */
@@ -97,6 +98,8 @@ function useRouteFocus(pathname: string) {
  */
 function FirstRunGate({ children }: { children: React.ReactNode }) {
     const { user } = useAuth();
+    // 회원 기능을 숨겼으면 로그인 화면을 거치지 않는다
+    if (!ACCOUNTS) return <>{children}</>;
     if (user) {
         markOnboarded();
         return <>{children}</>;
@@ -135,14 +138,15 @@ export function App() {
                 <Routes>
                     <Route path="/" element={<FirstRunGate><HomePage /></FirstRunGate>} />
                     <Route path="/me" element={<MePage />} />
-                    <Route path="/me/settings" element={<SettingsPage />} />
+                    {/* 회원 기능을 숨겼으면 설정·동의·제보는 찾기로 돌린다. /login 은 관리자용으로 남긴다 (MePage) */}
+                    <Route path="/me/settings" element={ACCOUNTS || isAdmin ? <SettingsPage /> : <Navigate to="/" replace />} />
                     <Route path="/login" element={<LoginPage />} />
-                    <Route path="/consent" element={<ConsentPage />} />
+                    <Route path="/consent" element={ACCOUNTS || isAdmin ? <ConsentPage /> : <Navigate to="/" replace />} />
                     <Route path="/terms/:docType" element={<TermsPage />} />
                     <Route path="/about" element={<AboutPage />} />
                     <Route path="/toilets/:id" element={<ToiletDetailPage />} />
                     <Route path="/toilets/:id/guide" element={<WalkGuidePage />} />
-                    <Route path="/change-requests/new" element={<NewChangeRequestPage />} />
+                    <Route path="/change-requests/new" element={ACCOUNTS ? <NewChangeRequestPage /> : <Navigate to="/" replace />} />
                     {ADMIN_ROUTES.map((r) => (
                         <Route key={r.path} path={r.path} element={<RequireAdmin>{r.element}</RequireAdmin>} />
                     ))}
