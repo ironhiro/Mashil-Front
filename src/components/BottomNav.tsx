@@ -3,6 +3,7 @@ import { Link, NavLink } from "react-router-dom";
 import EditNoteIcon from "@mui/icons-material/EditNote";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import WcIcon from "@mui/icons-material/Wc";
+import { ACCOUNTS } from "../lib/features";
 
 /** 하단 탭이 보이는 경로. 자기 하단 바가 있는 상세나 로그인·동의·약관 같은 한 번 거치는 화면에서는 숨긴다. */
 export const BOTTOM_NAV_PATHS = ["/", "/change-requests/new", "/me", "/admin", "/admin/change-requests", "/admin/comments", "/admin/issues", "/admin/imports", "/admin/status"];
@@ -19,7 +20,8 @@ export function BottomNav() {
     const { t } = useTranslation();
     const tabs = [
         { to: "/", label: t("nav.find"), icon: <WcIcon aria-hidden /> },
-        { to: "/change-requests/new", label: t("nav.reportTab"), icon: <EditNoteIcon aria-hidden /> },
+        // 제보는 회원 기능과 함께 숨긴다 (lib/features.ts)
+        ...(ACCOUNTS ? [{ to: "/change-requests/new", label: t("nav.reportTab"), icon: <EditNoteIcon aria-hidden /> }] : []),
         { to: "/me", label: t("nav.me"), icon: <PersonOutlineIcon aria-hidden /> },
     ];
     return (

@@ -257,6 +257,10 @@ export async function mockFetch<T>(path: string, method: string, body: unknown):
         return detail as T;
     }
 
+    if (method === "GET" && (m = p.match(/^\/api\/toilets\/(\d+)\/ratings\/me$/))) {
+        return { score: ratings.get(Number(m[1]))?.get(ME.id) ?? null } as T;
+    }
+
     if (method === "POST" && (m = p.match(/^\/api\/toilets\/(\d+)\/ratings$/))) {
         const id = Number(m[1]);
         if (!ratings.has(id)) ratings.set(id, new Map());

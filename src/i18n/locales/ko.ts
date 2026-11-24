@@ -391,7 +391,9 @@ export const ko = {
     },
     interactions: {
         title: "평점과 댓글",
-        loginRequired: "평점과 댓글은 로그인하면 남길 수 있어요.",
+        /** 회원 기능을 숨겼을 때 (별점만) */
+        ratingTitle: "평점",
+        loginRequired: "댓글은 로그인하면 남길 수 있어요.",
         myRating: "내 평점",
         starLabel_one: "별 {{count}}개",
         starLabel_other: "별 {{count}}개",

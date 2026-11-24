@@ -28,6 +28,7 @@ import { KakaoDirectionsButton } from "../components/KakaoDirections";
 import { statusOf, todayKst } from "../lib/openStatus";
 import { walkGuidePath } from "../lib/walkGuide";
 import type { WalkGuideState } from "../lib/walkGuide";
+import { ACCOUNTS } from "../lib/features";
 
 const DAYS: ScheduleDay[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Holiday"];
 
@@ -170,9 +171,11 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                                 {t("detail.sourceEdited")}
                             </Typography>
                         )}
-                        <Link component="button" type="button" variant="body2" onClick={requestFix} sx={{ mt: 1, fontWeight: 800 }}>
-                            {t("detail.requestFix")}
-                        </Link>
+                        {ACCOUNTS && (
+                            <Link component="button" type="button" variant="body2" onClick={requestFix} sx={{ mt: 1, fontWeight: 800 }}>
+                                {t("detail.requestFix")}
+                            </Link>
+                        )}
                         <AdminToiletLink toiletId={toilet.id} />
                     </Box>
                 </Stack>

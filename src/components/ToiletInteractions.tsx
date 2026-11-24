@@ -31,6 +31,7 @@ import { useTranslation } from "react-i18next";
 import { formatRelativeOrDate } from "../i18n";
 import { friendlyError } from "../lib/friendlyError";
 import { useAppStatus } from "../lib/appStatus";
+import { ACCOUNTS } from "../lib/features";
 import { ReportSheet } from "./ReportSheet";
 
 /** 서버 댓글 최대 길이 (InteractionEndpoints.MaxCommentLength) */
@@ -46,8 +47,8 @@ interface Props {
 
 /**
  * 선택된 화장실의 평점·댓글 UI.
- * 백엔드 endpoint 가 `RequireAuthorization()` (Admin 한정 아님) 이라 일반 사용자/관리자 모두 사용 가능.
- * 비로그인 시 안내만 표시.
+ * 별점은 누구나 매긴다: 로그인했으면 회원 별점, 아니면 이 기기의 별점 (lib/deviceKey.ts, 2026-11-24).
+ * 댓글은 회원만 쓰고, 회원 기능을 숨겼으면 (lib/features.ts) 댓글 목록도 보이지 않는다.
  */
 export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }: Props) {
     const auth = useAuth();
@@ -59,7 +60,6 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
     const myRatingQuery = useQuery({
         queryKey: ["toilet-my-rating", toiletId, auth.user?.id],
         queryFn: () => fetchMyRating(toiletId),
-        enabled: !!auth.user,
     });
     const [pickedScore, setPendingScore] = useState<number | null>(null);
     const pendingScore = pickedScore ?? myRatingQuery.data ?? null;
@@ -82,6 +82,7 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
     const commentsQuery = useQuery({
         queryKey: ["toilet-comments", toiletId],
         queryFn: () => fetchComments(toiletId),
+        enabled: ACCOUNTS,
     });
 
     const ratingMut = useMutation({
@@ -155,7 +156,7 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
             <CardContent>
                 <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1 }} flexWrap="wrap" useFlexGap>
                     <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 700 }}>
-                        {t("interactions.title")}
+                        {ACCOUNTS ? t("interactions.title") : t("interactions.ratingTitle")}
                     </Typography>
                     {averageRating !== null && (
                         <Typography variant="body2" sx={{ color: "var(--color-accent-text)", fontWeight: 600 }}>
@@ -167,8 +168,6 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
 
                 {readOnly ? (
                     <Alert severity="info">{t("maintenance.readOnly")}</Alert>
-                ) : !auth.user ? (
-                    <Alert severity="info">{t("interactions.loginRequired")}</Alert>
                 ) : (
                     <>
                         <Stack
@@ -199,6 +198,8 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
                             )}
                         </Stack>
 
+                        {ACCOUNTS && !auth.user && <Alert severity="info">{t("interactions.loginRequired")}</Alert>}
+                        {ACCOUNTS && auth.user && (
                         <Stack spacing={1}>
                             <TextField
                                 label={t("interactions.comment")}
@@ -222,11 +223,14 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
                                 </Button>
                             </Box>
                         </Stack>
+                        )}
                     </>
                 )}
 
                 {error && <Alert severity="error" sx={{ mt: 1 }}>{error}</Alert>}
 
+                {ACCOUNTS && (
+                <>
                 <Divider sx={{ my: 2 }} />
 
                 <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
@@ -349,6 +353,8 @@ export function ToiletInteractions({ toiletId, averageRating, ratingCount = 0 }:
                         </article>
                     );
                 })}
+                </>
+                )}
             </CardContent>
 
             <Menu anchorEl={menu?.anchor} open={menu !== null} onClose={() => setMenu(null)}>

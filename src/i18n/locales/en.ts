@@ -387,7 +387,9 @@ export const en: Messages = {
     },
     interactions: {
         title: "Ratings and comments",
-        loginRequired: "Log in to rate or comment.",
+        /** 회원 기능을 숨겼을 때 (별점만) */
+        ratingTitle: "Rating",
+        loginRequired: "Log in to comment.",
         myRating: "My rating",
         starLabel_one: "{{count}} star",
         starLabel_other: "{{count}} stars",

@@ -4,6 +4,7 @@ import { readAuthToken, refreshAccessToken } from "./auth/AuthContext";
 import type { ChangeRequestKind, ChangeRequestStatus } from "./lib/enums";
 import { USE_MOCK } from "./mock/flag";
 import { nearbyLocal, recommendedLocal, searchLocal } from "./lib/toiletIndex";
+import { DEVICE_KEY_HEADER, deviceKey } from "./lib/deviceKey";
 
 /** 서버가 KST·요일·공휴일·자정 넘김을 반영해 판정한 영업 상태 (docs/API.md). */
 export interface ServerOpenStatus {
@@ -61,13 +62,15 @@ interface FetchOptions {
     method?: string;
     body?: unknown;
     auth?: boolean;
+    /** 로그인 없이 매기는 별점: 기기 키 헤더를 붙인다 (lib/deviceKey.ts). 로그인했으면 서버는 토큰을 먼저 본다 */
+    device?: boolean;
     /** 응답 헤더가 필요할 때 (예: 검색 전체 수 X-Total-Count) */
     onHeaders?: (headers: Headers) => void;
 }
 
 /** 공통 fetch — auth=true 면 localStorage 의 JWT 를 Authorization 헤더로 자동 붙임. */
 async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T> {
-    const { method = "GET", body, auth = false, onHeaders } = options;
+    const { method = "GET", body, auth = false, device = false, onHeaders } = options;
     if (USE_MOCK) {
         const { mockFetch } = await import("./mock/mockApi");
         return mockFetch<T>(path, method, body);
@@ -76,6 +79,7 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
         const headers: Record<string, string> = {};
         if (body !== undefined) headers["Content-Type"] = "application/json";
         if (auth && token) headers["Authorization"] = `Bearer ${token}`;
+        if (device) headers[DEVICE_KEY_HEADER] = deviceKey();
         return fetch(`${BASE}${path}`, {
             method,
             headers,
@@ -171,9 +175,9 @@ export async function fetchNearbyToilets(
     return apiFetch<ToiletNear[]>(`/api/toilets/near?${qs}`);
 }
 
-/** 이 화장실에 내가 매긴 별점 (없으면 null). 로그인했을 때만 */
+/** 이 화장실에 내가 매긴 별점 (없으면 null). 로그인했으면 회원 별점, 아니면 이 기기의 별점 */
 export async function fetchMyRating(toiletId: number): Promise<number | null> {
-    const r = await apiFetch<{ score: number | null }>(`/api/toilets/${toiletId}/ratings/me`, { auth: true });
+    const r = await apiFetch<{ score: number | null }>(`/api/toilets/${toiletId}/ratings/me`, { auth: true, device: true });
     return r.score ?? null;
 }
 
@@ -182,6 +186,7 @@ export async function postRating(toiletId: number, score: number): Promise<void>
         method: "POST",
         body: { score },
         auth: true,
+        device: true,
     });
 }
 

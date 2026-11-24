@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Alert, Box, Button, Stack, Typography } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { fetchMyChangeRequests, fetchMyComments } from "../api";
 import type { MyChangeRequest, MyComment } from "../api";
 import { useAuth } from "../auth/AuthContext";
@@ -15,6 +15,10 @@ const SUPPORT_CARDS = import.meta.env.VITE_SUPPORT_CARDS === "on";
 import { formatDateTime } from "../i18n";
 import { ChangeRequestStatus, UserRole } from "../lib/enums";
 import { friendlyError } from "../lib/friendlyError";
+import { ACCOUNTS } from "../lib/features";
+
+/** 회원 기능을 숨겼을 때 관리자가 로그인 화면으로 가는 길: 제목을 이만큼 연달아 누른다 */
+const ADMIN_TAPS = 7;
 
 /** 처음에 보여 줄 줄 수. 더 있으면 "모두 보기" */
 const PREVIEW_ROWS = 3;
@@ -23,12 +27,22 @@ const PREVIEW_ROWS = 3;
  * 하단 탭 "내 정보".
  * 회원: 회원 카드(누르면 설정 화면) → 내 제보 → 내 댓글 → 광고 제거·후원 → 관리자 메뉴.
  * 비회원: 로그인 안내 → 언어.
+ * 회원 기능을 숨겼으면 (lib/features.ts) 약관·출처만. 로그인한 관리자에게는 관리자 메뉴도.
  */
 export function MePage() {
     const auth = useAuth();
     const { t } = useTranslation();
     const isAdmin = auth.user?.role === UserRole.Admin;
     const signedIn = !!auth.user;
+    const navigate = useNavigate();
+    const [taps, setTaps] = useState(0);
+    const tapTitle = () => {
+        if (ACCOUNTS || signedIn) return;
+        if (taps + 1 >= ADMIN_TAPS) {
+            setTaps(0);
+            navigate("/login");
+        } else setTaps(taps + 1);
+    };
 
     const reports = useQuery({ enabled: signedIn, queryKey: ["me", "change-requests"], queryFn: fetchMyChangeRequests });
     const comments = useQuery({ enabled: signedIn, queryKey: ["me", "comments"], queryFn: fetchMyComments });
@@ -36,11 +50,14 @@ export function MePage() {
 
     return (
         <Stack spacing={3}>
-            <Typography variant="h4" component="h1">
+            <Typography variant="h4" component="h1" onClick={tapTitle}>
                 {t("me.title")}
             </Typography>
 
-            {auth.user ? (
+            {!ACCOUNTS ? (
+                // 회원 기능을 숨긴 동안: 관리자로 로그인했을 때만 회원 카드 (로그아웃은 설정에서)
+                auth.user && <MemberCard user={auth.user} />
+            ) : auth.user ? (
                 // 회원: 이름 카드. 누르면 설정 화면 (이름 바꾸기, 언어, 로그아웃, 탈퇴)
                 <MemberCard user={auth.user} />
             ) : (
@@ -52,7 +69,7 @@ export function MePage() {
                 </Box>
             )}
 
-            {signedIn && (
+            {ACCOUNTS && signedIn && (
                 <ActivitySection
                     title={t("me.reports")}
                     count={pending > 0 ? t("me.pendingCount", { count: pending }) : undefined}
@@ -62,7 +79,7 @@ export function MePage() {
                 />
             )}
 
-            {signedIn && (
+            {ACCOUNTS && signedIn && (
                 <ActivitySection
                     title={t("me.comments")}
                     query={comments}

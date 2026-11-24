@@ -53,6 +53,7 @@ import type { LocationFailure } from "../lib/nativeBridge";
 import { walkGuidePath } from "../lib/walkGuide";
 import type { WalkGuideState } from "../lib/walkGuide";
 import { preloadToilets } from "../lib/toiletIndex";
+import { ACCOUNTS } from "../lib/features";
 
 const SEOUL_CITY_HALL: LatLng = { lat: 37.5666, lng: 126.9784 };
 
@@ -635,7 +636,7 @@ export function HomePage() {
                                 {t("home.distanceNeedsLocation")}
                             </Typography>
                         )}
-                        {auth.user && (
+                        {ACCOUNTS && auth.user && (
                             <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" sx={{ pt: 0.5 }}>
                                 <Link
                                     component="button"

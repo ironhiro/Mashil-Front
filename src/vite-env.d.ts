@@ -24,6 +24,8 @@ interface ImportMetaEnv {
     readonly VITE_WALK_ROUTE?: "on" | "off";
     /** 내 정보의 광고 제거·후원 카드 (결제가 붙기 전까지 끔) */
     readonly VITE_SUPPORT_CARDS?: "on" | "off";
+    /** 회원 기능(로그인, 댓글, 제보, 내 활동). 기본은 숨김, 별점만 (lib/features.ts) */
+    readonly VITE_ACCOUNTS?: "on" | "off";
     /** 이메일·비밀번호 로그인 칸: on 일 때만 (개발·운영 모두 기본 숨김, LoginPage EMAIL_LOGIN). 서버도 Auth:LegacyPasswordLogin 이 켜져 있어야 동작 */
     readonly VITE_EMAIL_LOGIN?: "on" | "off";
     /** 목업 백엔드 (npm run dev:mock, .env.mock) */
