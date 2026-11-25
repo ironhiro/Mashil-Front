@@ -14,6 +14,7 @@ Overpass (Google Fonts), so they are not needed here.
 """
 import io
 import sys
+import time
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -39,7 +40,16 @@ def main() -> int:
         return 0
     print("downloading", ZIP_URL)
     req = urllib.request.Request(ZIP_URL, headers={"User-Agent": "Mozilla/5.0"})
-    data = urllib.request.urlopen(req, timeout=300).read()
+    # seoul.go.kr 은 해외에서 연결이 자주 끊긴다: 세 번까지 다시 시도한다 (CI 는 결과를 캐시해서 보통 여기까지 오지 않는다)
+    for attempt in range(1, 4):
+        try:
+            data = urllib.request.urlopen(req, timeout=120).read()
+            break
+        except OSError as e:  # URLError, TimeoutError 모두 OSError
+            if attempt == 3:
+                raise
+            print(f"download failed ({e}), retrying in {attempt * 15}s")
+            time.sleep(attempt * 15)
     z = zipfile.ZipFile(io.BytesIO(data))
     OUT.mkdir(parents=True, exist_ok=True)
     for info in z.infolist():
