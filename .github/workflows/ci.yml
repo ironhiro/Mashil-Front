@@ -51,6 +51,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # seoul.go.kr 은 해외(GitHub 러너)에서 자주 끊긴다. 만든 woff2 를 캐시해 두면 make_fonts.py 가 내려받지 않는다
+      - name: Cache fonts
+        uses: actions/cache@v4
+        with:
+          path: public/fonts/SeoulNamsan*.woff2
+          key: seoul-fonts-${{ hashFiles('tool/make_fonts.py') }}
       - name: Fonts
         run: |
           pip install fonttools brotli
