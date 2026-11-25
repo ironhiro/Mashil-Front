@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { LEGAL_DOCS } from "../legal/documents";
 import type { LegalDocType } from "../legal/documents";
+import { OPERATOR } from "../legal/operator";
+import { ACCOUNTS } from "../lib/features";
 
 // 본문이 있는 문서만 (만 14세 확인은 체크 항목이라 문서가 없다)
 const DOCS: LegalDocType[] = ["Terms", "Privacy", "LocationTerms"];
@@ -75,7 +77,8 @@ export function AboutPage() {
                     {t("about.data")}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                    {t("about.dataNote")}
+                    {/* 회원 기능을 숨기면 제보 화면이 없으니 문의 이메일로 */}
+                    {ACCOUNTS ? t("about.dataNote") : t("about.dataNoteEmail", { email: OPERATOR.contactEmail })}
                 </Typography>
                 <Stack component="ul" spacing={1.5} sx={{ p: 0, m: 0, listStyle: "none" }}>
                     {SOURCES.map((s) => (

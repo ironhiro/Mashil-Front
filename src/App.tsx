@@ -110,10 +110,11 @@ function FirstRunGate({ children }: { children: React.ReactNode }) {
 export function App() {
     const appStatus = useAppStatus();
     const { pathname } = useLocation();
-    const withNav = showsBottomNav(pathname);
+    const isAdmin = useAuth().user?.role === UserRole.Admin;
+    // 회원 기능을 숨기면 탭이 찾기 하나뿐이라 하단 탭을 두지 않는다 (약관·출처는 홈 제목 옆). 관리자에게는 관리자 화면 탭이 있어야 하므로 보인다
+    const withNav = (ACCOUNTS || isAdmin) && showsBottomNav(pathname);
     // 키보드가 올라오면 하단 탭을 숨긴다 (app.css .keyboard-open, 폰 폭에서만)
     const keyboardOpen = useKeyboardOpen();
-    const isAdmin = useAuth().user?.role === UserRole.Admin;
     useRouteFocus(pathname);
 
     // 전체 점검이면 다른 화면 대신 점검 화면 (OPS-05). 관리자는 점검을 끌 수 있어야 하므로 띠만 보고 그대로 쓴다.
