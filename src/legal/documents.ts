@@ -271,7 +271,11 @@ export const LEGAL_DOCS: Record<LegalDocType, LegalDoc> = {
     LocationTerms: location,
 };
 
-/** 아직 채우지 않은 자리표시(예: [호스팅 업체])가 남아 있는지 */
+/**
+ * 아직 채우지 않은 자리표시(예: [호스팅 업체])가 남아 있는지.
+ * 글자만 본다: 문서를 JSON 으로 통째로 검사하면 목록(문자열 배열)의 대괄호까지 걸려 늘 초안이 된다.
+ */
 export function hasPlaceholders(doc: LegalDoc): boolean {
-    return /\[[^\]]+\]/.test(JSON.stringify(doc));
+    const texts = [doc.title, ...doc.sections.flatMap((s) => [s.heading, ...s.body.flat()])];
+    return texts.some((t) => /\[[^\]]+\]/.test(t));
 }
