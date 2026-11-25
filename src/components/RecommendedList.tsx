@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import type { RecommendedToilet, ToiletNear } from "../api";
 import { BoardRowContent } from "./BoardRow";
+import { ACCOUNTS } from "../lib/features";
 
 interface Props {
     items: RecommendedToilet[] | undefined;
@@ -22,13 +23,13 @@ export function RecommendedList({ items, loading, failed, onSelect, onShowList }
             <div className="activity-head">
                 <h2 id="rec-title">{t("recommend.title")}</h2>
             </div>
-            <p className="rec-intro">{t("recommend.intro")}</p>
+            <p className="rec-intro">{t(ACCOUNTS ? "recommend.intro" : "recommend.introRatingsOnly")}</p>
 
             {loading && <p className="board-empty">{t("recommend.loading")}</p>}
             {failed && <p className="board-empty">{t("recommend.failed")}</p>}
             {items && items.length === 0 && (
                 <div className="board-empty">
-                    <p style={{ margin: 0 }}>{t("recommend.empty")}</p>
+                    <p style={{ margin: 0 }}>{t(ACCOUNTS ? "recommend.empty" : "recommend.emptyRatingsOnly")}</p>
                     <button type="button" className="activity-more" style={{ paddingInline: 0 }} onClick={onShowList}>
                         {t("recommend.showList")}
                     </button>

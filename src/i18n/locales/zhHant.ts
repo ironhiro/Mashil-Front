@@ -378,9 +378,11 @@ export const zhHant: Messages = {
     recommend: {
         title: "現在適合去的地方",
         intro: "根據評分和留言，為你列出推薦的廁所。",
+        introRatingsOnly: "從開放中的廁所裡，依評分和距離為你挑選。",
         loading: "正在挑選推薦地點",
         failed: "無法載入推薦。",
         empty: "這附近的評價還不夠多，暫時無法推薦。請為去過的地方評分，或為留言按「有幫助」。",
+        emptyRatingsOnly: "附近的評分還不夠多，暫時無法推薦。請為去過的地方評分。",
         showList: "依距離查看",
         rank: "第 {{n}} 名",
         rating: "評分 {{avg}}（{{count}} 人）",
