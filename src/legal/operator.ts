@@ -1,6 +1,6 @@
 /**
  * 약관·방침에 들어가는 운영자 정보. 빌드할 때 환경 변수로 넣을 수 있고, 없으면 아래 기본값을 쓴다.
- * 운영자 이름과 시행일은 공개되는 고정 값이라 기본값으로 둔다 (2026-11-18 결정: 운영자 "마실", 시행일 2026-12-01).
+ * 모두 공개되는 고정 값이라 기본값으로 둔다 (2026-11-26 결정: 운영자·보호책임자 "ironhiro", 문의 ironhiro1@gmail.com, 시행일 2026-12-01).
  *
  *   VITE_OPERATOR_NAME        운영자(개인이면 이름, 사업자면 상호)
  *   VITE_PRIVACY_OFFICER      개인정보 보호책임자 이름
@@ -15,9 +15,9 @@ function value(raw: string | undefined, placeholder: string, fallback?: string):
     return v ? { text: v, missing: false } : { text: placeholder, missing: true };
 }
 
-const name = value(import.meta.env.VITE_OPERATOR_NAME, "[운영자]", "마실");
-const officer = value(import.meta.env.VITE_PRIVACY_OFFICER, "[보호책임자 이름]");
-const email = value(import.meta.env.VITE_CONTACT_EMAIL, "[문의 이메일]");
+const name = value(import.meta.env.VITE_OPERATOR_NAME, "[운영자]", "ironhiro");
+const officer = value(import.meta.env.VITE_PRIVACY_OFFICER, "[보호책임자 이름]", "ironhiro");
+const email = value(import.meta.env.VITE_CONTACT_EMAIL, "[문의 이메일]", "ironhiro1@gmail.com");
 const effective = value(import.meta.env.VITE_LEGAL_EFFECTIVE_DATE, "[시행일]", "2026년 12월 1일");
 
 export const OPERATOR = {
