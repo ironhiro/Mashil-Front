@@ -301,6 +301,7 @@ export const ko = {
         legal: "약관",
         data: "데이터 출처",
         dataNote: "마실은 아래 데이터를 가공해 보여 줘요. 틀린 정보는 화장실 화면에서 제보해 주세요.",
+        dataNoteEmail: "마실은 아래 데이터를 가공해 보여 줘요. 틀린 정보는 {{email}}로 알려 주세요.",
         sources: {
             toilets: "화장실 목록",
             osm: "걷는 길 (도로망)",

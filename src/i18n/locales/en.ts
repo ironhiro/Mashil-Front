@@ -297,6 +297,7 @@ export const en: Messages = {
         legal: "Terms",
         data: "Data sources",
         dataNote: "Mashil processes and shows the data below. If something is wrong, report it from the restroom page.",
+        dataNoteEmail: "Mashil processes and shows the data below. If something is wrong, email {{email}}.",
         sources: {
             toilets: "Restroom list",
             osm: "Walking paths (road network)",

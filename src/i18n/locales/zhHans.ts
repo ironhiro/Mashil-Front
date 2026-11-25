@@ -297,6 +297,7 @@ export const zhHans: Messages = {
         legal: "条款",
         data: "数据来源",
         dataNote: "Mashil 对以下数据进行加工后展示。如发现信息有误，请在卫生间页面中反馈。",
+        dataNoteEmail: "Mashil 对以下数据进行加工后展示。如发现信息有误，请发送邮件至 {{email}}。",
         sources: {
             toilets: "卫生间列表",
             osm: "步行路线（路网）",

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CopyButton } from "../components/CopyButton";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import {
@@ -54,6 +54,7 @@ import { walkGuidePath } from "../lib/walkGuide";
 import type { WalkGuideState } from "../lib/walkGuide";
 import { preloadToilets } from "../lib/toiletIndex";
 import { ACCOUNTS } from "../lib/features";
+import { useAdminTaps } from "../lib/adminTaps";
 
 const SEOUL_CITY_HALL: LatLng = { lat: 37.5666, lng: 126.9784 };
 
@@ -89,6 +90,7 @@ const homeMemory: {
 export function HomePage() {
     const auth = useAuth();
     const navigate = useNavigate();
+    const tapTitle = useAdminTaps(!!auth.user);
     const { t } = useTranslation();
     const [center, setCenter] = useState<LatLng | null>(homeMemory.center);
     const [userLocation, setUserLocation] = useState<LatLng | null>(homeMemory.userLocation);
@@ -310,7 +312,15 @@ export function HomePage() {
     // 제목 · 알림 · 필터와 보기 전환
     const header = (
         <>
-        <Typography variant="h4" component="h1">{t("home.title")}</Typography>
+        <Stack direction="row" alignItems="baseline" justifyContent="space-between" spacing={1}>
+            <Typography variant="h4" component="h1" onClick={tapTitle}>{t("home.title")}</Typography>
+            {/* 회원 기능을 숨기면 "내 정보" 탭이 없으니 약관과 데이터 출처를 여기에 (출처 표시는 데이터 이용 조건) */}
+            {!ACCOUNTS && (
+                <Button color="secondary" component={RouterLink} to="/about" sx={{ px: 1, minHeight: 44, flexShrink: 0 }}>
+                    {t("about.link")}
+                </Button>
+            )}
+        </Stack>
         {geoFailure && (
             <Alert
                 severity="info"

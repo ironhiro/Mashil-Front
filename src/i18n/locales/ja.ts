@@ -297,6 +297,7 @@ export const ja: Messages = {
         legal: "規約",
         data: "データ出典",
         dataNote: "Mashilは以下のデータを加工して表示しています。間違った情報はトイレの画面から報告してください。",
+        dataNoteEmail: "Mashilは以下のデータを加工して表示しています。間違った情報は{{email}}までお知らせください。",
         sources: {
             toilets: "トイレ一覧",
             osm: "歩行ルート（道路網）",

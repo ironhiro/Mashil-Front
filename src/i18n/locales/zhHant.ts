@@ -297,6 +297,7 @@ export const zhHant: Messages = {
         legal: "條款",
         data: "資料來源",
         dataNote: "Mashil 會整理並顯示以下資料。如有錯誤資訊，請在廁所頁面回報。",
+        dataNoteEmail: "Mashil 會整理並顯示以下資料。如有錯誤資訊，請寄信至 {{email}}。",
         sources: {
             toilets: "廁所清單",
             osm: "步行路線（道路網）",
