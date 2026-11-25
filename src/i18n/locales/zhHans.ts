@@ -378,9 +378,11 @@ export const zhHans: Messages = {
     recommend: {
         title: "现在适合去的地方",
         intro: "根据评分和评论为你推荐的卫生间。",
+        introRatingsOnly: "从正在开放的卫生间中，按评分和距离为你挑选。",
         loading: "正在挑选推荐地点",
         failed: "推荐加载失败。",
         empty: "这附近的评价还不够多，暂时无法推荐。去过的地方可以打个分，或为评论点“有帮助”。",
+        emptyRatingsOnly: "附近的评分还不够多，暂时无法推荐。请为去过的地方打分。",
         showList: "按距离查看",
         rank: "第 {{n}} 名",
         rating: "评分 {{avg}}（{{count}} 人）",

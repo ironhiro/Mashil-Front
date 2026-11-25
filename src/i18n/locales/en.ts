@@ -378,9 +378,11 @@ export const en: Messages = {
     recommend: {
         title: "Good to go now",
         intro: "Restrooms we recommend based on ratings and comments.",
+        introRatingsOnly: "Open places picked by rating and distance.",
         loading: "Picking places",
         failed: "Couldn't load picks.",
         empty: "Not enough ratings around here yet. Rate places you've been to or mark helpful comments.",
+        emptyRatingsOnly: "Not enough ratings around here yet. Rate places you've been to.",
         showList: "Show nearest first",
         rank: "#{{n}}",
         rating: "Rated {{avg}} ({{count}})",
