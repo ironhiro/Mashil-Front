@@ -27,6 +27,7 @@ import { friendlyError } from "../lib/friendlyError";
 import { KakaoDirectionsButton } from "../components/KakaoDirections";
 import { statusOf, todayKst } from "../lib/openStatus";
 import { walkGuidePath } from "../lib/walkGuide";
+import { useAppAdBanner } from "../lib/appAdBanner";
 import type { WalkGuideState } from "../lib/walkGuide";
 import { ACCOUNTS } from "../lib/features";
 
@@ -55,6 +56,8 @@ export function ToiletDetailPage() {
         queryKey: ["toilet", toiletId],
         queryFn: () => fetchToilet(toiletId),
     });
+    // 앱 하단 배너: 상세 내용이 뜬 동안만 (불러오는 중·오류 화면에는 없음, MON-01)
+    useAppAdBanner(!!query.data);
 
     const goBack = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate("/"));
 
