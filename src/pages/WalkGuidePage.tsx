@@ -247,7 +247,7 @@ function GuideBody({
                     borderTop: "var(--rule-bar) solid var(--color-ink)",
                     px: 2,
                     pt: 1.5,
-                    pb: "calc(12px + env(safe-area-inset-bottom))",
+                    pb: "calc(12px + var(--app-safe-bottom))",
                     [`@media ${LANDSCAPE_SPLIT}`]: {
                         width: "22rem",
                         flexShrink: 0,

@@ -6,6 +6,9 @@
 
 :root {
   color-scheme: light;
+  /* 하단 안전 영역 (제스처 막대). 화면 아래 붙는 것은 env() 대신 이 변수를 쓴다:
+     앱(Mashil-app)이 웹뷰 아래에 광고 배너를 붙이면 배너가 막대 위를 차지하므로, 앱이 <html> 인라인 스타일로 0px 을 넣는다 */
+  --app-safe-bottom: env(safe-area-inset-bottom);
   --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px; --space-3xl: 96px; --space-4xl: 144px;
   --text-xs: 0.75rem; --text-sm: 0.875rem; --text-md: 1rem; --text-lg: 1.2rem; --text-xl: 1.44rem; --text-2xl: 1.728rem; --text-3xl: 2.074rem;
   --text-display-s: 1.44rem; --text-display: 1.728rem; --text-section: 1.2rem; --text-title: 1rem; --text-lead: 1rem;

@@ -106,7 +106,7 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
             <Box
                 className="detail-map"
                 // 가로: 지도는 화면 높이에 붙어 있고 오른쪽 내용만 스크롤된다. sx 의 position 이 CSS 를 덮으므로 여기서 정한다
-                sx={split ? { position: "sticky", top: 0, height: "calc(100dvh - 76px - env(safe-area-inset-bottom))" } : { position: "relative" }}
+                sx={split ? { position: "sticky", top: 0, height: "calc(100dvh - 76px - var(--app-safe-bottom))" } : { position: "relative" }}
             >
                 {hasCoords ? (
                     <MiniMap lat={toilet.latitude!} lng={toilet.longitude!} label={openStatusLabel(t, status, "short")} state={tileStateOf(status)} fill={split} />
@@ -193,9 +193,9 @@ function DetailBody({ toilet, nav, onBack }: { toilet: ToiletDetail; nav: Detail
                     px: 2,
                     pt: 1.25,
                     // 제스처 막대 위로 (앱은 웹뷰를 화면 맨 아래까지 그린다)
-                    pb: "calc(10px + env(safe-area-inset-bottom))",
+                    pb: "calc(10px + var(--app-safe-bottom))",
                     // 페이지 끝에서도 화면 맨 아래에 붙도록, App 의 아래 여백(24px + 제스처 막대)만큼 내려 앉힌다
-                    mb: "calc(-24px - env(safe-area-inset-bottom))",
+                    mb: "calc(-24px - var(--app-safe-bottom))",
                     display: "flex",
                     gap: 1,
                 }}
