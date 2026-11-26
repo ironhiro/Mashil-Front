@@ -55,6 +55,7 @@ import type { WalkGuideState } from "../lib/walkGuide";
 import { preloadToilets } from "../lib/toiletIndex";
 import { ACCOUNTS } from "../lib/features";
 import { useAdminTaps } from "../lib/adminTaps";
+import { useAppAdBanner } from "../lib/appAdBanner";
 
 const SEOUL_CITY_HALL: LatLng = { lat: 37.5666, lng: 126.9784 };
 
@@ -278,6 +279,8 @@ export function HomePage() {
     // 목록|지도 나란히: 넓은 화면이거나 가로 (lib/layout.ts)
     const wide = useMediaQuery(SPLIT);
     const panelMode = wide && viewMode === ViewMode.Map ? ViewMode.List : viewMode;
+    // 앱 하단 배너: 목록 보기와 검색 결과에서만 (지도·추천에는 없음, MON-01)
+    useAppAdBanner(searching || panelMode === ViewMode.List);
     /** 넓은 화면의 목록에서 고르면 상세로 가지 않고 지도에서 고른다 (지도와 카드가 함께 보이므로) */
     const selectOnMap = (toilet: ToiletNear) => {
         scrollToCard.current = true;

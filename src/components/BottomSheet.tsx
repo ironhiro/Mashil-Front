@@ -46,4 +46,4 @@ export function BottomSheet({ open, onClose, children }: { open: boolean; onClos
 }
 
 /** 시트 내용의 아래 여백: 16px + 기기 안전 영역 */
-export const sheetBottomPad = "calc(16px + env(safe-area-inset-bottom))";
+export const sheetBottomPad = "calc(16px + var(--app-safe-bottom))";

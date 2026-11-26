@@ -157,14 +157,15 @@ button:disabled, [aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
 
 /* ── 하단 탭: 찾기 / 제보 / 내 정보 ───────────────────────────────
    선택 묶음과 같은 규칙: 2px 테두리를 공유하는 칸, 고른 칸은 잉크 채움 (파랑은 선택에 쓰지 않는다) */
-/* 앱은 웹뷰를 시스템 제스처 막대 밑까지 그린다 (Flutter SafeArea bottom: false). 그 높이는 웹이 env() 로 비운다 */
-.app-root { padding-bottom: env(safe-area-inset-bottom); }
-.app-root.has-bottom-nav { --bottom-nav-h: 64px; padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom)); }
+/* 앱은 웹뷰를 시스템 제스처 막대 밑까지 그린다 (Flutter SafeArea bottom: false). 그 높이는 웹이 --app-safe-bottom (= env()) 으로 비운다.
+   앱이 아래에 광고 배너를 붙이면 배너가 막대 위를 차지하고, 앱이 이 변수를 0 으로 바꾼다 (tokens.css) */
+.app-root { padding-bottom: var(--app-safe-bottom); }
+.app-root.has-bottom-nav { --bottom-nav-h: 64px; padding-bottom: calc(var(--bottom-nav-h) + var(--app-safe-bottom)); }
 .bottom-nav {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-sticky-nav);
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
   background: var(--color-paper-3); border-top: var(--rule-bar) solid var(--color-ink);
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: var(--app-safe-bottom);
 }
 .bottom-nav-tab {
   height: var(--bottom-nav-h, 64px); min-width: 0;
@@ -184,7 +185,7 @@ button:disabled, [aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
 @media (prefers-reduced-motion: reduce) { .bottom-nav-tab { transition: none; } }
 /* 입력 중(소프트 키보드가 올라옴): 하단 탭을 숨겨 입력 칸에 자리를 준다 (Material 3). 왼쪽 레일(600px~)은 그대로 */
 @media (max-width: 37.4375rem) {
-  .app-root.has-bottom-nav.keyboard-open { padding-bottom: env(safe-area-inset-bottom); }
+  .app-root.has-bottom-nav.keyboard-open { padding-bottom: var(--app-safe-bottom); }
   .app-root.keyboard-open .bottom-nav { display: none; }
 }
 
@@ -195,12 +196,12 @@ button:disabled, [aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
    상세·방향 안내 지도|내용 나란히: medium 이상 가로 */
 .bottom-nav-brand { display: none; }
 @media (min-width: 37.5rem) {
-  .app-root.has-bottom-nav { --rail-w: 88px; padding-bottom: env(safe-area-inset-bottom); padding-left: var(--rail-w); }
+  .app-root.has-bottom-nav { --rail-w: 88px; padding-bottom: var(--app-safe-bottom); padding-left: var(--rail-w); }
   .bottom-nav {
     top: 0; right: auto; bottom: 0; width: var(--rail-w);
     display: flex; flex-direction: column; justify-content: flex-start;
     border-top: 0; border-right: var(--rule-bar) solid var(--color-ink);
-    padding: 0 0 env(safe-area-inset-bottom);
+    padding: 0 0 var(--app-safe-bottom);
     overflow-y: auto;
   }
   .bottom-nav-brand {
